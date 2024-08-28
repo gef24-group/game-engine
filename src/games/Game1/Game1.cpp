@@ -1,4 +1,6 @@
 #include "GameEngine.hpp"
+#include <iostream>
+#include <string>
 
 int main(int argc, char *args[]) {
     std::string gameTitle = "CSC581 HW1 Rohan's Game";

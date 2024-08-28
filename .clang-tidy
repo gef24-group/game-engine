@@ -1,0 +1,4 @@
+---
+Checks: '-*,clang-diagnostic-*,clang-analyzer-*,cppcoreguidelines-*'
+FormatStyle: 'file'
+---
