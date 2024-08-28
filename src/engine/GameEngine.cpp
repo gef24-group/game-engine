@@ -6,39 +6,39 @@
 
 GameEngine::GameEngine() : win(nullptr), ren(nullptr) {}
 
-void GameEngine::start() {
+void GameEngine::Start() {
     bool quit = false;
 
     // Game loop
     while (!quit) {
         // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
-        SDL_Event e;
-        while (SDL_PollEvent(&e) != 0) {
-            if (e.type == SDL_QUIT) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event) != 0) {
+            if (event.type == SDL_QUIT) {
                 quit = true;
             }
         }
     }
 
     // Code for graceful shutdown
-    this->shutdown();
+    this->Shutdown();
 }
 
-bool GameEngine::init(const char *gameTitle) {
-    bool displaySuccess = initialize_display(gameTitle);
-    this->show_welcome_screen(WELCOME_SCREEN_RED, WELCOME_SCREEN_GREEN, WELCOME_SCREEN_BLUE);
+bool GameEngine::Init(const char *game_title) {
+    bool display_success = InitializeDisplay(game_title);
+    this->ShowWelcomeScreen(WELCOME_SCREEN_RED, WELCOME_SCREEN_GREEN, WELCOME_SCREEN_BLUE);
 
-    return displaySuccess;
+    return display_success;
 }
 
-bool GameEngine::initialize_display(const char *gameTitle) {
+bool GameEngine::InitializeDisplay(const char *game_title) {
     // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cout << "SDL_Init Error: " << SDL_GetError() << std::endl;
         return false;
     }
 
-    SDL_Window *win = SDL_CreateWindow(gameTitle, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window *win = SDL_CreateWindow(game_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                        SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     if (!win) {
         std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
@@ -62,15 +62,15 @@ bool GameEngine::initialize_display(const char *gameTitle) {
     return true;
 }
 
-void GameEngine::show_welcome_screen(int r, int g, int b) {
+void GameEngine::ShowWelcomeScreen(int red, int green, int blue) {
     // Sets the background to blue
-    SDL_SetRenderDrawColor(this->ren, r, g, b, WELCOME_SCREEN_OPACITY);
+    SDL_SetRenderDrawColor(this->ren, red, green, blue, WELCOME_SCREEN_OPACITY);
     // Clears the renderer
     SDL_RenderClear(this->ren);
     SDL_RenderPresent(this->ren);
 }
 
-void GameEngine::shutdown() {
+void GameEngine::Shutdown() {
     SDL_DestroyRenderer(this->ren);
     SDL_DestroyWindow(this->win);
 }

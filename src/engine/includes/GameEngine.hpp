@@ -11,12 +11,12 @@ class GameEngine {
 
   public:
     GameEngine();
-    void start();
-    bool init(const char *gameTitle);
-    bool initialize_display(const char *gameTitle);
-    void show_welcome_screen(int r, int g, int b);
-    void update();
-    void prepare_scene();
-    void present_scene();
-    void shutdown();
+    void Start();
+    bool Init(const char *game_title);
+    bool InitializeDisplay(const char *game_title);
+    void ShowWelcomeScreen(int red, int green, int blue);
+    void Update();
+    void PrepareScene();
+    void PresentScene();
+    void Shutdown();
 };
