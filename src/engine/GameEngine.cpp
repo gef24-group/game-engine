@@ -4,10 +4,7 @@
 #include <iostream>
 #include <stdio.h>
 
-GameEngine::GameEngine() {
-    this->win = nullptr;
-    this->ren = nullptr;
-}
+GameEngine::GameEngine() : win(nullptr), ren(nullptr) {}
 
 void GameEngine::start() {
     bool quit = false;
@@ -29,7 +26,7 @@ void GameEngine::start() {
 
 bool GameEngine::init(const char *gameTitle) {
     bool displaySuccess = initialize_display(gameTitle);
-    this->show_welcome_screen(0, 0, 255);
+    this->show_welcome_screen(WELCOME_SCREEN_RED, WELCOME_SCREEN_GREEN, WELCOME_SCREEN_BLUE);
 
     return displaySuccess;
 }
@@ -67,7 +64,7 @@ bool GameEngine::initialize_display(const char *gameTitle) {
 
 void GameEngine::show_welcome_screen(int r, int g, int b) {
     // Sets the background to blue
-    SDL_SetRenderDrawColor(this->ren, r, g, b, 255);
+    SDL_SetRenderDrawColor(this->ren, r, g, b, WELCOME_SCREEN_OPACITY);
     // Clears the renderer
     SDL_RenderClear(this->ren);
     SDL_RenderPresent(this->ren);
