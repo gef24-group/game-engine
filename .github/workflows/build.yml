@@ -1,0 +1,21 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+          sudo apt update
+          sudo apt install build-essential x11-apps libsdl2-2.0-0 libsdl2-dev libsdl2-image-2.0-0 libsdl2-image-dev cmake
+
+    - name: Build games
+      run: make
