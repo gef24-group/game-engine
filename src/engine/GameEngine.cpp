@@ -11,7 +11,6 @@ GameEngine::GameEngine() {
 
 void GameEngine::start() {
     bool quit = false;
-    int x;
 
     // Game loop
     while (!quit) {
