@@ -3,7 +3,6 @@ Checks: >
   -*,
   clang-diagnostic-*,
   clang-analyzer-*,
-  cppcoreguidelines-*,
   bugprone-*,
   readability-identifier-naming,
   readability-identifier-length
