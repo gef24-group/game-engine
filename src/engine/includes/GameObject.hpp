@@ -2,6 +2,7 @@
 #include "SDL_render.h"
 #include "SDL_surface.h"
 #include "Types.hpp"
+#include <functional>
 #include <utility>
 
 class GameObject {
@@ -21,20 +22,19 @@ class GameObject {
     float theta_x;
     bool colliding;
     // bool gravity_applies;
+    std::function<void()> callback;
 
   public:
     GameObject(GameObjectCategory object_category);
+    void SetCallback(std::function<void()> callback);
     void Update();
     void MoveObject(float time);
-    // void UpdateMotionProperties(float pos_x, float pos_y, float vel_x, float vel_y, float acc_x,
-    //                             float acc_y, bool colliding, bool gravity_applies);
 
     std::pair<float, float> GetPosition();
     std::pair<float, float> GetVelocity();
     std::pair<float, float> GetAcceleration();
     float GetAngle();
     bool GetColliding();
-    bool GetGravityApplies();
 
     void SetPosition(float pos_x, float pos_y);
     void SetVelocity(float vel_x, float vel_y);

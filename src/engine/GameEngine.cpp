@@ -4,8 +4,9 @@
 #include "SDL.h"
 #include <iostream>
 #include <stdio.h>
+#include <vector>
 
-GameEngine::GameEngine() : win(nullptr), ren(nullptr) {}
+GameEngine::GameEngine() : win(nullptr), ren(nullptr), callback([](std::vector<GameObject>) {}) {}
 
 void GameEngine::Start() {
     bool quit = false;
@@ -18,6 +19,7 @@ void GameEngine::Start() {
             if (event.type == SDL_QUIT) {
                 quit = true;
             }
+            this->Update(this->game_objects);
         }
     }
 
@@ -71,11 +73,19 @@ void GameEngine::ShowWelcomeScreen(int red, int green, int blue) {
     SDL_RenderPresent(this->ren);
 }
 
+std::vector<GameObject> GameEngine::GetObjects() { return this->game_objects; }
+
 void GameEngine::AddObject(GameObject game_object) {
     // TODO: Insert game objects in such a way that "Controllable" ones comes first, followed by
     // "Moveable" and then "Stationary"
-    this->gameObjects.push_back(game_object);
+    this->game_objects.push_back(game_object);
 }
+
+void GameEngine::SetCallback(std::function<void(std::vector<GameObject>)> callback) {
+    this->callback = callback;
+}
+
+void GameEngine::Update(std::vector<GameObject> game_objects) { this->callback(game_objects); }
 
 void GameEngine::Shutdown() {
     SDL_DestroyRenderer(this->ren);
