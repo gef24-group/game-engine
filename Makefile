@@ -25,4 +25,10 @@ play:
 format:
 	find src -name '*.[ch]pp' | xargs clang-format -i
 
-.PHONY: all build clean play format
+check-format:
+	find src -name '*.[ch]pp' | xargs clang-format --dry-run --Werror
+
+check-tidy:
+	find src -name '*.[ch]pp' | xargs clang-tidy
+
+.PHONY: all build clean play format check-format check-tidy

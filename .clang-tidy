@@ -1,5 +1,16 @@
 ---
-Checks: '-*,clang-diagnostic-*,clang-analyzer-*,cppcoreguidelines-*,readability-identifier-naming,readability-identifier-length'
+Checks: >
+  -*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  bugprone-*,
+  readability-identifier-naming,
+  readability-identifier-length
+WarningsAsErrors: >
+  -*,
+  readability-identifier-naming,
+  readability-identifier-length
 FormatStyle: 'file'
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
