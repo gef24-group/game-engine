@@ -13,5 +13,5 @@ int main(int argc, char *args[]) {
     } else {
         game_engine.Start();
     }
-    std::cout << "The game engine has closed the game" << std::endl;
+    std::cout << "The game engine has closed the game cleanly" << std::endl;
 }

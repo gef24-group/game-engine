@@ -1,5 +1,6 @@
 #include "GameEngine.hpp"
 #include "Constants.hpp"
+#include "GameObject.hpp"
 #include "SDL.h"
 #include <iostream>
 #include <stdio.h>
@@ -68,6 +69,12 @@ void GameEngine::ShowWelcomeScreen(int red, int green, int blue) {
     // Clears the renderer
     SDL_RenderClear(this->ren);
     SDL_RenderPresent(this->ren);
+}
+
+void GameEngine::AddObject(GameObject game_object) {
+    // TODO: Insert game objects in such a way that "Controllable" ones comes first, followed by
+    // "Moveable" and then "Stationary"
+    this->gameObjects.push_back(game_object);
 }
 
 void GameEngine::Shutdown() {
