@@ -5,6 +5,7 @@
 #include "SDL_keyboard.h"
 #include "SDL_log.h"
 #include "SDL_render.h"
+#include "SDL_video.h"
 #include <stdio.h>
 #include <vector>
 
@@ -55,7 +56,7 @@ bool GameEngine::InitializeDisplay(const char *game_title) {
 
     SDL_Window *window =
         SDL_CreateWindow(game_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH,
-                         SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+                         SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!window) {
         SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_ERROR,
                        "SDL_CreateWindow Error: %s", SDL_GetError());

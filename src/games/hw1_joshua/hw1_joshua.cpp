@@ -43,7 +43,7 @@ int main(int argc, char *args[]) {
         ball.SetColor(Color{0, 0, 0, 0});
         ball.SetPosition(Position{500, 0});
         ball.SetSize(Size{100, 100});
-        ball.SetAcceleration(Acceleration{0, 9.8});
+        ball.SetAcceleration(Acceleration{0, 5});
         ball.SetVelocity(Velocity{0, 0});
         ball.SetTexture("assets/ball.png");
         ball.SetCallback(UpdateBall);
