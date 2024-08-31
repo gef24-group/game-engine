@@ -2,6 +2,7 @@
 #include "SDL_render.h"
 #include "Types.hpp"
 #include "Utils.hpp"
+#include <algorithm>
 #include <cmath>
 #include <functional>
 

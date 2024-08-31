@@ -8,7 +8,7 @@
 #include "SDL_video.h"
 #include "Types.hpp"
 #include "Utils.hpp"
-#include <stdio.h>
+#include <algorithm>
 #include <vector>
 
 GameEngine::GameEngine() {
@@ -178,8 +178,8 @@ void GameEngine::StickCollidersToBoundary() {
 
                     // find the side with the smallest overlap (this is where the collision
                     // occured)
-                    int min_overlap =
-                        std::min({left_overlap, right_overlap, top_overlap, bottom_overlap});
+                    int min_overlap = std::min(std::min(left_overlap, right_overlap),
+                                               std::min(top_overlap, bottom_overlap));
 
                     // align object to the side with the lowest overlap
                     int pos_x = 0, pos_y = 0;
