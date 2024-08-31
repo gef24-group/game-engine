@@ -3,9 +3,11 @@
 #include "GameObject.hpp"
 #include "SDL.h"
 #include "SDL_keyboard.h"
-#include "SDL_log.h"
+#include "SDL_rect.h"
 #include "SDL_render.h"
 #include "SDL_video.h"
+#include "Types.hpp"
+#include "Utils.hpp"
 #include <stdio.h>
 #include <vector>
 
@@ -32,14 +34,16 @@ void GameEngine::Start() {
         this->ReadHIDs();
         this->ApplyObjectPhysics(0.1);
         this->ApplyObjectUpdates();
-        // Test collision
-        // Stick colliders to boundary
+        this->TestCollision();
+        this->StickCollidersToBoundary();
         this->Update();
         this->RenderScene();
     }
+    this->Shutdown();
 }
 
 bool GameEngine::Init(const char *game_title) {
+    app->key_map = new KeyMap();
     bool display_success = InitializeDisplay(game_title);
     this->ShowWelcomeScreen();
 
@@ -49,8 +53,7 @@ bool GameEngine::Init(const char *game_title) {
 bool GameEngine::InitializeDisplay(const char *game_title) {
     // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_ERROR, "SDL_Init Error: %s",
-                       SDL_GetError());
+        Log(LogLevel::Error, "SDL_Init Error: %s", SDL_GetError());
         return false;
     }
 
@@ -58,8 +61,7 @@ bool GameEngine::InitializeDisplay(const char *game_title) {
         SDL_CreateWindow(game_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH,
                          SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!window) {
-        SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_ERROR,
-                       "SDL_CreateWindow Error: %s", SDL_GetError());
+        Log(LogLevel::Error, "SDL_CreateWindow Error: %s", SDL_GetError());
         SDL_Quit();
         return false;
     } else {
@@ -70,8 +72,7 @@ bool GameEngine::InitializeDisplay(const char *game_title) {
         SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
         SDL_DestroyWindow(window);
-        SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_ERROR,
-                       "SDL_CreateRenderer Error: %s", SDL_GetError());
+        Log(LogLevel::Error, "SDL_CreateRenderer Error: %s", SDL_GetError());
         SDL_Quit();
         return false;
     } else {
@@ -106,7 +107,18 @@ void GameEngine::SetCallback(std::function<void(std::vector<GameObject *>)> call
 
 void GameEngine::Update() { this->callback(this->game_objects); }
 
-void GameEngine::ReadHIDs() { this->keyboard_state = SDL_GetKeyboardState(NULL); }
+void GameEngine::ReadHIDs() {
+    const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
+    //  Iterating all the game objects
+    app->key_map->key_W = keyboard_state[SDL_SCANCODE_W] != 0;
+    app->key_map->key_A = keyboard_state[SDL_SCANCODE_A] != 0;
+    app->key_map->key_S = keyboard_state[SDL_SCANCODE_S] != 0;
+    app->key_map->key_D = keyboard_state[SDL_SCANCODE_D] != 0;
+    app->key_map->key_up = keyboard_state[SDL_SCANCODE_UP] != 0;
+    app->key_map->key_left = keyboard_state[SDL_SCANCODE_LEFT] != 0;
+    app->key_map->key_down = keyboard_state[SDL_SCANCODE_DOWN] != 0;
+    app->key_map->key_right = keyboard_state[SDL_SCANCODE_RIGHT] != 0;
+}
 
 void GameEngine::ApplyObjectPhysics(float time) {
     for (GameObject *game_object : this->game_objects) {
@@ -120,10 +132,82 @@ void GameEngine::ApplyObjectUpdates() {
     }
 }
 
+void GameEngine::TestCollision() {
+    for (int i = 0; i < this->game_objects.size() - 1; i++) {
+        for (int j = i + 1; j < this->game_objects.size(); j++) {
+            SDL_Rect object1 = {
+                static_cast<int>(std::round(this->game_objects[i]->GetPosition().x)),
+                static_cast<int>(std::round(this->game_objects[i]->GetPosition().y)),
+                this->game_objects[i]->GetSize().width, this->game_objects[i]->GetSize().height};
+            SDL_Rect object2 = {
+                static_cast<int>(std::round(this->game_objects[j]->GetPosition().x)),
+                static_cast<int>(std::round(this->game_objects[j]->GetPosition().y)),
+                this->game_objects[j]->GetSize().width, this->game_objects[j]->GetSize().height};
+
+            if (SDL_HasIntersection(&object1, &object2)) {
+                this->game_objects[i]->AddCollider(this->game_objects[j]);
+                this->game_objects[j]->AddCollider(this->game_objects[i]);
+            } else {
+                this->game_objects[i]->RemoveCollider(this->game_objects[j]);
+                this->game_objects[j]->RemoveCollider(this->game_objects[i]);
+            }
+        }
+    }
+}
+
+void GameEngine::StickCollidersToBoundary() {
+    for (GameObject *game_object : this->game_objects) {
+        if (game_object->GetCategory() == Controllable || game_object->GetCategory() == Moving) {
+            if (game_object->GetColliders().size() > 0) {
+                for (GameObject *collider : game_object->GetColliders()) {
+                    int obj_x = static_cast<int>(std::round(game_object->GetPosition().x));
+                    int obj_y = static_cast<int>(std::round(game_object->GetPosition().y));
+                    int col_x = static_cast<int>(std::round(collider->GetPosition().x));
+                    int col_y = static_cast<int>(std::round(collider->GetPosition().y));
+
+                    int obj_width = game_object->GetSize().width;
+                    int obj_height = game_object->GetSize().height;
+                    int col_width = collider->GetSize().width;
+                    int col_height = collider->GetSize().height;
+
+                    // find the overlap with respect to the collider
+                    int left_overlap = (obj_x + obj_width) - col_x;
+                    int right_overlap = (col_x + col_width) - obj_x;
+                    int top_overlap = (obj_y + obj_height) - col_y;
+                    int bottom_overlap = (col_y + col_height) - obj_y;
+
+                    // find the side with the smallest overlap (this is where the collision
+                    // occured)
+                    int min_overlap =
+                        std::min({left_overlap, right_overlap, top_overlap, bottom_overlap});
+
+                    // align object to the side with the lowest overlap
+                    int pos_x = 0, pos_y = 0;
+                    if (min_overlap == left_overlap) {
+                        pos_x = col_x - obj_width;
+                        pos_y = obj_y;
+                    } else if (min_overlap == right_overlap) {
+                        pos_x = col_x + col_width;
+                        pos_y = obj_y;
+                    } else if (min_overlap == top_overlap) {
+                        pos_x = obj_x;
+                        pos_y = col_y - obj_height;
+                    } else if (min_overlap == bottom_overlap) {
+                        pos_x = obj_x;
+                        pos_y = col_y + col_height;
+                    }
+
+                    game_object->SetPosition(Position{float(pos_x), float(pos_y)});
+                }
+            }
+        }
+    }
+}
+
 void GameEngine::RenderScene() {
     this->RenderBackground();
     for (GameObject *game_object : this->game_objects) {
-        this->RenderObject(game_object);
+        game_object->Render();
     }
     SDL_RenderPresent(app->renderer);
     SDL_Delay(SDL_DELAY);
@@ -137,27 +221,8 @@ void GameEngine::RenderBackground() {
     SDL_RenderClear(app->renderer);
 }
 
-void GameEngine::RenderObject(GameObject *game_object) {
-    float pos_x = game_object->GetPosition().x;
-    float pos_y = game_object->GetPosition().y;
-    int width = game_object->GetSize().width;
-    int height = game_object->GetSize().height;
-    int red = game_object->GetColor().red;
-    int green = game_object->GetColor().green;
-    int blue = game_object->GetColor().blue;
-    int alpha = game_object->GetColor().alpha;
-
-    SDL_Rect object = {static_cast<int>(std::round(pos_x)), static_cast<int>(std::round(pos_y)),
-                       width, height};
-    SDL_SetRenderDrawColor(app->renderer, red, green, blue, alpha);
-    if (game_object->GetShape() == Rectangle && game_object->GetTexture() == nullptr) {
-        SDL_RenderFillRect(app->renderer, &object);
-    } else {
-        SDL_RenderCopy(app->renderer, game_object->GetTexture(), NULL, &object);
-    }
-}
-
 void GameEngine::Shutdown() {
     SDL_DestroyRenderer(app->renderer);
     SDL_DestroyWindow(app->window);
+    delete app->key_map;
 }

@@ -6,6 +6,7 @@
 #include "Types.hpp"
 #include <functional>
 #include <string>
+#include <vector>
 
 extern App *app;
 
@@ -20,17 +21,21 @@ class GameObject {
     Size size;
     Velocity velocity;
     Acceleration acceleration;
+    KeyMap key_map;
+
     // Angle the object makes with the x_axis
     float theta_x;
-    bool collided;
+    std::vector<GameObject *> colliders;
     std::function<void(GameObject *)> callback;
 
   public:
     GameObject(GameObjectCategory category);
     void Update();
     void Move(float time);
+    void Render();
 
     SDL_Texture *GetTexture();
+    GameObjectCategory GetCategory();
     Shape GetShape();
     Color GetColor();
     Position GetPosition();
@@ -38,7 +43,7 @@ class GameObject {
     Velocity GetVelocity();
     Acceleration GetAcceleration();
     float GetAngle();
-    bool GetCollided();
+    std::vector<GameObject *> GetColliders();
 
     void SetTexture(std::string path);
     void SetShape(Shape shape);
@@ -48,6 +53,8 @@ class GameObject {
     void SetVelocity(Velocity velocity);
     void SetAcceleration(Acceleration acceleration);
     void SetAngle(float theta_x);
-    void SetCollided(bool collided);
     void SetCallback(std::function<void(GameObject *)> callback);
+
+    void AddCollider(GameObject *game_object);
+    void RemoveCollider(GameObject *game_object);
 };
