@@ -1,71 +1,65 @@
 #include "GameObject.hpp"
-#include "Constants.hpp"
+#include "SDL_render.h"
+#include "Types.hpp"
+#include "Utils.hpp"
 #include <cmath>
 #include <functional>
-#include <utility>
 
-GameObject::GameObject(GameObjectCategory object_category)
-    : shape(Rectangle), red(DEFAULT_OBJECT_RED), green(DEFAULT_OBJECT_GREEN),
-      blue(DEFAULT_OBJECT_BLUE), object_category(Stationary), pos_x(DEFAULT_OBJECT_POSITION),
-      pos_y(DEFAULT_OBJECT_POSITION), vel_x(DEFAULT_OBJECT_VELOCITY),
-      vel_y(DEFAULT_OBJECT_VELOCITY), size_x(DEFAULT_OBJECT_SIZE), size_y(DEFAULT_OBJECT_SIZE),
-      acc_x(DEFAULT_OBJECT_X_ACCELERATION), acc_y(GRAVITY_ACCELERATION), colliding(false),
-      surface(nullptr), texture(nullptr), theta_x(0), callback([]() {}) {}
+GameObject::GameObject(GameObjectCategory category) {
+    this->surface = nullptr;
+    this->texture = nullptr;
+    this->category = category;
+    this->shape = Rectangle;
+    this->color = Color{0, 0, 0, 255};
+    this->position = Position{0, 0};
+    this->size = Size{0, 0};
+    this->velocity = Velocity{0, 0};
+    this->acceleration = Acceleration{0, 0};
+    this->theta_x = 0;
+    this->collided = false;
+    this->callback = [](GameObject *) {};
+}
 
-void GameObject::SetCallback(std::function<void()> callback) { this->callback = callback; }
+void GameObject::Update() { this->callback(this); }
 
-void GameObject::Update() {}
+void GameObject::Move(float time) {
+    const float HALF = 0.5;
+    this->position.x +=
+        (this->velocity.x * time) + (HALF * this->acceleration.x * float(pow(time, 2)));
+    this->position.y +=
+        (this->velocity.y * time) + (HALF * this->acceleration.y * float(pow(time, 2)));
 
-void GameObject::MoveObject(float time) {
-    if (this->object_category != Stationary and !colliding) {
-        const float HALF = 0.5;
-        pos_x += ((vel_x * time) + (HALF * acc_x * float(pow(time, 2))));
-        pos_y += ((vel_y * time) + (HALF * acc_y * float(pow(time, 2))));
+    this->velocity.x += (this->acceleration.x * time);
+    this->velocity.y += (this->acceleration.y * time);
+}
 
-        vel_x += (acc_x * time);
-        vel_y += (acc_y * time);
+SDL_Texture *GameObject::GetTexture() { return this->texture; }
+Shape GameObject::GetShape() { return this->shape; }
+Color GameObject::GetColor() { return this->color; }
+Position GameObject::GetPosition() { return this->position; }
+Size GameObject::GetSize() { return this->size; }
+Velocity GameObject::GetVelocity() { return this->velocity; }
+Acceleration GameObject::GetAcceleration() { return this->acceleration; }
+float GameObject::GetAngle() { return this->theta_x; }
+bool GameObject::GetCollided() { return this->collided; }
+
+void GameObject::SetTexture(std::string path) { this->texture = LoadTexture(path); }
+void GameObject::SetShape(Shape shape) { this->shape = shape; }
+void GameObject::SetColor(Color color) { this->color = color; }
+void GameObject::SetPosition(Position position) { this->position = position; }
+void GameObject::SetSize(Size size) { this->size = size; }
+void GameObject::SetVelocity(Velocity velocity) {
+    if (this->category != Stationary) {
+        this->velocity = velocity;
     }
 }
-
-std::pair<float, float> GameObject::GetPosition() {
-    return std::make_pair(this->pos_x, this->pos_y);
+void GameObject::SetAcceleration(Acceleration acceleration) {
+    if (this->category != Stationary) {
+        this->acceleration = acceleration;
+    }
 }
-
-std::pair<float, float> GameObject::GetVelocity() {
-    return std::make_pair(this->vel_x, this->vel_y);
-}
-
-std::pair<float, float> GameObject::GetAcceleration() {
-    return std::make_pair(this->acc_x, this->acc_y);
-}
-
-float GameObject::GetAngle() { return this->theta_x; }
-
-bool GameObject::GetColliding() { return this->colliding; }
-
-void GameObject::SetPosition(float pos_x, float pos_y) {
-    this->pos_x = pos_x;
-    this->pos_y = pos_y;
-}
-
-void GameObject::SetVelocity(float vel_x, float vel_y) {
-    this->vel_x = vel_x;
-    this->vel_y = vel_y;
-}
-
-void GameObject::SetAcceleration(float acc_x, float acc_y) {
-    this->acc_x = acc_x;
-    this->acc_y = acc_y;
-}
-
-void GameObject::SetColliding(bool colliding) { this->colliding = colliding; }
-
-void GameObject::SetColor(int red, int green, int blue) {
-    this->red = red;
-    this->green = green;
-    this->blue = blue;
-}
-
-void GameObject::SetShape(Shape shape) { this->shape = shape; }
-
 void GameObject::SetAngle(float theta_x) { this->theta_x = theta_x; }
+void GameObject::SetCollided(bool collided) { this->collided = collided; }
+void GameObject::SetCallback(std::function<void(GameObject *)> callback) {
+    this->callback = callback;
+}

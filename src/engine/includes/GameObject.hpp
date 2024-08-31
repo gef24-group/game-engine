@@ -1,49 +1,53 @@
 #pragma once
+
+#include "App.hpp"
 #include "SDL_render.h"
 #include "SDL_surface.h"
 #include "Types.hpp"
 #include <functional>
-#include <utility>
+#include <string>
+
+extern App *app;
 
 class GameObject {
   private:
     SDL_Surface *surface;
     SDL_Texture *texture;
-    // Horizontal and vertical lengths of the object wrt its top-left pixel
+    GameObjectCategory category;
     Shape shape;
-    // Color intensities
-    int red, green, blue;
-    GameObjectCategory object_category;
-    float size_x, size_y;
-    float pos_x, pos_y;
-    float vel_x, vel_y;
-    float acc_x, acc_y;
+    Color color;
+    Position position;
+    Size size;
+    Velocity velocity;
+    Acceleration acceleration;
     // Angle the object makes with the x_axis
     float theta_x;
-    bool colliding;
-    // bool gravity_applies;
-    std::function<void()> callback;
+    bool collided;
+    std::function<void(GameObject *)> callback;
 
   public:
-    GameObject(GameObjectCategory object_category);
-    void SetCallback(std::function<void()> callback);
+    GameObject(GameObjectCategory category);
     void Update();
-    void MoveObject(float time);
+    void Move(float time);
 
-    std::pair<float, float> GetPosition();
-    std::pair<float, float> GetVelocity();
-    std::pair<float, float> GetAcceleration();
+    SDL_Texture *GetTexture();
+    Shape GetShape();
+    Color GetColor();
+    Position GetPosition();
+    Size GetSize();
+    Velocity GetVelocity();
+    Acceleration GetAcceleration();
     float GetAngle();
-    bool GetColliding();
+    bool GetCollided();
 
-    void SetPosition(float pos_x, float pos_y);
-    void SetVelocity(float vel_x, float vel_y);
-    void SetAcceleration(float acc_x, float acc_y);
-    void SetColliding(bool colliding);
-    // void SetGravityApplies(bool gravity_applies);
-
-    void SetColor(int red, int green, int blue);
+    void SetTexture(std::string path);
     void SetShape(Shape shape);
+    void SetColor(Color color);
+    void SetPosition(Position position);
+    void SetSize(Size size);
+    void SetVelocity(Velocity velocity);
+    void SetAcceleration(Acceleration acceleration);
     void SetAngle(float theta_x);
-    bool SetTexture();
+    void SetCollided(bool collided);
+    void SetCallback(std::function<void(GameObject *)> callback);
 };

@@ -1,20 +1,17 @@
 #include "GameEngine.hpp"
 #include "GameObject.hpp"
-#include "Types.hpp"
 #include <iostream>
 #include <string>
 
 // Game update code
 void Update(std::vector<GameObject *> game_objects) {
     for (GameObject *game_object : game_objects) {
-        game_object->SetShape(Rectangle);
-        game_object->SetSize(Size{50, 50});
-        game_object->Update();
+        (*game_object).Update();
     }
 }
 
 int main(int argc, char *args[]) {
-    std::string game_title = "CSC581 HW1 Rohan's Game";
+    std::string game_title = "CSC581 HW1 Mitesh's Game";
 
     // Initializing the Game Engine
     GameEngine game_engine;
@@ -25,13 +22,10 @@ int main(int argc, char *args[]) {
         return 1;
     } else {
         GameObject paddle(Controllable);
-        paddle.SetPosition(Position{10, 10});
-        GameObject ball(Moving);
-        ball.SetPosition(Position{210, 210});
+        GameObject snake(Moving);
         GameObject wall(Stationary);
-        wall.SetPosition(Position{410, 410});
 
-        std::vector<GameObject *> objects = std::vector({&paddle, &ball, &wall});
+        std::vector<GameObject *> objects = std::vector({&paddle, &snake, &wall});
         game_engine.AddObjects(objects);
         game_engine.SetCallback(Update);
 

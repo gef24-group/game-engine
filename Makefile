@@ -4,10 +4,9 @@ all: build
 
 build:
 	cmake -S . -B build
+	@ln -sf build/compile_commands.json compile_commands.json
 	@echo
 	cmake --build build --target $(GAME)
-	@echo
-	@ln -sf build/compile_commands.json compile_commands.json
 
 clean:
 	rm -rf build compile_commands.json
