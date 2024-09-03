@@ -35,7 +35,7 @@ void GameEngine::Start() {
         this->ApplyObjectPhysics(0.1);
         this->ApplyObjectUpdates();
         this->TestCollision();
-        this->StickCollidersToBoundary();
+        this->HandleCollisions();
         this->Update();
         this->RenderScene();
     }
@@ -135,16 +135,16 @@ void GameEngine::ApplyObjectUpdates() {
 void GameEngine::TestCollision() {
     for (int i = 0; i < this->game_objects.size() - 1; i++) {
         for (int j = i + 1; j < this->game_objects.size(); j++) {
-            SDL_Rect object1 = {
+            SDL_Rect object_1 = {
                 static_cast<int>(std::round(this->game_objects[i]->GetPosition().x)),
                 static_cast<int>(std::round(this->game_objects[i]->GetPosition().y)),
                 this->game_objects[i]->GetSize().width, this->game_objects[i]->GetSize().height};
-            SDL_Rect object2 = {
+            SDL_Rect object_2 = {
                 static_cast<int>(std::round(this->game_objects[j]->GetPosition().x)),
                 static_cast<int>(std::round(this->game_objects[j]->GetPosition().y)),
                 this->game_objects[j]->GetSize().width, this->game_objects[j]->GetSize().height};
 
-            if (SDL_HasIntersection(&object1, &object2)) {
+            if (SDL_HasIntersection(&object_1, &object_2)) {
                 this->game_objects[i]->AddCollider(this->game_objects[j]);
                 this->game_objects[j]->AddCollider(this->game_objects[i]);
             } else {
@@ -155,7 +155,7 @@ void GameEngine::TestCollision() {
     }
 }
 
-void GameEngine::StickCollidersToBoundary() {
+void GameEngine::HandleCollisions() {
     for (GameObject *game_object : this->game_objects) {
         if (game_object->GetCategory() == Controllable || game_object->GetCategory() == Moving) {
             if (game_object->GetColliders().size() > 0) {
@@ -197,7 +197,20 @@ void GameEngine::StickCollidersToBoundary() {
                         pos_y = col_y + col_height;
                     }
 
+                    // update position to stick with collider and velocity to reduce with
+                    // restitution
                     game_object->SetPosition(Position{float(pos_x), float(pos_y)});
+                    if (game_object->GetCategory() == Controllable) {
+                        float vel_x = game_object->GetVelocity().x;
+                        float vel_y = game_object->GetVelocity().y;
+                        if (min_overlap == left_overlap || min_overlap == right_overlap) {
+                            vel_x *= -game_object->GetRestitution();
+                        }
+                        if (min_overlap == top_overlap || min_overlap == bottom_overlap) {
+                            vel_y *= -game_object->GetRestitution();
+                        }
+                        game_object->SetVelocity(Velocity{vel_x, vel_y});
+                    }
                 }
             }
         }
@@ -224,5 +237,7 @@ void GameEngine::RenderBackground() {
 void GameEngine::Shutdown() {
     SDL_DestroyRenderer(app->renderer);
     SDL_DestroyWindow(app->window);
+    SDL_Quit();
     delete app->key_map;
+    delete app;
 }

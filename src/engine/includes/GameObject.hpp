@@ -6,7 +6,7 @@
 #include "Types.hpp"
 #include <functional>
 #include <string>
-#include <vector>
+#include <unordered_set>
 
 extern App *app;
 
@@ -14,6 +14,7 @@ class GameObject {
   private:
     SDL_Surface *surface;
     SDL_Texture *texture;
+    std::string name;
     GameObjectCategory category;
     Shape shape;
     Color color;
@@ -21,20 +22,21 @@ class GameObject {
     Size size;
     Velocity velocity;
     Acceleration acceleration;
-    KeyMap key_map;
-
+    float restitution;
     // Angle the object makes with the x_axis
     float theta_x;
-    std::vector<GameObject *> colliders;
+
+    std::unordered_set<GameObject *> colliders;
     std::function<void(GameObject *)> callback;
 
   public:
-    GameObject(GameObjectCategory category);
+    GameObject(std::string name, GameObjectCategory category);
     void Update();
     void Move(float time);
     void Render();
 
     SDL_Texture *GetTexture();
+    std::string GetName();
     GameObjectCategory GetCategory();
     Shape GetShape();
     Color GetColor();
@@ -42,8 +44,9 @@ class GameObject {
     Size GetSize();
     Velocity GetVelocity();
     Acceleration GetAcceleration();
+    float GetRestitution();
     float GetAngle();
-    std::vector<GameObject *> GetColliders();
+    std::unordered_set<GameObject *> GetColliders();
 
     void SetTexture(std::string path);
     void SetShape(Shape shape);
@@ -52,9 +55,9 @@ class GameObject {
     void SetSize(Size size);
     void SetVelocity(Velocity velocity);
     void SetAcceleration(Acceleration acceleration);
+    void SetRestitution(float restitution);
     void SetAngle(float theta_x);
-    void SetCallback(std::function<void(GameObject *)> callback);
-
     void AddCollider(GameObject *game_object);
     void RemoveCollider(GameObject *game_object);
+    void SetCallback(std::function<void(GameObject *)> callback);
 };

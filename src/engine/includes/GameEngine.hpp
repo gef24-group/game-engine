@@ -12,7 +12,6 @@ class GameEngine {
     Color background_color;
     std::vector<GameObject *> game_objects;
     std::function<void(std::vector<GameObject *> game_objects)> callback;
-    KeyMap key_map;
 
   public:
     GameEngine();
@@ -29,7 +28,7 @@ class GameEngine {
     void ApplyObjectPhysics(float time);
     void ApplyObjectUpdates();
     void TestCollision();
-    void StickCollidersToBoundary();
+    void HandleCollisions();
     void RenderScene();
     void RenderBackground();
     void RenderObject(GameObject *game_object);

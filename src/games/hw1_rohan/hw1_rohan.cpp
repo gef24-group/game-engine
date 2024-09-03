@@ -48,12 +48,12 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    GameObject paddle(Controllable);
+    GameObject paddle("paddle", Controllable);
     paddle.SetPosition(Position{10, 10});
     paddle.SetCallback(UpdatePaddle);
-    GameObject ball(Moving);
+    GameObject ball("ball", Moving);
     ball.SetPosition(Position{210, 210});
-    GameObject wall(Stationary);
+    GameObject wall("wall", Stationary);
     wall.SetPosition(Position{410, 410});
 
     std::vector<GameObject *> objects = std::vector({&paddle, &ball, &wall});

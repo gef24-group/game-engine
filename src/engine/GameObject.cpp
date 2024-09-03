@@ -2,13 +2,13 @@
 #include "SDL_render.h"
 #include "Types.hpp"
 #include "Utils.hpp"
-#include <algorithm>
 #include <cmath>
 #include <functional>
 
-GameObject::GameObject(GameObjectCategory category) {
+GameObject::GameObject(std::string name, GameObjectCategory category) {
     this->surface = nullptr;
     this->texture = nullptr;
+    this->name = name;
     this->category = category;
     this->shape = Rectangle;
     this->color = Color{0, 0, 0, 255};
@@ -16,8 +16,9 @@ GameObject::GameObject(GameObjectCategory category) {
     this->size = Size{0, 0};
     this->velocity = Velocity{0, 0};
     this->acceleration = Acceleration{0, 0};
+    this->restitution = 0;
     this->theta_x = 0;
-    this->colliders = std::vector<GameObject *>();
+    this->colliders = std::unordered_set<GameObject *>();
     this->callback = [](GameObject *) {};
 }
 
@@ -55,6 +56,7 @@ void GameObject::Render() {
 }
 
 SDL_Texture *GameObject::GetTexture() { return this->texture; }
+std::string GameObject::GetName() { return this->name; }
 GameObjectCategory GameObject::GetCategory() { return this->category; }
 Shape GameObject::GetShape() { return this->shape; }
 Color GameObject::GetColor() { return this->color; }
@@ -62,8 +64,9 @@ Position GameObject::GetPosition() { return this->position; }
 Size GameObject::GetSize() { return this->size; }
 Velocity GameObject::GetVelocity() { return this->velocity; }
 Acceleration GameObject::GetAcceleration() { return this->acceleration; }
+float GameObject::GetRestitution() { return this->restitution; }
 float GameObject::GetAngle() { return this->theta_x; }
-std::vector<GameObject *> GameObject::GetColliders() { return this->colliders; }
+std::unordered_set<GameObject *> GameObject::GetColliders() { return this->colliders; }
 
 void GameObject::SetTexture(std::string path) { this->texture = LoadTexture(path); }
 void GameObject::SetShape(Shape shape) { this->shape = shape; }
@@ -80,13 +83,10 @@ void GameObject::SetAcceleration(Acceleration acceleration) {
         this->acceleration = acceleration;
     }
 }
+void GameObject::SetRestitution(float restitution) { this->restitution = restitution; }
 void GameObject::SetAngle(float theta_x) { this->theta_x = theta_x; }
+void GameObject::AddCollider(GameObject *game_object) { this->colliders.insert(game_object); }
+void GameObject::RemoveCollider(GameObject *game_object) { this->colliders.erase(game_object); }
 void GameObject::SetCallback(std::function<void(GameObject *)> callback) {
     this->callback = callback;
-}
-
-void GameObject::AddCollider(GameObject *game_object) { this->colliders.push_back(game_object); }
-void GameObject::RemoveCollider(GameObject *game_object) {
-    this->colliders.erase(std::remove(this->colliders.begin(), this->colliders.end(), game_object),
-                          this->colliders.end());
 }

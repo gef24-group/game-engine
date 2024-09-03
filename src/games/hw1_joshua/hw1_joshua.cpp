@@ -6,34 +6,47 @@
 
 // Game update code
 void Update(std::vector<GameObject *> game_objects) {
-    for (GameObject *game_object : game_objects) {
-        (*game_object).Update();
+    // GameObject *ball = GetObjectByName("ball", game_objects);
+    // Log(LogLevel::Info, "[ball] x: %f, y: %f, vX: %f, vY: %f, aX: %f, aY: %f",
+    //     ball->GetPosition().x, ball->GetPosition().y, ball->GetVelocity().x,
+    //     ball->GetVelocity().y, ball->GetAcceleration().x, ball->GetAcceleration().y);
+    // Log(LogLevel::Info, "[ball colliders] %d", ball->GetColliders().size());
+}
+
+void UpdateEnemy(GameObject *enemy) {
+    int right_edge = static_cast<int>(std::round(enemy->GetPosition().x)) + enemy->GetSize().width;
+    int left_edge = static_cast<int>(std::round(enemy->GetPosition().x));
+
+    // Check if the enemy hits the right edge of the window
+    if (right_edge >= GetWindowSize().width && enemy->GetVelocity().x > 0) {
+        // Reverse the direction by flipping the velocity
+        enemy->SetVelocity({-50, enemy->GetVelocity().y});
+    }
+
+    // Check if the enemy hits the left edge of the window
+    if (left_edge <= 0 && enemy->GetVelocity().x < 0) {
+        // Reverse the direction by flipping the velocity
+        enemy->SetVelocity({50, enemy->GetVelocity().y});
     }
 }
 
-void UpdateEnemy(GameObject *game_object) {
-    Log(LogLevel::Info, "%f", game_object->GetPosition().x);
-}
-
-void UpdateBall(GameObject *game_object) {
-    Log(LogLevel::Info, "x: %f, y: %f, vX: %f, vY: %f, aX: %f, aY: %f",
-        game_object->GetPosition().x, game_object->GetPosition().y, game_object->GetVelocity().x,
-        game_object->GetVelocity().y, game_object->GetAcceleration().x,
-        game_object->GetAcceleration().y);
+void UpdateBall(GameObject *ball) {
     if (app->key_map->key_up) {
-        game_object->SetVelocity({game_object->GetVelocity().x, -50});
+        if (ball->GetColliders().size() > 0) {
+            ball->SetVelocity({ball->GetVelocity().x, -80});
+        }
     }
 
     if (app->key_map->key_down) {
-        game_object->SetVelocity({game_object->GetVelocity().x, 50});
+        ball->SetVelocity({ball->GetVelocity().x, 50});
     }
 
     if (app->key_map->key_left) {
-        game_object->SetVelocity({-50, game_object->GetVelocity().y});
-    }
-
-    if (app->key_map->key_right) {
-        game_object->SetVelocity({50, game_object->GetVelocity().y});
+        ball->SetVelocity({-100, ball->GetVelocity().y});
+    } else if (app->key_map->key_right) {
+        ball->SetVelocity({100, ball->GetVelocity().y});
+    } else {
+        ball->SetVelocity({0, ball->GetVelocity().y});
     }
 }
 
@@ -49,21 +62,23 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    GameObject ball(Controllable);
-    GameObject enemy(Moving);
-    GameObject platform(Stationary);
+    GameObject ball("ball", Controllable);
+    GameObject enemy("enemy", Moving);
+    GameObject platform("platform", Stationary);
 
     ball.SetColor(Color{0, 0, 0, 0});
     ball.SetPosition(Position{0, 0});
     ball.SetSize(Size{100, 100});
-    ball.SetAcceleration(Acceleration{0, 5});
+    ball.SetAcceleration(Acceleration{0, 9.8});
     ball.SetVelocity(Velocity{0, 0});
+    ball.SetRestitution(0.5);
     ball.SetTexture("assets/ball.png");
     ball.SetCallback(UpdateBall);
 
-    enemy.SetColor(Color{0, 255, 0, 255});
-    enemy.SetPosition(Position{20, 5});
-    enemy.SetSize(Size{5, 5});
+    enemy.SetColor(Color{255, 0, 0, 255});
+    enemy.SetPosition(Position{20, 200});
+    enemy.SetSize(Size{200, 50});
+    enemy.SetVelocity(Velocity{50, 0});
     enemy.SetCallback(UpdateEnemy);
 
     platform.SetColor(Color{0, 0, 255, 255});

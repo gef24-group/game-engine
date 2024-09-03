@@ -1,6 +1,7 @@
 #include "Utils.hpp"
 #include "SDL_image.h"
 #include "SDL_log.h"
+#include "SDL_video.h"
 #include "Types.hpp"
 
 SDL_Texture *LoadTexture(std::string path) {
@@ -54,4 +55,19 @@ void Log(LogLevel log_level, const char *fmt, ...) {
     va_start(args, fmt);
     SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, log_priority, fmt, args);
     va_end(args);
+}
+
+Size GetWindowSize() {
+    int width = 0, height = 0;
+    SDL_GetWindowSize(app->window, &width, &height);
+    return Size{width, height};
+}
+
+GameObject *GetObjectByName(std::string name, std::vector<GameObject *> game_objects) {
+    for (GameObject *game_object : game_objects) {
+        if (game_object->GetName() == name) {
+            return game_object;
+        }
+    }
+    return nullptr;
 }

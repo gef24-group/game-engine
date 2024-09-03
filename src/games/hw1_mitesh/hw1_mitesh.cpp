@@ -5,11 +5,7 @@
 #include <string>
 
 // Game update code
-void Update(std::vector<GameObject *> game_objects) {
-    for (GameObject *game_object : game_objects) {
-        (*game_object).Update();
-    }
-}
+void Update(std::vector<GameObject *> game_objects) {}
 
 void UpdateEnemy(GameObject *game_object) {
     Log(LogLevel::Info, "%f", game_object->GetPosition().x);
@@ -35,9 +31,9 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    GameObject ball(Controllable);
-    GameObject enemy(Moving);
-    GameObject platform(Stationary);
+    GameObject ball("ball", Controllable);
+    GameObject enemy("enemy", Moving);
+    GameObject platform("platform", Stationary);
 
     ball.SetColor(Color{0, 0, 0, 0});
     ball.SetPosition(Position{500, 0});
