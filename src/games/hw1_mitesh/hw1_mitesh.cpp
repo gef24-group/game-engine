@@ -5,17 +5,63 @@
 #include <string>
 
 // Game update code
-void Update(std::vector<GameObject *> *game_objects) {}
+void Update(std::vector<GameObject *> *game_objects) {
+    // GameObject *ball = GetObjectByName("ball", game_objects);
+    // Log(LogLevel::Info, "[ball] x: %f, y: %f, vX: %f, vY: %f, aX: %f, aY: %f",
+    //     ball->GetPosition().x, ball->GetPosition().y, ball->GetVelocity().x,
+    //     ball->GetVelocity().y, ball->GetAcceleration().x, ball->GetAcceleration().y);
+    // Log(LogLevel::Info, "[ball colliders] %d", ball->GetColliders().size());
 
-void UpdateEnemy(GameObject *game_object) {
-    Log(LogLevel::Info, "%f", game_object->GetPosition().x);
+    // Get the ball and platform objects
+    GameObject *ball = GetObjectByName("ball", *game_objects);
+    GameObject *platform = GetObjectByName("platform", *game_objects);
+
+    // Update ball's position and handle collisions
+    Position ball_pos = ball->GetPosition();
+    Velocity ball_vel = ball->GetVelocity();
+    Size ball_size = ball->GetSize();
+
+    // Wall boundaries
+    GameObject *wall_left = GetObjectByName("wall_left", *game_objects);
+    GameObject *wall_right = GetObjectByName("wall_right", *game_objects);
+    GameObject *wall_top = GetObjectByName("wall_top", *game_objects);
+
+    // Collision with left wall
+    if (ball_pos.x <= wall_left->GetPosition().x + wall_left->GetSize().width) {
+        ball->SetVelocity({-ball_vel.x, ball_vel.y}); // Reflect horizontally
+    }
+
+    // Collision with right wall
+    if (ball_pos.x + ball_size.width >= wall_right->GetPosition().x) {
+        ball->SetVelocity({-ball_vel.x, ball_vel.y}); // Reflect horizontally
+    }
+
+    // Collision with top wall
+    if (ball_pos.y <= wall_top->GetPosition().y + wall_top->GetSize().height) {
+        ball->SetVelocity({ball_vel.x, -ball_vel.y}); // Reflect vertically
+    }
+
+    // Collision with platform
+    if (ball_pos.y + ball_size.height >= platform->GetPosition().y &&
+        ball_pos.x + ball_size.width >= platform->GetPosition().x &&
+        ball_pos.x <= platform->GetPosition().x + platform->GetSize().width) {
+        ball->SetVelocity({ball_vel.x, -ball_vel.y}); // Reflect vertically
+    }
+
+    // If ball goes out of the boundary
+    if (ball_pos.y + ball_size.height > 1080) {
+        Log(LogLevel::Info, "You lost!");
+        app->quit = true;
+    }
 }
 
-void UpdateBall(GameObject *game_object) {
-    Log(LogLevel::Info, "x: %f, y: %f, vX: %f, vY: %f, aX: %f, aY: %f",
-        game_object->GetPosition().x, game_object->GetPosition().y, game_object->GetVelocity().x,
-        game_object->GetVelocity().y, game_object->GetAcceleration().x,
-        game_object->GetAcceleration().y);
+void UpdatePlatform(GameObject *platform) {
+
+    if (app->key_map->key_left) {
+        platform->SetPosition({platform->GetPosition().x - 10, platform->GetPosition().y});
+    } else if (app->key_map->key_right) {
+        platform->SetPosition({platform->GetPosition().x + 10, platform->GetPosition().y});
+    }
 }
 
 int main(int argc, char *args[]) {
@@ -23,36 +69,52 @@ int main(int argc, char *args[]) {
 
     // Initializing the Game Engine
     GameEngine game_engine;
-    Color background_color = Color{143, 217, 251, 255};
+    Color background_color = Color{0, 0, 0, 255};
     game_engine.SetBackgroundColor(background_color);
-
     if (!game_engine.Init(game_title.c_str())) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }
 
-    GameObject ball("ball", Controllable);
-    GameObject enemy("enemy", Moving);
-    GameObject platform("platform", Stationary);
+    GameObject ball("ball", Moving);
+    GameObject wall_left("wall_left", Stationary);
+    GameObject wall_top("wall_top", Stationary);
+    GameObject wall_right("wall_right", Stationary);
+    GameObject platform("platform", Controllable);
 
     ball.SetColor(Color{0, 0, 0, 0});
-    ball.SetPosition(Position{500, 0});
-    ball.SetSize(Size{100, 100});
-    ball.SetAcceleration(Acceleration{0, 5});
-    ball.SetVelocity(Velocity{0, 0});
+    ball.SetPosition(Position{200, 200});
+    ball.SetSize(Size{50, 50});
+    ball.SetAcceleration(Acceleration{0, 0});
+    ball.SetVelocity(Velocity{40, 40});
+    ball.SetRestitution(1);
     ball.SetTexture("assets/ball.png");
-    ball.SetCallback(UpdateBall);
 
-    enemy.SetColor(Color{0, 255, 0, 255});
-    enemy.SetPosition(Position{20, 5});
-    enemy.SetSize(Size{5, 5});
+    wall_left.SetColor(Color{255, 0, 0, 255});
+    wall_left.SetPosition(Position{0, 0});
+    wall_left.SetSize(Size{100, 1080});
+    wall_left.SetTexture("assets/wall.jpeg");
+
+    wall_top.SetColor(Color{255, 0, 0, 255});
+    wall_top.SetPosition(Position{100, 0});
+    wall_top.SetSize(Size{1820, 100});
+    wall_top.SetTexture("assets/wall.jpeg");
+
+    wall_right.SetColor(Color{255, 0, 0, 255});
+    wall_right.SetPosition(Position{1620, 100});
+    wall_right.SetSize(Size{100, 980});
+    wall_right.SetTexture("assets/wall.jpeg");
+    // enemy.SetVelocity(Velocity{50, 0});
     // enemy.SetCallback(UpdateEnemy);
 
     platform.SetColor(Color{0, 0, 255, 255});
-    platform.SetPosition(Position{0, 10});
-    platform.SetSize(Size{80, 10});
+    platform.SetPosition(Position{250, 1010});
+    platform.SetSize(Size{200, 30});
+    platform.SetCallback(UpdatePlatform);
+    platform.SetTexture("assets/gray.jpg");
 
-    std::vector<GameObject *> objects = std::vector({&ball, &enemy, &platform});
+    std::vector<GameObject *> objects =
+        std::vector({&ball, &wall_left, &wall_top, &wall_right, &platform});
     game_engine.AddObjects(objects);
     game_engine.SetCallback(Update);
 
