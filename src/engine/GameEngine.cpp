@@ -115,11 +115,14 @@ void GameEngine::ReadHIDs() {
     app->key_map->key_A = keyboard_state[SDL_SCANCODE_A] != 0;
     app->key_map->key_S = keyboard_state[SDL_SCANCODE_S] != 0;
     app->key_map->key_D = keyboard_state[SDL_SCANCODE_D] != 0;
+    app->key_map->key_X = keyboard_state[SDL_SCANCODE_X] != 0;
+
     app->key_map->key_up = keyboard_state[SDL_SCANCODE_UP] != 0;
     app->key_map->key_left = keyboard_state[SDL_SCANCODE_LEFT] != 0;
     app->key_map->key_down = keyboard_state[SDL_SCANCODE_DOWN] != 0;
     app->key_map->key_right = keyboard_state[SDL_SCANCODE_RIGHT] != 0;
-    app->key_map->key_X = keyboard_state[SDL_SCANCODE_X] != 0;
+
+    app->key_map->key_space = keyboard_state[SDL_SCANCODE_SPACE] != 0;
 }
 
 void GameEngine::ApplyObjectPhysics(float time) {

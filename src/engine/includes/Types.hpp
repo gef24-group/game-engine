@@ -42,6 +42,7 @@ struct KeyMap {
     bool key_left = false;
     bool key_down = false;
     bool key_right = false;
+    bool key_space = true;
 };
 
 struct Window {
