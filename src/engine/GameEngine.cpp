@@ -20,7 +20,7 @@ GameEngine::GameEngine() {
     app->renderer = nullptr;
     this->background_color = Color{0, 0, 0, 255};
     this->game_objects = std::vector<GameObject *>();
-    this->callback = [](std::vector<GameObject *>) {};
+    this->callback = [](std::vector<GameObject *> *) {};
     this->window = {1920, 1080, false, std::chrono::high_resolution_clock::now()};
 }
 
@@ -102,11 +102,11 @@ void GameEngine::AddObjects(std::vector<GameObject *> game_objects) {
     this->game_objects = game_objects;
 }
 
-void GameEngine::SetCallback(std::function<void(std::vector<GameObject *>)> callback) {
+void GameEngine::SetCallback(std::function<void(std::vector<GameObject *> *)> callback) {
     this->callback = callback;
 }
 
-void GameEngine::Update() { this->callback(this->game_objects); }
+void GameEngine::Update() { this->callback(&this->game_objects); }
 
 void GameEngine::ReadHIDs() {
     const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);

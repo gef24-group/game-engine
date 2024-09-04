@@ -5,8 +5,8 @@
 #include <string>
 
 // Game update code
-void Update(std::vector<GameObject *> game_objects) {
-    for (GameObject *game_object : game_objects) {
+void Update(std::vector<GameObject *> *game_objects) {
+    for (GameObject *game_object : *game_objects) {
         game_object->SetShape(Rectangle);
         game_object->SetSize(Size{50, 50});
         // game_object->Update();

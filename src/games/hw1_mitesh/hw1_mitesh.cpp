@@ -5,7 +5,7 @@
 #include <string>
 
 // Game update code
-void Update(std::vector<GameObject *> game_objects) {}
+void Update(std::vector<GameObject *> *game_objects) {}
 
 void UpdateEnemy(GameObject *game_object) {
     Log(LogLevel::Info, "%f", game_object->GetPosition().x);
