@@ -34,13 +34,24 @@ void Update(std::vector<GameObject *> *game_objects) {
 
 void UpdatePlayer(GameObject *player) {
     if (app->key_map->key_right) {
-        player->SetVelocity({7, 0}); // Move left
+        player->SetVelocity({15, 0}); // Move left
     }
     if (app->key_map->key_left) {
-        player->SetVelocity({-7, 0}); // Move right
+        player->SetVelocity({-15, 0}); // Move right
     }
     if (app->key_map->key_up) {
-        player->SetVelocity({0, 10});
+        player->SetVelocity({0, -15});
+    }
+
+    if (app->key_map->key_space) {
+        for (GameObject *collider : player->GetColliders()) {
+            Log(LogLevel::Info, "Colliding with a %s", collider->GetName().c_str());
+            if (collider->GetName() == "ball") {
+                Log(LogLevel::Info, "Setting ball velocity");
+                collider->SetVelocity({30, -30});
+            }
+        }
+        Log(LogLevel::Info, "SPACE KEY: %d", app->key_map->key_space);
     }
 }
 
@@ -50,6 +61,8 @@ GameObject *CreatePlayer() {
     player->SetPosition({300, float(window_size.height - 300)});
     player->SetAcceleration({0, 10});
     player->SetTexture("assets/soccer_player_right_facing.png");
+
+    player->SetCallback(UpdatePlayer);
 
     return player;
 }
