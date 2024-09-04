@@ -29,10 +29,10 @@ void Update(std::vector<GameObject *> game_objects) {
 
 void UpdatePaddle(GameObject *paddle) {
     if (app->key_map->key_right) {
-        paddle->SetVelocity({3, 3}); // Move left
+        paddle->SetVelocity({7, 0}); // Move left
     }
     if (app->key_map->key_left) {
-        paddle->SetVelocity({-3, -3}); // Move right
+        paddle->SetVelocity({-7, 0}); // Move right
     }
 }
 
@@ -49,10 +49,12 @@ int main(int argc, char *args[]) {
     }
 
     GameObject paddle("paddle", Controllable);
-    paddle.SetPosition(Position{10, 10});
+    paddle.SetPosition(Position{130, 810});
     paddle.SetCallback(UpdatePaddle);
     GameObject ball("ball", Moving);
     ball.SetPosition(Position{210, 210});
+    ball.SetVelocity(Velocity{0, 0});
+    ball.SetAcceleration(Acceleration{0, 10});
     GameObject wall("wall", Stationary);
     wall.SetPosition(Position{410, 410});
 

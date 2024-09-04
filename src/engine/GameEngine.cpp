@@ -2,9 +2,12 @@
 #include "Constants.hpp"
 #include "GameObject.hpp"
 #include "SDL.h"
+#include "SDL_error.h"
+#include "SDL_events.h"
 #include "SDL_keyboard.h"
 #include "SDL_rect.h"
 #include "SDL_render.h"
+#include "SDL_scancode.h"
 #include "SDL_video.h"
 #include "Types.hpp"
 #include "Utils.hpp"
@@ -17,6 +20,7 @@ GameEngine::GameEngine() {
     this->background_color = Color{0, 0, 0, 255};
     this->game_objects = std::vector<GameObject *>();
     this->callback = [](std::vector<GameObject *>) {};
+    this->window = {1920, 1080, false};
 }
 
 void GameEngine::Start() {
@@ -25,12 +29,8 @@ void GameEngine::Start() {
     // Game loop
     while (!quit) {
         // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
-        SDL_Event event;
-        while (SDL_PollEvent(&event) != 0) {
-            if (event.type == SDL_QUIT) {
-                quit = true;
-            }
-        }
+        quit = this->HandleEvents();
+
         this->ReadHIDs();
         this->ApplyObjectPhysics(0.1);
         this->ApplyObjectUpdates();
@@ -57,9 +57,9 @@ bool GameEngine::InitializeDisplay(const char *game_title) {
         return false;
     }
 
-    SDL_Window *window =
-        SDL_CreateWindow(game_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH,
-                         SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    SDL_Window *window = SDL_CreateWindow(
+        game_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, this->window.width,
+        this->window.height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!window) {
         Log(LogLevel::Error, "SDL_CreateWindow Error: %s", SDL_GetError());
         SDL_Quit();
@@ -217,7 +217,28 @@ void GameEngine::HandleCollisions() {
     }
 }
 
+bool GameEngine::HandleEvents() {
+    SDL_Event event;
+    bool x_pressed = false;
+    bool quit = false;
+    while (SDL_PollEvent(&event) != 0) {
+        if (event.type == SDL_QUIT) {
+            quit = true;
+        }
+
+        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_x) {
+            x_pressed = true;
+        }
+    }
+    app->key_map->key_X = x_pressed;
+
+    return quit;
+}
+
 void GameEngine::RenderScene() {
+
+    this->HandleScaling();
+
     this->RenderBackground();
     for (GameObject *game_object : this->game_objects) {
         game_object->Render();
@@ -232,6 +253,25 @@ void GameEngine::RenderBackground() {
     SDL_SetRenderDrawColor(app->renderer, this->background_color.red, this->background_color.green,
                            this->background_color.blue, 255);
     SDL_RenderClear(app->renderer);
+}
+
+void GameEngine::HandleScaling() {
+    if (app->key_map->key_X) {
+        this->window.proportional_scaling = !this->window.proportional_scaling;
+    }
+
+    int set_logical_size_err;
+
+    if (this->window.proportional_scaling) {
+        set_logical_size_err =
+            SDL_RenderSetLogicalSize(app->renderer, this->window.width, this->window.height);
+    } else {
+        set_logical_size_err = SDL_RenderSetLogicalSize(app->renderer, 0, 0);
+    }
+
+    if (set_logical_size_err) {
+        Log(LogLevel::Error, "Set Viewport failed: %s", SDL_GetError());
+    }
 }
 
 void GameEngine::Shutdown() {

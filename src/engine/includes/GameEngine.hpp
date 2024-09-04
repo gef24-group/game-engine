@@ -2,6 +2,7 @@
 
 #include "App.hpp"
 #include "GameObject.hpp"
+#include "SDL_events.h"
 #include <functional>
 #include <vector>
 
@@ -12,6 +13,7 @@ class GameEngine {
     Color background_color;
     std::vector<GameObject *> game_objects;
     std::function<void(std::vector<GameObject *> game_objects)> callback;
+    Window window;
 
   public:
     GameEngine();
@@ -28,7 +30,9 @@ class GameEngine {
     void ApplyObjectPhysics(float time);
     void ApplyObjectUpdates();
     void TestCollision();
+    bool HandleEvents();
     void HandleCollisions();
+    void HandleScaling();
     void RenderScene();
     void RenderBackground();
     void RenderObject(GameObject *game_object);

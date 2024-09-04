@@ -47,6 +47,8 @@ void GameObject::Render() {
 
     SDL_Rect object = {static_cast<int>(std::round(pos_x)), static_cast<int>(std::round(pos_y)),
                        width, height};
+    // Log(LogLevel::Info, "OBJECT LOCATION: %d, %d, %d, %d", object.x, object.y, object.w,
+    // object.h);
     SDL_SetRenderDrawColor(app->renderer, red, green, blue, alpha);
     if (this->shape == Rectangle && this->texture == nullptr) {
         SDL_RenderFillRect(app->renderer, &object);

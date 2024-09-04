@@ -36,8 +36,15 @@ struct KeyMap {
     bool key_A = false;
     bool key_S = false;
     bool key_D = false;
+    bool key_X = false;
     bool key_up = false;
     bool key_left = false;
     bool key_down = false;
     bool key_right = false;
+};
+
+struct Window {
+    int width = 1920;
+    int height = 1080;
+    bool proportional_scaling = false;
 };
