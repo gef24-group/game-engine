@@ -8,5 +8,6 @@
 typedef struct {
     SDL_Window *window;
     SDL_Renderer *renderer;
+    bool quit;
     KeyMap *key_map;
 } App;
