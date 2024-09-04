@@ -205,7 +205,8 @@ void GameEngine::HandleCollisions() {
                     // update position to stick with collider and velocity to reduce with
                     // restitution
                     game_object->SetPosition(Position{float(pos_x), float(pos_y)});
-                    if (game_object->GetCategory() == Controllable) {
+                    if (game_object->GetCategory() == Controllable ||
+                        game_object->GetCategory() == Moving) {
                         float vel_x = game_object->GetVelocity().x;
                         float vel_y = game_object->GetVelocity().y;
                         if (min_overlap == left_overlap || min_overlap == right_overlap) {
