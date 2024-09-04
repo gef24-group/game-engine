@@ -74,6 +74,20 @@ void Update(std::vector<GameObject *> *game_objects) {
             game_objects->end());
         delete min_enemy;
     }
+
+    if (max_ground != nullptr) {
+        GameObject *platform = GetObjectByName("platform", *game_objects);
+        float platform_right_edge = platform->GetPosition().x + float(platform->GetSize().width);
+        float platform_left_edge = platform->GetPosition().x;
+
+        if (platform_right_edge >= max_ground->GetPosition().x && platform->GetVelocity().x > 0) {
+            platform->SetVelocity({-40, platform->GetVelocity().y});
+        }
+
+        if (platform_left_edge <= 0 && platform->GetVelocity().x < 0) {
+            platform->SetVelocity({40, platform->GetVelocity().y});
+        }
+    }
 }
 
 void UpdateAlien(GameObject *alien) {
@@ -134,7 +148,7 @@ int main(int argc, char *args[]) {
 
     GameObject alien("alien", Controllable);
     alien.SetColor(Color{0, 0, 0, 0});
-    alien.SetPosition(Position{20, float(GetWindowSize().height - (TILE_SIZE * 5))});
+    alien.SetPosition(Position{20, float(GetWindowSize().height - (TILE_SIZE * 3))});
     alien.SetSize(Size{TILE_SIZE, TILE_SIZE});
     alien.SetAcceleration(Acceleration{0, 15});
     alien.SetVelocity(Velocity{0, 0});
@@ -148,16 +162,23 @@ int main(int argc, char *args[]) {
     GameObject cloud_1("cloud", Stationary);
     cloud_1.SetColor(Color{0, 0, 0, 0});
     cloud_1.SetTexture("assets/cloud_1.png");
-    cloud_1.SetPosition(Position{float(GetWindowSize().width) / 2 - 500, TILE_SIZE * 1.5});
+    cloud_1.SetPosition(Position{float(GetWindowSize().width) / 2 - 500, TILE_SIZE});
     cloud_1.SetSize(Size{203, 121});
 
     GameObject cloud_2("cloud", Stationary);
     cloud_2.SetColor(Color{0, 0, 0, 0});
     cloud_2.SetTexture("assets/cloud_2.png");
-    cloud_2.SetPosition(Position{float(GetWindowSize().width) / 2 + 300, TILE_SIZE * 2});
+    cloud_2.SetPosition(Position{float(GetWindowSize().width) / 2 + 300, TILE_SIZE});
     cloud_2.SetSize(Size{216, 139});
 
-    std::vector<GameObject *> objects = std::vector({&alien, &cloud_1, &cloud_2});
+    GameObject platform("platform", Moving);
+    platform.SetColor(Color{0, 0, 0, 0});
+    platform.SetPosition(Position{20, TILE_SIZE * 4});
+    platform.SetSize(Size{TILE_SIZE * 3, TILE_SIZE / 2});
+    platform.SetVelocity(Velocity{40, 0});
+    platform.SetTexture("assets/stone.png");
+
+    std::vector<GameObject *> objects = std::vector({&alien, &cloud_1, &cloud_2, &platform});
     for (GameObject &ground_tile : ground) {
         objects.push_back(&ground_tile);
     }
