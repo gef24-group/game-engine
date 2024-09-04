@@ -12,6 +12,7 @@
 #include "Types.hpp"
 #include "Utils.hpp"
 #include <algorithm>
+#include <chrono>
 #include <vector>
 
 GameEngine::GameEngine() {
@@ -20,7 +21,7 @@ GameEngine::GameEngine() {
     this->background_color = Color{0, 0, 0, 255};
     this->game_objects = std::vector<GameObject *>();
     this->callback = [](std::vector<GameObject *>) {};
-    this->window = {1920, 1080, false};
+    this->window = {1920, 1080, false, std::chrono::high_resolution_clock::now()};
 }
 
 void GameEngine::Start() {
@@ -118,6 +119,7 @@ void GameEngine::ReadHIDs() {
     app->key_map->key_left = keyboard_state[SDL_SCANCODE_LEFT] != 0;
     app->key_map->key_down = keyboard_state[SDL_SCANCODE_DOWN] != 0;
     app->key_map->key_right = keyboard_state[SDL_SCANCODE_RIGHT] != 0;
+    app->key_map->key_X = keyboard_state[SDL_SCANCODE_X] != 0;
 }
 
 void GameEngine::ApplyObjectPhysics(float time) {
@@ -219,19 +221,12 @@ void GameEngine::HandleCollisions() {
 
 bool GameEngine::HandleEvents() {
     SDL_Event event;
-    bool x_pressed = false;
     bool quit = false;
     while (SDL_PollEvent(&event) != 0) {
         if (event.type == SDL_QUIT) {
             quit = true;
         }
-
-        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_x) {
-            x_pressed = true;
-        }
     }
-    app->key_map->key_X = x_pressed;
-
     return quit;
 }
 
@@ -256,8 +251,13 @@ void GameEngine::RenderBackground() {
 }
 
 void GameEngine::HandleScaling() {
-    if (app->key_map->key_X) {
+    std::chrono::duration<int, std::milli> time_elapsed_since_toggle =
+        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
+            std::chrono::high_resolution_clock::now() - this->window.previous_toggle_time);
+
+    if (app->key_map->key_X && time_elapsed_since_toggle.count() > 100) {
         this->window.proportional_scaling = !this->window.proportional_scaling;
+        this->window.previous_toggle_time = std::chrono::high_resolution_clock::now();
     }
 
     int set_logical_size_err;

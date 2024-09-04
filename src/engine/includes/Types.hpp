@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 
 enum Shape { Circle, Square, Rectangle, Triangle };
 enum GameObjectCategory { Controllable, Moving, Stationary };
@@ -47,4 +48,5 @@ struct Window {
     int width = 1920;
     int height = 1080;
     bool proportional_scaling = false;
+    std::chrono::time_point<std::chrono::high_resolution_clock> previous_toggle_time;
 };
