@@ -2,6 +2,7 @@
 #include "GameObject.hpp"
 #include "Types.hpp"
 #include "Utils.hpp"
+#include <algorithm>
 #include <random>
 #include <string>
 
