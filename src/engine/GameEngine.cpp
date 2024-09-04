@@ -25,12 +25,12 @@ GameEngine::GameEngine() {
 }
 
 void GameEngine::Start() {
-    bool quit = false;
+    app->quit = false;
 
     // Game loop
-    while (!quit) {
+    while (!app->quit) {
         // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
-        quit = this->HandleEvents();
+        app->quit = this->HandleEvents();
 
         this->ReadHIDs();
         this->ApplyObjectPhysics(0.1);

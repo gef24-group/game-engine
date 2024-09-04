@@ -55,3 +55,6 @@ If you would like to clear all build artifacts, please run:
 ```bash
 make clean
 ```
+
+## Display scaling
+To switch between constant and proportional scaling, please use the `x` key.

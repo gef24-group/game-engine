@@ -82,15 +82,27 @@ void UpdateAlien(GameObject *alien) {
     }
 
     if (app->key_map->key_down || app->key_map->key_S) {
-        alien->SetVelocity({alien->GetVelocity().x, 50});
+        alien->SetVelocity({alien->GetVelocity().x, 60});
     }
 
     if (app->key_map->key_left || app->key_map->key_A) {
-        alien->SetVelocity({-50, alien->GetVelocity().y});
+        alien->SetVelocity({-60, alien->GetVelocity().y});
     } else if (app->key_map->key_right || app->key_map->key_D) {
-        alien->SetVelocity({50, alien->GetVelocity().y});
+        alien->SetVelocity({60, alien->GetVelocity().y});
     } else {
         alien->SetVelocity({0, alien->GetVelocity().y});
+    }
+
+    if (alien->GetColliders().size() > 0) {
+        for (GameObject *game_object : alien->GetColliders()) {
+            if (game_object->GetName() == "enemy") {
+                Log(LogLevel::Info, "");
+                Log(LogLevel::Info, "You lost :(");
+                Log(LogLevel::Info, "");
+                app->quit = true;
+                break;
+            }
+        }
     }
 }
 
