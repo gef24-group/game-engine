@@ -8,50 +8,134 @@
 // Head soccer
 Size window_size;
 
-// Game update code
+// Game update code: Determines how game objects behave upon collision
 void Update(std::vector<GameObject *> *game_objects) {
-    // for (GameObject *game_object : *game_objects) {
-    //     game_object->SetShape(Rectangle);
-    //     game_object->SetSize(Size{50, 50});
-    //     game_object->Update();
-    //     // objects response after collision
-    //     Velocity curr_obj_velocity = game_object->GetVelocity();
+    GameObject *ball = NULL, *player = NULL;
+    for (GameObject *object : *game_objects) {
+        if (object->GetName() == "ball") {
+            ball = object;
+        }
+        if (object->GetName() == "player") {
+            player = object;
+        }
+    }
 
-    //     if (game_object->GetColliders().size() > 0 && (game_object->GetCategory() != Stationary))
-    //     {
-    //         for (GameObject *collider : game_object->GetColliders()) {
-    //             if (collider->GetAngle() == 0) {
-    //                 game_object->SetVelocity({curr_obj_velocity.x, -curr_obj_velocity.y});
-    //             } else if (collider->GetAngle() == 90) {
-    //                 game_object->SetVelocity({-curr_obj_velocity.x, curr_obj_velocity.y});
-    //             } else {
-    //                 game_object->SetVelocity({0, 0});
-    //             }
+    Velocity ball_velocity = ball->GetVelocity();
+    Position ball_position = ball->GetPosition();
+    if (ball_position.x < 0 || ball_position.x > float(window_size.width)) {
+        ball->SetVelocity({-ball_velocity.x, ball_velocity.y});
+    }
+    // if (ball == NULL || player == NULL) {
+    //     return;
+    // }
+
+    // // for (GameObject *collider : player->GetColliders()) {
+    // //     if (collider->GetName() == "ball") {
+    // //         // Log(LogLevel::Info, "Colliding with a %s", collider->GetName().c_str());
+    // //         // Log(LogLevel::Info, "Setting ball velocity");
+    // //         collider->SetVelocity(player->GetVelocity());
+    // //         if (app->key_map->key_space) {
+    // //             collider->SetVelocity({60, -60});
+    // //         }
+    // //     }
+    // //     // Log(LogLevel::Info, "SPACE KEY: %d", app->key_map->key_space);
+    // // }
+
+    // bool collision_with_player = false;
+    // bool collision_with_ground = false;
+    // bool collision_with_opponent = false;
+
+    // for (GameObject *collider : ball->GetColliders()) {
+    //     if (collider->GetName() == "ground") {
+    //         collision_with_ground = true;
+    //     }
+    //     if (collider->GetName() == "player") {
+    //         collision_with_player = true;
+    //         Log(LogLevel::Info, "The ball is being set to velocity: %d",
+    //         collider->GetVelocity().x); ball->SetVelocity(collider->GetVelocity()); if
+    //         (app->key_map->key_space) {
+    //             ball->SetVelocity({60, -60});
     //         }
     //     }
+    //     if (collider->GetName() == "basket") {
+    //         // Once the ball hits the basket, it sticks to the basket
+    //         ball->SetVelocity({0, 0});
+    //     }
+    // }
+
+    // if (collision_with_ground && !collision_with_player && !collision_with_opponent) {
+    //     ball->SetAcceleration({-ball->GetVelocity().x / 2, 10});
+    // } else {
+    //     ball->SetAcceleration({0, 10});
     // }
 }
 
 void UpdatePlayer(GameObject *player) {
+    Velocity player_velocity = {0, 0};
+    bool player_moved = false;
+
     if (app->key_map->key_right) {
-        player->SetVelocity({15, 0}); // Move left
+        player_moved = true;
+        player_velocity = {player_velocity.x + 30, player_velocity.y}; // Move left
     }
     if (app->key_map->key_left) {
-        player->SetVelocity({-15, 0}); // Move right
+        player_moved = true;
+        player_velocity = {player_velocity.x - 30, player_velocity.y}; // Move right
     }
     if (app->key_map->key_up) {
-        player->SetVelocity({0, -15});
+        player_moved = true;
+        player_velocity = {player_velocity.x, player_velocity.y - 30};
     }
 
-    if (app->key_map->key_space) {
-        for (GameObject *collider : player->GetColliders()) {
-            // Log(LogLevel::Info, "Colliding with a %s", collider->GetName().c_str());
-            if (collider->GetName() == "ball") {
-                // Log(LogLevel::Info, "Setting ball velocity");
-                collider->SetVelocity({30, -30});
+    if (player_moved) {
+        player->SetVelocity(player_velocity);
+    } else {
+        player->SetVelocity({0, player->GetVelocity().y});
+    }
+}
+
+void UpdateBall(GameObject *ball) {
+    bool collision_with_player = false;
+    bool collision_with_ground = false;
+    bool collision_with_opponent = false;
+
+    for (GameObject *collider : ball->GetColliders()) {
+        if (collider->GetName() == "ground") {
+            collision_with_ground = true;
+        }
+        if (collider->GetName() == "player") {
+            collision_with_player = true;
+            // Log(LogLevel::Info, "The ball is being set to velocity: %d",
+            // collider->GetVelocity().x);
+            ball->SetVelocity(collider->GetVelocity());
+            if (app->key_map->key_space) {
+                ball->SetVelocity({60, -60});
             }
         }
-        // Log(LogLevel::Info, "SPACE KEY: %d", app->key_map->key_space);
+        if (collider->GetName() == "opponent") {
+            collision_with_opponent = true;
+            ball->SetVelocity({-60, -60});
+        }
+        if (collider->GetName() == "basket") {
+            // Once the ball hits the basket, it sticks to the basket
+            ball->SetVelocity({0, 0});
+        }
+    }
+
+    if (collision_with_ground && !collision_with_player && !collision_with_opponent) {
+        ball->SetAcceleration({-ball->GetVelocity().x / 2, 10});
+    } else {
+        ball->SetAcceleration({0, 10});
+    }
+}
+
+void UpdateOpponent(GameObject *opponent) {
+    Position opponent_position = opponent->GetPosition();
+    if (opponent_position.x < float(window_size.width) - 400) {
+        opponent->SetVelocity({30, 0});
+    }
+    if (opponent_position.x > float(window_size.width) - 200) {
+        opponent->SetVelocity({-30, 0});
     }
 }
 
@@ -71,8 +155,11 @@ GameObject *CreateOpponent() {
     GameObject *opponent = new GameObject("opponent", Moving);
     opponent->SetSize({50, 100});
     opponent->SetPosition({float(window_size.width - 300), float(window_size.height - 300)});
+    opponent->SetVelocity({-30, 0});
     opponent->SetAcceleration({0, 10});
     opponent->SetTexture("assets/soccer_player_left_facing.png");
+    opponent->SetCallback(UpdateOpponent);
+    opponent->SetReduceVelocityOnCollision(false);
 
     return opponent;
 }
@@ -83,6 +170,7 @@ GameObject *CreateBall() {
     ball->SetPosition({float(window_size.width) / 2, float(window_size.height - 250)});
     ball->SetAcceleration({0, 10});
     ball->SetTexture("assets/soccer_ball.png");
+    ball->SetCallback(UpdateBall);
 
     return ball;
 }
@@ -122,7 +210,7 @@ std::vector<GameObject *> CreateGameObjects() {
 }
 
 int main(int argc, char *args[]) {
-    std::string game_title = "Rohan's CSC581 HW1 Game: Basket Soccer";
+    std::string game_title = "Rohan's CSC581 HW1 Game: Backyard Soccer";
 
     // Initializing the Game Engine
     GameEngine game_engine;
