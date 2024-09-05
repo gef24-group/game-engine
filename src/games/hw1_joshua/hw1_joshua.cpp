@@ -53,6 +53,7 @@ void Update(std::vector<GameObject *> *game_objects) {
         enemy->SetVelocity(Velocity{-50, 0});
         enemy->SetSize(Size{TILE_SIZE, TILE_SIZE});
         enemy->SetColor(Color{0, 0, 0, 0});
+        enemy->SetReduceVelocityOnCollision(false);
         enemy->SetTexture(enemies[random_enemy]);
         game_objects->push_back(enemy);
     }
@@ -128,6 +129,7 @@ void GenerateGround(std::vector<GameObject> *ground) {
             Position{float(i * TILE_SIZE), float(GetWindowSize().height - TILE_SIZE)});
         ground_tile.SetSize(Size{TILE_SIZE, TILE_SIZE});
         ground_tile.SetVelocity(Velocity{-50, 0});
+        ground_tile.SetReduceVelocityOnCollision(false);
         ground_tile.SetTexture("assets/ground.png");
 
         ground->push_back(ground_tile);
@@ -176,6 +178,7 @@ int main(int argc, char *args[]) {
     platform.SetPosition(Position{20, TILE_SIZE * 4});
     platform.SetSize(Size{TILE_SIZE * 3, TILE_SIZE / 2});
     platform.SetVelocity(Velocity{40, 0});
+    platform.SetReduceVelocityOnCollision(false);
     platform.SetTexture("assets/stone.png");
 
     std::vector<GameObject *> objects = std::vector({&alien, &cloud_1, &cloud_2, &platform});
