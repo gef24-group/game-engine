@@ -22,6 +22,7 @@ class GameObject {
     Size size;
     Velocity velocity;
     Acceleration acceleration;
+    bool reduce_velocity_on_collision;
     float restitution;
     // Angle the object makes with the x_axis
     float theta_x;
@@ -45,6 +46,7 @@ class GameObject {
     Velocity GetVelocity();
     Acceleration GetAcceleration();
     float GetRestitution();
+    bool GetReduceVelocityOnCollision();
     float GetAngle();
     std::unordered_set<GameObject *> GetColliders();
 
@@ -56,6 +58,7 @@ class GameObject {
     void SetVelocity(Velocity velocity);
     void SetAcceleration(Acceleration acceleration);
     void SetRestitution(float restitution);
+    void SetReduceVelocityOnCollision(bool reduce_velocity_on_collision);
     void SetAngle(float theta_x);
     void AddCollider(GameObject *game_object);
     void RemoveCollider(GameObject *game_object);

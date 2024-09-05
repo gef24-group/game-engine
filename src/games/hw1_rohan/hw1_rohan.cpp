@@ -45,13 +45,13 @@ void UpdatePlayer(GameObject *player) {
 
     if (app->key_map->key_space) {
         for (GameObject *collider : player->GetColliders()) {
-            Log(LogLevel::Info, "Colliding with a %s", collider->GetName().c_str());
+            // Log(LogLevel::Info, "Colliding with a %s", collider->GetName().c_str());
             if (collider->GetName() == "ball") {
-                Log(LogLevel::Info, "Setting ball velocity");
+                // Log(LogLevel::Info, "Setting ball velocity");
                 collider->SetVelocity({30, -30});
             }
         }
-        Log(LogLevel::Info, "SPACE KEY: %d", app->key_map->key_space);
+        // Log(LogLevel::Info, "SPACE KEY: %d", app->key_map->key_space);
     }
 }
 
@@ -134,26 +134,6 @@ int main(int argc, char *args[]) {
     }
 
     window_size = GetWindowSize();
-    // std::vector<GameObject *> game_objects =
-    //     CreateGameObjects(window_size.width, window_size.height);
-
-    //     CreatePlayer();
-    //     CreateOpponent();
-    //     CreateBall();
-    //     CreateBasket();
-
-    //      UpdatePlayer();
-    //      UpdateOpponent();
-
-    // GameObject paddle("paddle", Controllable);
-    // paddle.SetPosition(Position{130, 810});
-    // paddle.SetCallback(UpdatePaddle);
-    // GameObject ball("ball", Moving);
-    // ball.SetPosition(Position{210, 210});
-    // ball.SetVelocity(Velocity{0, 7});
-    // // ball.SetAcceleration(Acceleration{0, 10});
-    // GameObject wall("wall", Stationary);
-    // wall.SetPosition(Position{410, 410});
 
     std::vector<GameObject *> game_objects = CreateGameObjects();
     game_engine.AddObjects(game_objects);
