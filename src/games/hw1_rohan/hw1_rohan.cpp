@@ -8,7 +8,6 @@
 // Head soccer
 Size window_size;
 
-// Game update code: Determines how game objects behave upon collision
 void Update(std::vector<GameObject *> *game_objects) {
     GameObject *ball = NULL, *player = NULL;
     for (GameObject *object : *game_objects) {
@@ -20,76 +19,42 @@ void Update(std::vector<GameObject *> *game_objects) {
         }
     }
 
+    if (ball == NULL || player == NULL) {
+        return;
+    }
+
     Velocity ball_velocity = ball->GetVelocity();
     Position ball_position = ball->GetPosition();
     if (ball_position.x < 0 || ball_position.x > float(window_size.width)) {
         ball->SetVelocity({-ball_velocity.x, ball_velocity.y});
     }
-    // if (ball == NULL || player == NULL) {
-    //     return;
-    // }
 
-    // // for (GameObject *collider : player->GetColliders()) {
-    // //     if (collider->GetName() == "ball") {
-    // //         // Log(LogLevel::Info, "Colliding with a %s", collider->GetName().c_str());
-    // //         // Log(LogLevel::Info, "Setting ball velocity");
-    // //         collider->SetVelocity(player->GetVelocity());
-    // //         if (app->key_map->key_space) {
-    // //             collider->SetVelocity({60, -60});
-    // //         }
-    // //     }
-    // //     // Log(LogLevel::Info, "SPACE KEY: %d", app->key_map->key_space);
-    // // }
-
-    // bool collision_with_player = false;
-    // bool collision_with_ground = false;
-    // bool collision_with_opponent = false;
-
-    // for (GameObject *collider : ball->GetColliders()) {
-    //     if (collider->GetName() == "ground") {
-    //         collision_with_ground = true;
-    //     }
-    //     if (collider->GetName() == "player") {
-    //         collision_with_player = true;
-    //         Log(LogLevel::Info, "The ball is being set to velocity: %d",
-    //         collider->GetVelocity().x); ball->SetVelocity(collider->GetVelocity()); if
-    //         (app->key_map->key_space) {
-    //             ball->SetVelocity({60, -60});
-    //         }
-    //     }
-    //     if (collider->GetName() == "basket") {
-    //         // Once the ball hits the basket, it sticks to the basket
-    //         ball->SetVelocity({0, 0});
-    //     }
-    // }
-
-    // if (collision_with_ground && !collision_with_player && !collision_with_opponent) {
-    //     ball->SetAcceleration({-ball->GetVelocity().x / 2, 10});
-    // } else {
-    //     ball->SetAcceleration({0, 10});
-    // }
+    // If the ball collides with the basket, the player wins: game ends
+    for (GameObject *object : ball->GetColliders()) {
+        if (object->GetName() == "basket") {
+            app->quit = true;
+            Log(LogLevel::Info, "You've scored a GOAL!! You win!");
+        }
+    }
 }
 
 void UpdatePlayer(GameObject *player) {
-    Velocity player_velocity = {0, 0};
     bool player_moved = false;
 
     if (app->key_map->key_right) {
         player_moved = true;
-        player_velocity = {player_velocity.x + 30, player_velocity.y}; // Move left
-    }
-    if (app->key_map->key_left) {
+        player->SetVelocity({30, player->GetVelocity().y}); // Move left
+    } else if (app->key_map->key_left) {
         player_moved = true;
-        player_velocity = {player_velocity.x - 30, player_velocity.y}; // Move right
-    }
-    if (app->key_map->key_up) {
-        player_moved = true;
-        player_velocity = {player_velocity.x, player_velocity.y - 30};
+        player->SetVelocity({-30, player->GetVelocity().y}); // Move right
     }
 
-    if (player_moved) {
-        player->SetVelocity(player_velocity);
-    } else {
+    if (app->key_map->key_up) {
+        player_moved = true;
+        player->SetVelocity({player->GetVelocity().x, -30});
+    }
+
+    if (!player_moved) {
         player->SetVelocity({0, player->GetVelocity().y});
     }
 }
@@ -209,6 +174,12 @@ std::vector<GameObject *> CreateGameObjects() {
     return game_objects;
 }
 
+void DestroyObjects(std::vector<GameObject *> game_objects) {
+    for (GameObject *object : game_objects) {
+        delete object;
+    }
+}
+
 int main(int argc, char *args[]) {
     std::string game_title = "Rohan's CSC581 HW1 Game: Backyard Soccer";
 
@@ -232,5 +203,6 @@ int main(int argc, char *args[]) {
     Log(LogLevel::Info, "The game engine has closed the game cleanly");
 
     // Add Game Cleanup code (deallocating pointers)
+    DestroyObjects(game_objects);
     return 0;
 }
