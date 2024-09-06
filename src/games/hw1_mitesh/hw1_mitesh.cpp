@@ -116,11 +116,10 @@ int main(int argc, char *args[]) {
     // enemy.SetVelocity(Velocity{50, 0});
     // enemy.SetCallback(UpdateEnemy);
 
-    platform.SetColor(Color{0, 0, 255, 255});
+    platform.SetColor(Color{128, 128, 128, 255});
     platform.SetPosition(Position{250, 1010});
     platform.SetSize(Size{200, 30});
     platform.SetCallback(UpdatePlatform);
-    platform.SetTexture("assets/gray.jpg");
 
     std::vector<GameObject *> objects =
         std::vector({&ball, &wall_left, &wall_top, &wall_right, &platform});
