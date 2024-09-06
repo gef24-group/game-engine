@@ -6,11 +6,8 @@
 
 // Game update code
 void Update(std::vector<GameObject *> *game_objects) {
-    // GameObject *ball = GetObjectByName("ball", game_objects);
-    // Log(LogLevel::Info, "[ball] x: %f, y: %f, vX: %f, vY: %f, aX: %f, aY: %f",
-    //     ball->GetPosition().x, ball->GetPosition().y, ball->GetVelocity().x,
-    //     ball->GetVelocity().y, ball->GetAcceleration().x, ball->GetAcceleration().y);
-    // Log(LogLevel::Info, "[ball colliders] %d", ball->GetColliders().size());
+    int window_width, window_height;
+    SDL_GetWindowSize(app->window, &window_width, &window_height);
 
     // Get the ball and platform objects
     GameObject *ball = GetObjectByName("ball", *game_objects);
@@ -25,6 +22,11 @@ void Update(std::vector<GameObject *> *game_objects) {
     GameObject *wall_left = GetObjectByName("wall_left", *game_objects);
     GameObject *wall_right = GetObjectByName("wall_right", *game_objects);
     GameObject *wall_top = GetObjectByName("wall_top", *game_objects);
+
+    wall_left->SetSize(Size{100, window_height});
+    wall_top->SetSize(Size{window_width - 100, 100}); // Minus left and right wall sizes
+    wall_right->SetPosition(Position{float(window_width - 100), 100});
+    wall_right->SetSize(Size{100, window_height - 100});
 
     // Collision with left wall
     if (ball_pos.x <= wall_left->GetPosition().x + wall_left->GetSize().width) {
