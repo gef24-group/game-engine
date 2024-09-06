@@ -65,7 +65,7 @@ void UpdatePlatform(GameObject *platform) {
 }
 
 int main(int argc, char *args[]) {
-    std::string game_title = "CSC581 HW1 Joshua's Game";
+    std::string game_title = "CSC581 HW1 Mitesh's Game";
 
     // Initializing the Game Engine
     GameEngine game_engine;
@@ -89,6 +89,7 @@ int main(int argc, char *args[]) {
     ball.SetVelocity(Velocity{40, 40});
     ball.SetRestitution(1);
     ball.SetTexture("assets/ball.png");
+    ball.SetReduceVelocityOnCollision(false);
 
     wall_left.SetColor(Color{255, 0, 0, 255});
     wall_left.SetPosition(Position{0, 0});
