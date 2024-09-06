@@ -1,0 +1,16 @@
+# References
+
+- [CMake reference documentation](https://cmake.org/cmake/help/latest/)
+- [ClangFormat documentation](https://clang.llvm.org/docs/ClangFormat.html)
+- [Clang-Tidy documentation](https://clang.llvm.org/extra/clang-tidy/)
+- [VS Code, CMake: Debug and launch](https://github.com/microsoft/vscode-cmake-tools/blob/main/docs/debug-launch.md)
+- [SDL2 CMake modules](https://github.com/aminosbh/sdl2-cmake-modules)
+- [SDL2-Window-Sample](https://github.ncsu.edu/acard/SDL2-Window-Sample)
+- [SDL2.0 API by Category](https://wiki.libsdl.org/SDL2/APIByCategory)
+- [Will Usher SDL2 Tutorials, Lesson 1: Hello World](https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/)
+- [Will Usher SDL2 Tutorials, Lesson 3: SDL Extension Libraries](https://www.willusher.io/sdl2%20tutorials/2013/08/18/lesson-3-sdl-extension-libraries/)
+- [Kenney, Background Elements Redux](https://kenney.nl/assets/background-elements-redux)
+- [Kenney, Platformer Pack Redux](https://kenney.nl/assets/platformer-pack-redux)
+- [CleanPNG, Maroon Basketball for Sports Enthusiasts](https://www.cleanpng.com/png-basketball-court-clip-art-free-basketball-photos-546246/)
+- [Elina Araja, Photo of Gray Surface](https://www.pexels.com/photo/photo-of-gray-surface-3377405/)
+- [Clipart Library](https://clipart-library.com/)

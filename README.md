@@ -58,3 +58,6 @@ make clean
 
 ## Display scaling
 To switch between constant and proportional scaling, please use the `x` key.
+
+## References
+Please find all references in [References.md](References.md)
