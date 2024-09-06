@@ -4,10 +4,10 @@
 #include "Utils.hpp"
 #include <string>
 
+Size window_size;
+
 // Game update code
 void Update(std::vector<GameObject *> *game_objects) {
-    int window_width, window_height;
-    SDL_GetWindowSize(app->window, &window_width, &window_height);
 
     // Get the ball and platform objects
     GameObject *ball = GetObjectByName("ball", *game_objects);
@@ -23,10 +23,14 @@ void Update(std::vector<GameObject *> *game_objects) {
     GameObject *wall_right = GetObjectByName("wall_right", *game_objects);
     GameObject *wall_top = GetObjectByName("wall_top", *game_objects);
 
-    wall_left->SetSize(Size{100, window_height});
-    wall_top->SetSize(Size{window_width - 100, 100}); // Minus left and right wall sizes
-    wall_right->SetPosition(Position{float(window_width - 100), 100});
-    wall_right->SetSize(Size{100, window_height - 100});
+    wall_left->SetPosition(Position{0, 0});
+    wall_left->SetSize(Size{100, window_size.height});
+
+    wall_top->SetPosition(Position{100, 0});
+    wall_top->SetSize(Size{window_size.width - 100, 100});
+
+    wall_right->SetPosition(Position{float(window_size.width - 100), 100});
+    wall_right->SetSize(Size{100, window_size.height - 100});
 
     // Collision with left wall
     if (ball_pos.x <= wall_left->GetPosition().x + wall_left->GetSize().width) {
@@ -77,6 +81,8 @@ int main(int argc, char *args[]) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }
+
+    window_size = GetWindowSize();
 
     GameObject ball("ball", Moving);
     GameObject wall_left("wall_left", Stationary);
