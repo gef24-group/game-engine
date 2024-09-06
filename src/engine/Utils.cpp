@@ -4,6 +4,8 @@
 #include "SDL_video.h"
 #include "Types.hpp"
 
+// Referred Will Usher SDL2 Tutorial Lesson 3:
+// https://www.willusher.io/sdl2%20tutorials/2013/08/18/lesson-3-sdl-extension-libraries/
 SDL_Texture *LoadTexture(std::string path) {
     SDL_Surface *surface = IMG_Load(path.c_str());
     if (surface == NULL) {
