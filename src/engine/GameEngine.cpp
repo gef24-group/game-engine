@@ -48,8 +48,8 @@ void GameEngine::Start() {
         //     Log(LogLevel::Info, "SDL Delay on Pause: %d", delay);
         // }
 
-        frame_delta =
-            std::clamp(frame_delta, static_cast<int64_t>(0), static_cast<int64_t>(80000000));
+        frame_delta = std::clamp(frame_delta, static_cast<int64_t>(0),
+                                 static_cast<int64_t>(16000000 / this->engine_timeline.GetTic()));
 
         // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
         app->quit = this->HandleEvents();
@@ -261,30 +261,30 @@ bool GameEngine::HandleEvents() {
 }
 
 void GameEngine::HandleTimelineInputs(int64_t current_time) {
-    std::chrono::duration<int, std::milli> time_elapsed_since_pause =
-        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
+    std::chrono::duration<int, std::nano> time_elapsed_since_pause =
+        std::chrono::duration_cast<std::chrono::duration<int, std::nano>>(
             std::chrono::high_resolution_clock::now() - app->key_map->key_P.last_pressed_time);
-    std::chrono::duration<int, std::milli> time_elapsed_since_slowdown =
-        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
+    std::chrono::duration<int, std::nano> time_elapsed_since_slowdown =
+        std::chrono::duration_cast<std::chrono::duration<int, std::nano>>(
             std::chrono::high_resolution_clock::now() -
             app->key_map->key_less_than.last_pressed_time);
-    std::chrono::duration<int, std::milli> time_elapsed_since_speedup =
-        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
+    std::chrono::duration<int, std::nano> time_elapsed_since_speedup =
+        std::chrono::duration_cast<std::chrono::duration<int, std::nano>>(
             std::chrono::high_resolution_clock::now() -
             app->key_map->key_greater_than.last_pressed_time);
 
-    if (app->key_map->key_P.pressed && time_elapsed_since_pause.count() > 100) {
+    if (app->key_map->key_P.pressed && time_elapsed_since_pause.count() > 100000000) {
         this->engine_timeline.TogglePause(current_time);
         Log(LogLevel::Info, "Tick: %f", this->engine_timeline.GetTic());
         Log(LogLevel::Info, "Toggle Pause");
         app->key_map->key_P.last_pressed_time = std::chrono::high_resolution_clock::now();
     }
-    if (app->key_map->key_less_than.pressed && time_elapsed_since_slowdown.count() > 100) {
+    if (app->key_map->key_less_than.pressed && time_elapsed_since_slowdown.count() > 100000000) {
         this->engine_timeline.ChangeTic(std::min(this->engine_timeline.GetTic() * 2.0, 2.0));
         Log(LogLevel::Info, "Slowdown");
         app->key_map->key_less_than.last_pressed_time = std::chrono::high_resolution_clock::now();
     }
-    if (app->key_map->key_greater_than.pressed && time_elapsed_since_speedup.count() > 100) {
+    if (app->key_map->key_greater_than.pressed && time_elapsed_since_speedup.count() > 100000000) {
         this->engine_timeline.ChangeTic(std::max(this->engine_timeline.GetTic() / 2.0, 0.5));
         Log(LogLevel::Info, "Speedup");
         app->key_map->key_greater_than.last_pressed_time =
