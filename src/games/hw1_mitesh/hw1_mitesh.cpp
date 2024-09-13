@@ -63,9 +63,9 @@ void Update(std::vector<GameObject *> *game_objects) {
 
 void UpdatePlatform(GameObject *platform) {
 
-    if (app->key_map->key_left) {
+    if (app->key_map->key_left.pressed) {
         platform->SetPosition({platform->GetPosition().x - 10, platform->GetPosition().y});
-    } else if (app->key_map->key_right) {
+    } else if (app->key_map->key_right.pressed) {
         platform->SetPosition({platform->GetPosition().x + 10, platform->GetPosition().y});
     }
 }

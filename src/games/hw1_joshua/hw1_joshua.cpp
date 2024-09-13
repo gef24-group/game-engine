@@ -17,7 +17,7 @@ void Update(std::vector<GameObject *> *game_objects) {
     // Generate a random number
     std::random_device random_device;
     std::mt19937 eng(random_device());
-    std::uniform_int_distribution<> distr(1, 100);
+    std::uniform_int_distribution<> distr(1, 10);
     int random_number = distr(eng);
 
     float max_ground_x = 0;
@@ -31,11 +31,13 @@ void Update(std::vector<GameObject *> *game_objects) {
         }
     }
 
+    bool ground_repositioned = false;
     for (GameObject *game_object : *game_objects) {
         if (game_object->GetName() == "ground") {
             int right_edge = static_cast<int>(std::round(game_object->GetPosition().x)) +
                              game_object->GetSize().width;
             if (right_edge <= 0) {
+                ground_repositioned = true;
                 game_object->SetPosition(
                     Position{max_ground_x + TILE_SIZE, game_object->GetPosition().y});
             }
@@ -47,7 +49,7 @@ void Update(std::vector<GameObject *> *game_objects) {
     std::uniform_int_distribution<> enemy_distr(0, int(enemies.size() - 1));
     size_t random_enemy = enemy_distr(eng);
 
-    if (random_number == 5 && max_ground != nullptr) {
+    if (random_number == 5 && max_ground != nullptr && ground_repositioned) {
         GameObject *enemy = new GameObject("enemy", Moving);
         enemy->SetPosition(Position{max_ground_x, float(max_ground->GetPosition().y - TILE_SIZE)});
         enemy->SetVelocity(Velocity{-50, 0});
@@ -92,17 +94,17 @@ void Update(std::vector<GameObject *> *game_objects) {
 }
 
 void UpdateAlien(GameObject *alien) {
-    if (app->key_map->key_up || app->key_map->key_W) {
+    if (app->key_map->key_up.pressed || app->key_map->key_W.pressed) {
         alien->SetVelocity({alien->GetVelocity().x, -60});
     }
 
-    if (app->key_map->key_down || app->key_map->key_S) {
+    if (app->key_map->key_down.pressed || app->key_map->key_S.pressed) {
         alien->SetVelocity({alien->GetVelocity().x, 60});
     }
 
-    if (app->key_map->key_left || app->key_map->key_A) {
+    if (app->key_map->key_left.pressed || app->key_map->key_A.pressed) {
         alien->SetVelocity({-60, alien->GetVelocity().y});
-    } else if (app->key_map->key_right || app->key_map->key_D) {
+    } else if (app->key_map->key_right.pressed || app->key_map->key_D.pressed) {
         alien->SetVelocity({60, alien->GetVelocity().y});
     } else {
         alien->SetVelocity({0, alien->GetVelocity().y});
@@ -150,7 +152,7 @@ int main(int argc, char *args[]) {
 
     GameObject alien("alien", Controllable);
     alien.SetColor(Color{0, 0, 0, 0});
-    alien.SetPosition(Position{20, float(GetWindowSize().height - (TILE_SIZE * 3))});
+    alien.SetPosition(Position{20, float(GetWindowSize().height - (TILE_SIZE * 5))});
     alien.SetSize(Size{TILE_SIZE, TILE_SIZE});
     alien.SetAcceleration(Acceleration{0, 15});
     alien.SetVelocity(Velocity{0, 0});

@@ -2,6 +2,7 @@
 
 #include "App.hpp"
 #include "GameObject.hpp"
+#include "Timeline.hpp"
 #include <functional>
 #include <vector>
 
@@ -9,6 +10,7 @@ extern App *app;
 
 class GameEngine {
   private:
+    Timeline engine_timeline;
     Color background_color;
     std::vector<GameObject *> game_objects;
     std::function<void(std::vector<GameObject *> *game_objects)> callback;
@@ -26,12 +28,13 @@ class GameEngine {
     void SetCallback(std::function<void(std::vector<GameObject *> *)> callback);
     void Update();
     void ReadHIDs();
-    void ApplyObjectPhysics(float time);
+    void ApplyObjectPhysics(int64_t delta);
     void ApplyObjectUpdates();
     void TestCollision();
     bool HandleEvents();
     void HandleCollisions();
     void HandleScaling();
+    void HandleTimelineInputs(int64_t current_time);
     void RenderScene();
     void RenderBackground();
     void Shutdown();

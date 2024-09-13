@@ -41,17 +41,17 @@ void Update(std::vector<GameObject *> *game_objects) {
 void UpdatePlayer(GameObject *player) {
     bool player_moved = false;
 
-    if (app->key_map->key_right) {
+    if (app->key_map->key_right.pressed) {
         player_moved = true;
-        player->SetVelocity({30, player->GetVelocity().y}); // Move left
-    } else if (app->key_map->key_left) {
+        player->SetVelocity({60, player->GetVelocity().y}); // Move left
+    } else if (app->key_map->key_left.pressed) {
         player_moved = true;
-        player->SetVelocity({-30, player->GetVelocity().y}); // Move right
+        player->SetVelocity({-60, player->GetVelocity().y}); // Move right
     }
 
-    if (app->key_map->key_up) {
+    if (app->key_map->key_up.pressed) {
         player_moved = true;
-        player->SetVelocity({player->GetVelocity().x, -30});
+        player->SetVelocity({player->GetVelocity().x, -60});
     }
 
     if (!player_moved) {
@@ -73,7 +73,7 @@ void UpdateBall(GameObject *ball) {
             // Log(LogLevel::Info, "The ball is being set to velocity: %d",
             // collider->GetVelocity().x);
             ball->SetVelocity(collider->GetVelocity());
-            if (app->key_map->key_space) {
+            if (app->key_map->key_space.pressed) {
                 ball->SetVelocity({60, -60});
             }
         }

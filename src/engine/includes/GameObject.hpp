@@ -33,7 +33,7 @@ class GameObject {
   public:
     GameObject(std::string name, GameObjectCategory category);
     void Update();
-    void Move(float time);
+    void Move(int64_t delta);
     void Render();
 
     SDL_Texture *GetTexture();

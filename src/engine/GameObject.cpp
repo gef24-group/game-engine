@@ -25,8 +25,12 @@ GameObject::GameObject(std::string name, GameObjectCategory category) {
 
 void GameObject::Update() { this->callback(this); }
 
-void GameObject::Move(float time) {
+void GameObject::Move(int64_t delta) {
     const float HALF = 0.5;
+    float time = static_cast<float>(delta) / 100000000.0f;
+    // if (time > 0.32f || time < 0.32f) {
+    //     Log(LogLevel::Info, "%f", time);
+    // }
     this->position.x +=
         (this->velocity.x * time) + (HALF * this->acceleration.x * float(pow(time, 2)));
     this->position.y +=

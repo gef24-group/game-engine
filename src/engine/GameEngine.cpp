@@ -1,5 +1,4 @@
 #include "GameEngine.hpp"
-#include "Constants.hpp"
 #include "GameObject.hpp"
 #include "SDL.h"
 #include "SDL_error.h"
@@ -9,6 +8,7 @@
 #include "SDL_render.h"
 #include "SDL_scancode.h"
 #include "SDL_video.h"
+#include "Timeline.hpp"
 #include "Types.hpp"
 #include "Utils.hpp"
 #include <algorithm>
@@ -18,26 +18,49 @@
 GameEngine::GameEngine() {
     app->window = nullptr;
     app->renderer = nullptr;
+    this->engine_timeline = Timeline();
     this->background_color = Color{0, 0, 0, 255};
     this->game_objects = std::vector<GameObject *>();
     this->callback = [](std::vector<GameObject *> *) {};
-    this->window = {1920, 1080, false, std::chrono::high_resolution_clock::now()};
+    this->window = {1920, 1080, false};
 }
 
 void GameEngine::Start() {
     app->quit = false;
+    // Referred Lecture 5 Slides:
+    // https://docs.google.com/presentation/d/1EZ9PFmYsufonouzSsVSzEfTW6dvkegJ7
+    int64_t last_time = this->engine_timeline.GetTime();
 
     // Game loop
     while (!app->quit) {
+        int64_t current_time = this->engine_timeline.GetTime();
+        int64_t frame_delta = current_time - last_time;
+        last_time = current_time;
+
+        // uint32_t delay = static_cast<uint32_t>(std::round((
+        //     16.0 / this->engine_timeline.GetTic() - (static_cast<double>(frame_delta) /
+        //     1000000))));
+        // SDL_Delay(delay);
+        // frame_delta = static_cast<int64_t>(std::round(16000000 /
+        // this->engine_timeline.GetTic()));
+
+        // if (app->key_map->key_P.pressed) {
+        //     Log(LogLevel::Info, "SDL Delay on Pause: %d", delay);
+        // }
+
+        frame_delta =
+            std::clamp(frame_delta, static_cast<int64_t>(0), static_cast<int64_t>(80000000));
+
         // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
         app->quit = this->HandleEvents();
 
         this->ReadHIDs();
-        this->ApplyObjectPhysics(0.1);
+        this->ApplyObjectPhysics(frame_delta);
         this->ApplyObjectUpdates();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
+        this->HandleTimelineInputs(current_time);
         this->RenderScene();
     }
     this->Shutdown();
@@ -111,23 +134,27 @@ void GameEngine::Update() { this->callback(&this->game_objects); }
 void GameEngine::ReadHIDs() {
     const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
     //  Iterating all the game objects
-    app->key_map->key_W = keyboard_state[SDL_SCANCODE_W] != 0;
-    app->key_map->key_A = keyboard_state[SDL_SCANCODE_A] != 0;
-    app->key_map->key_S = keyboard_state[SDL_SCANCODE_S] != 0;
-    app->key_map->key_D = keyboard_state[SDL_SCANCODE_D] != 0;
-    app->key_map->key_X = keyboard_state[SDL_SCANCODE_X] != 0;
+    app->key_map->key_W.pressed = keyboard_state[SDL_SCANCODE_W] != 0;
+    app->key_map->key_A.pressed = keyboard_state[SDL_SCANCODE_A] != 0;
+    app->key_map->key_S.pressed = keyboard_state[SDL_SCANCODE_S] != 0;
+    app->key_map->key_D.pressed = keyboard_state[SDL_SCANCODE_D] != 0;
+    app->key_map->key_X.pressed = keyboard_state[SDL_SCANCODE_X] != 0;
+    app->key_map->key_P.pressed = keyboard_state[SDL_SCANCODE_P] != 0;
 
-    app->key_map->key_up = keyboard_state[SDL_SCANCODE_UP] != 0;
-    app->key_map->key_left = keyboard_state[SDL_SCANCODE_LEFT] != 0;
-    app->key_map->key_down = keyboard_state[SDL_SCANCODE_DOWN] != 0;
-    app->key_map->key_right = keyboard_state[SDL_SCANCODE_RIGHT] != 0;
+    app->key_map->key_up.pressed = keyboard_state[SDL_SCANCODE_UP] != 0;
+    app->key_map->key_left.pressed = keyboard_state[SDL_SCANCODE_LEFT] != 0;
+    app->key_map->key_down.pressed = keyboard_state[SDL_SCANCODE_DOWN] != 0;
+    app->key_map->key_right.pressed = keyboard_state[SDL_SCANCODE_RIGHT] != 0;
 
-    app->key_map->key_space = keyboard_state[SDL_SCANCODE_SPACE] != 0;
+    app->key_map->key_less_than.pressed = keyboard_state[SDL_SCANCODE_COMMA] != 0;
+    app->key_map->key_greater_than.pressed = keyboard_state[SDL_SCANCODE_PERIOD] != 0;
+
+    app->key_map->key_space.pressed = keyboard_state[SDL_SCANCODE_SPACE] != 0;
 }
 
-void GameEngine::ApplyObjectPhysics(float time) {
+void GameEngine::ApplyObjectPhysics(int64_t delta) {
     for (GameObject *game_object : this->game_objects) {
-        game_object->Move(time);
+        game_object->Move(delta);
     }
 }
 
@@ -233,8 +260,39 @@ bool GameEngine::HandleEvents() {
     return quit;
 }
 
-void GameEngine::RenderScene() {
+void GameEngine::HandleTimelineInputs(int64_t current_time) {
+    std::chrono::duration<int, std::milli> time_elapsed_since_pause =
+        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
+            std::chrono::high_resolution_clock::now() - app->key_map->key_P.last_pressed_time);
+    std::chrono::duration<int, std::milli> time_elapsed_since_slowdown =
+        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
+            std::chrono::high_resolution_clock::now() -
+            app->key_map->key_less_than.last_pressed_time);
+    std::chrono::duration<int, std::milli> time_elapsed_since_speedup =
+        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
+            std::chrono::high_resolution_clock::now() -
+            app->key_map->key_greater_than.last_pressed_time);
 
+    if (app->key_map->key_P.pressed && time_elapsed_since_pause.count() > 100) {
+        this->engine_timeline.TogglePause(current_time);
+        Log(LogLevel::Info, "Tick: %f", this->engine_timeline.GetTic());
+        Log(LogLevel::Info, "Toggle Pause");
+        app->key_map->key_P.last_pressed_time = std::chrono::high_resolution_clock::now();
+    }
+    if (app->key_map->key_less_than.pressed && time_elapsed_since_slowdown.count() > 100) {
+        this->engine_timeline.ChangeTic(std::min(this->engine_timeline.GetTic() * 2.0, 2.0));
+        Log(LogLevel::Info, "Slowdown");
+        app->key_map->key_less_than.last_pressed_time = std::chrono::high_resolution_clock::now();
+    }
+    if (app->key_map->key_greater_than.pressed && time_elapsed_since_speedup.count() > 100) {
+        this->engine_timeline.ChangeTic(std::max(this->engine_timeline.GetTic() / 2.0, 0.5));
+        Log(LogLevel::Info, "Speedup");
+        app->key_map->key_greater_than.last_pressed_time =
+            std::chrono::high_resolution_clock::now();
+    }
+}
+
+void GameEngine::RenderScene() {
     this->HandleScaling();
 
     this->RenderBackground();
@@ -242,7 +300,6 @@ void GameEngine::RenderScene() {
         game_object->Render();
     }
     SDL_RenderPresent(app->renderer);
-    SDL_Delay(SDL_DELAY);
 }
 
 void GameEngine::RenderBackground() {
@@ -256,11 +313,11 @@ void GameEngine::RenderBackground() {
 void GameEngine::HandleScaling() {
     std::chrono::duration<int, std::milli> time_elapsed_since_toggle =
         std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
-            std::chrono::high_resolution_clock::now() - this->window.previous_toggle_time);
+            std::chrono::high_resolution_clock::now() - app->key_map->key_X.last_pressed_time);
 
-    if (app->key_map->key_X && time_elapsed_since_toggle.count() > 100) {
+    if (app->key_map->key_X.pressed && time_elapsed_since_toggle.count() > 100) {
         this->window.proportional_scaling = !this->window.proportional_scaling;
-        this->window.previous_toggle_time = std::chrono::high_resolution_clock::now();
+        app->key_map->key_X.last_pressed_time = std::chrono::high_resolution_clock::now();
     }
 
     int set_logical_size_err;
