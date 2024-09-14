@@ -133,23 +133,39 @@ void GameEngine::Update() { this->callback(&this->game_objects); }
 
 void GameEngine::ReadHIDs() {
     const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
-    //  Iterating all the game objects
-    app->key_map->key_W.pressed = keyboard_state[SDL_SCANCODE_W] != 0;
-    app->key_map->key_A.pressed = keyboard_state[SDL_SCANCODE_A] != 0;
-    app->key_map->key_S.pressed = keyboard_state[SDL_SCANCODE_S] != 0;
-    app->key_map->key_D.pressed = keyboard_state[SDL_SCANCODE_D] != 0;
-    app->key_map->key_X.pressed = keyboard_state[SDL_SCANCODE_X] != 0;
-    app->key_map->key_P.pressed = keyboard_state[SDL_SCANCODE_P] != 0;
+    auto now = std::chrono::high_resolution_clock::now();
 
-    app->key_map->key_up.pressed = keyboard_state[SDL_SCANCODE_UP] != 0;
-    app->key_map->key_left.pressed = keyboard_state[SDL_SCANCODE_LEFT] != 0;
-    app->key_map->key_down.pressed = keyboard_state[SDL_SCANCODE_DOWN] != 0;
-    app->key_map->key_right.pressed = keyboard_state[SDL_SCANCODE_RIGHT] != 0;
+    auto check_key_press_duration = [&](int scancode, Key &key, int duration) {
+        if (keyboard_state[scancode] != 0) {
+            auto press_duration =
+                std::chrono::duration_cast<std::chrono::milliseconds>(now - key.last_pressed_time);
+            if (press_duration.count() > duration && !key.pressed) {
+                key.pressed = true;
+            } else {
+                key.pressed = false;
+                key.last_pressed_time = now;
+            }
+        } else {
+            key.pressed = false;
+        }
+    };
 
-    app->key_map->key_less_than.pressed = keyboard_state[SDL_SCANCODE_COMMA] != 0;
-    app->key_map->key_greater_than.pressed = keyboard_state[SDL_SCANCODE_PERIOD] != 0;
+    check_key_press_duration(SDL_SCANCODE_X, app->key_map->key_X, 100);
+    check_key_press_duration(SDL_SCANCODE_P, app->key_map->key_P, 100);
+    check_key_press_duration(SDL_SCANCODE_COMMA, app->key_map->key_comma, 100);
+    check_key_press_duration(SDL_SCANCODE_PERIOD, app->key_map->key_period, 100);
 
-    app->key_map->key_space.pressed = keyboard_state[SDL_SCANCODE_SPACE] != 0;
+    check_key_press_duration(SDL_SCANCODE_W, app->key_map->key_W, 0);
+    check_key_press_duration(SDL_SCANCODE_A, app->key_map->key_A, 0);
+    check_key_press_duration(SDL_SCANCODE_S, app->key_map->key_S, 0);
+    check_key_press_duration(SDL_SCANCODE_D, app->key_map->key_D, 0);
+
+    check_key_press_duration(SDL_SCANCODE_UP, app->key_map->key_up, 0);
+    check_key_press_duration(SDL_SCANCODE_LEFT, app->key_map->key_left, 0);
+    check_key_press_duration(SDL_SCANCODE_DOWN, app->key_map->key_down, 0);
+    check_key_press_duration(SDL_SCANCODE_RIGHT, app->key_map->key_right, 0);
+
+    check_key_press_duration(SDL_SCANCODE_SPACE, app->key_map->key_space, 0);
 }
 
 void GameEngine::ApplyObjectPhysics(int64_t delta) {
@@ -261,34 +277,18 @@ bool GameEngine::HandleEvents() {
 }
 
 void GameEngine::HandleTimelineInputs(int64_t current_time) {
-    std::chrono::duration<int, std::nano> time_elapsed_since_pause =
-        std::chrono::duration_cast<std::chrono::duration<int, std::nano>>(
-            std::chrono::high_resolution_clock::now() - app->key_map->key_P.last_pressed_time);
-    std::chrono::duration<int, std::nano> time_elapsed_since_slowdown =
-        std::chrono::duration_cast<std::chrono::duration<int, std::nano>>(
-            std::chrono::high_resolution_clock::now() -
-            app->key_map->key_less_than.last_pressed_time);
-    std::chrono::duration<int, std::nano> time_elapsed_since_speedup =
-        std::chrono::duration_cast<std::chrono::duration<int, std::nano>>(
-            std::chrono::high_resolution_clock::now() -
-            app->key_map->key_greater_than.last_pressed_time);
-
-    if (app->key_map->key_P.pressed && time_elapsed_since_pause.count() > 100000000) {
+    if (app->key_map->key_P.pressed) {
         this->engine_timeline.TogglePause(current_time);
         Log(LogLevel::Info, "Tick: %f", this->engine_timeline.GetTic());
         Log(LogLevel::Info, "Toggle Pause");
-        app->key_map->key_P.last_pressed_time = std::chrono::high_resolution_clock::now();
     }
-    if (app->key_map->key_less_than.pressed && time_elapsed_since_slowdown.count() > 100000000) {
+    if (app->key_map->key_comma.pressed) {
         this->engine_timeline.ChangeTic(std::min(this->engine_timeline.GetTic() * 2.0, 2.0));
         Log(LogLevel::Info, "Slowdown");
-        app->key_map->key_less_than.last_pressed_time = std::chrono::high_resolution_clock::now();
     }
-    if (app->key_map->key_greater_than.pressed && time_elapsed_since_speedup.count() > 100000000) {
+    if (app->key_map->key_period.pressed) {
         this->engine_timeline.ChangeTic(std::max(this->engine_timeline.GetTic() / 2.0, 0.5));
         Log(LogLevel::Info, "Speedup");
-        app->key_map->key_greater_than.last_pressed_time =
-            std::chrono::high_resolution_clock::now();
     }
 }
 
@@ -311,13 +311,9 @@ void GameEngine::RenderBackground() {
 }
 
 void GameEngine::HandleScaling() {
-    std::chrono::duration<int, std::milli> time_elapsed_since_toggle =
-        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(
-            std::chrono::high_resolution_clock::now() - app->key_map->key_X.last_pressed_time);
 
-    if (app->key_map->key_X.pressed && time_elapsed_since_toggle.count() > 100) {
+    if (app->key_map->key_X.pressed) {
         this->window.proportional_scaling = !this->window.proportional_scaling;
-        app->key_map->key_X.last_pressed_time = std::chrono::high_resolution_clock::now();
     }
 
     int set_logical_size_err;

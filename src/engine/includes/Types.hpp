@@ -49,8 +49,8 @@ struct KeyMap {
     Key key_down;
     Key key_right;
     Key key_space;
-    Key key_less_than;
-    Key key_greater_than;
+    Key key_comma;
+    Key key_period;
 };
 
 struct Window {
