@@ -4,6 +4,7 @@
 #include "Utils.hpp"
 #include <cmath>
 #include <functional>
+#include <mutex>
 
 GameObject::GameObject(std::string name, GameObjectCategory category) {
     this->surface = nullptr;
@@ -67,7 +68,10 @@ std::string GameObject::GetName() { return this->name; }
 GameObjectCategory GameObject::GetCategory() { return this->category; }
 Shape GameObject::GetShape() { return this->shape; }
 Color GameObject::GetColor() { return this->color; }
-Position GameObject::GetPosition() { return this->position; }
+Position GameObject::GetPosition() {
+    std::lock_guard<std::mutex> lock(this->position_mutex);
+    return this->position;
+}
 Size GameObject::GetSize() { return this->size; }
 Velocity GameObject::GetVelocity() { return this->velocity; }
 Acceleration GameObject::GetAcceleration() { return this->acceleration; }
@@ -75,11 +79,13 @@ bool GameObject::GetReduceVelocityOnCollision() { return this->reduce_velocity_o
 float GameObject::GetRestitution() { return this->restitution; }
 float GameObject::GetAngle() { return this->theta_x; }
 std::unordered_set<GameObject *> GameObject::GetColliders() { return this->colliders; }
-
 void GameObject::SetTexture(std::string path) { this->texture = LoadTexture(path); }
 void GameObject::SetShape(Shape shape) { this->shape = shape; }
 void GameObject::SetColor(Color color) { this->color = color; }
-void GameObject::SetPosition(Position position) { this->position = position; }
+void GameObject::SetPosition(Position position) {
+    std::lock_guard<std::mutex> lock(this->position_mutex);
+    this->position = position;
+}
 void GameObject::SetSize(Size size) { this->size = size; }
 void GameObject::SetVelocity(Velocity velocity) {
     if (this->category != Stationary) {

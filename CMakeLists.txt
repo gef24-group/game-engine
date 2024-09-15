@@ -16,6 +16,9 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)
 
+# Find Threads package (for pthread on Unix-like systems)
+find_package(Threads REQUIRED)
+
 # Include SDL2, SDL2_image, and engine header files
 include_directories(
     ${SDL2_INCLUDE_DIRS}
@@ -50,8 +53,8 @@ foreach(GAME_DIR ${GAMES})
         RUNTIME_OUTPUT_DIRECTORY ${GAME_OUTPUT_DIR}
     )
 
-    # Link SDL2 and SDL2_image libraries to the game
-    target_link_libraries(${GAME_NAME} ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES})
+    # Link SDL2, SDL2_image, and Threads libraries to the game
+    target_link_libraries(${GAME_NAME} ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} Threads::Threads)
 
     foreach(ASSET ${GAME_ASSETS})
         # Ensure the output assets directory exists

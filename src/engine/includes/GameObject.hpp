@@ -5,6 +5,7 @@
 #include "SDL_surface.h"
 #include "Types.hpp"
 #include <functional>
+#include <mutex>
 #include <string>
 #include <unordered_set>
 
@@ -18,6 +19,7 @@ class GameObject {
     GameObjectCategory category;
     Shape shape;
     Color color;
+    std::mutex position_mutex;
     Position position;
     Size size;
     Velocity velocity;
