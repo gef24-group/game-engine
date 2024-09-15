@@ -8,14 +8,14 @@ To build the game engine and included games, please ensure that you have all pre
 #### Ubuntu 24.04
 ```bash
 sudo apt update
-sudo apt install build-essential x11-apps libsdl2-2.0-0 libsdl2-dev libsdl2-image-2.0-0 libsdl2-image-dev cmake
+sudo apt install build-essential x11-apps libsdl2-2.0-0 libsdl2-dev libsdl2-image-2.0-0 libsdl2-image-dev libzmq3-dev cmake
 ```
 
 #### macOS Sonoma 14.6.1
 Install Homebrew from [brew.sh](https://brew.sh/)
 ```bash
 xcode-select --install
-brew install sdl2 sdl2_image cmake
+brew install sdl2 sdl2_image zeromq cppzmq cmake
 ```
 
 ### Build all games

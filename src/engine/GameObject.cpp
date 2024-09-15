@@ -28,10 +28,7 @@ void GameObject::Update() { this->callback(this); }
 
 void GameObject::Move(int64_t delta) {
     const float HALF = 0.5;
-    float time = static_cast<float>(delta) / 100000000.0f;
-    // if (time > 0.32f || time < 0.32f) {
-    //     Log(LogLevel::Info, "%f", time);
-    // }
+    float time = static_cast<float>(delta) / 100'000'000.0f;
     this->position.x +=
         (this->velocity.x * time) + (HALF * this->acceleration.x * float(pow(time, 2)));
     this->position.y +=
@@ -53,8 +50,6 @@ void GameObject::Render() {
 
     SDL_Rect object = {static_cast<int>(std::round(pos_x)), static_cast<int>(std::round(pos_y)),
                        width, height};
-    // Log(LogLevel::Info, "OBJECT LOCATION: %d, %d, %d, %d", object.x, object.y, object.w,
-    // object.h);
     SDL_SetRenderDrawColor(app->renderer, red, green, blue, alpha);
     if (this->shape == Rectangle && this->texture == nullptr) {
         SDL_RenderFillRect(app->renderer, &object);

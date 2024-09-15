@@ -1,11 +1,10 @@
 #include "Utils.hpp"
+#include "GameEngine.hpp"
 #include "SDL_image.h"
 #include "SDL_log.h"
 #include "SDL_video.h"
 #include "Types.hpp"
 
-// Referred Will Usher SDL2 Tutorial Lesson 3:
-// https://www.willusher.io/sdl2%20tutorials/2013/08/18/lesson-3-sdl-extension-libraries/
 SDL_Texture *LoadTexture(std::string path) {
     SDL_Surface *surface = IMG_Load(path.c_str());
     if (surface == NULL) {
@@ -72,4 +71,66 @@ GameObject *GetObjectByName(std::string name, std::vector<GameObject *> game_obj
         }
     }
     return nullptr;
+}
+
+bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
+    std::string mode;
+    std::string role;
+    std::vector<std::string> valid_modes = {"single", "cs", "p2p"};
+    std::vector<std::string> valid_roles = {"server", "client", "peer"};
+
+    for (int i = 1; i < argc; i++) {
+        std::string arg = args[i];
+
+        if (arg == "--mode" && i + 1 < argc) {
+            mode = args[i + 1];
+            i++;
+        } else if (arg == "--role" && i + 1 < argc) {
+            role = args[i + 1];
+            i++;
+        }
+    }
+    if (mode.empty()) {
+        mode = "single";
+    }
+    if (role.empty()) {
+        role = "client";
+    }
+
+    if (std::find(valid_modes.begin(), valid_modes.end(), mode) == valid_modes.end()) {
+        Log(LogLevel::Error, "Error: Invalid mode. Must be one of [single, cs, p2p]");
+        return false;
+    }
+
+    if (std::find(valid_roles.begin(), valid_roles.end(), role) == valid_roles.end()) {
+        Log(LogLevel::Error, "Error: Invalid role. Must be one of [server, client, peer]");
+        return false;
+    }
+
+    NetworkMode network_mode;
+    NetworkRole network_role;
+
+    if (mode == "single") {
+        network_mode = NetworkMode::Single;
+    }
+    if (mode == "cs") {
+        network_mode = NetworkMode::ClientServer;
+    }
+    if (mode == "p2p") {
+        network_mode = NetworkMode::PeerToPeer;
+    }
+
+    if (role == "server") {
+        network_role = NetworkRole::Server;
+    }
+    if (role == "client") {
+        network_role = NetworkRole::Client;
+    }
+    if (role == "peer") {
+        network_role = NetworkRole::Peer;
+    }
+
+    game_engine->SetNetworkInfo(NetworkInfo{network_mode, network_role, 0});
+
+    return true;
 }

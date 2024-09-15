@@ -43,6 +43,9 @@ int64_t Timeline::GetTime() {
            this->elapsed_paused_time;
 }
 
+FrameTime Timeline::GetFrameTime() { return this->frame_time; }
+void Timeline::SetFrameTime(FrameTime frame_time) { this->frame_time = frame_time; }
+
 void Timeline::TogglePause(int64_t pause_time) {
     this->paused = !this->paused;
 

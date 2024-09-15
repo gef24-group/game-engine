@@ -4,6 +4,8 @@
 enum Shape { Circle, Square, Rectangle, Triangle };
 enum GameObjectCategory { Controllable, Moving, Stationary };
 enum LogLevel { Verbose = 1, Debug, Info, Warn, Error, Critical, Priorities };
+enum NetworkMode { Single, ClientServer, PeerToPeer };
+enum NetworkRole { Server, Client, Peer };
 
 struct Color {
     int red;
@@ -57,4 +59,16 @@ struct Window {
     int width = 1920;
     int height = 1080;
     bool proportional_scaling = false;
+};
+
+struct FrameTime {
+    int64_t current;
+    int64_t last;
+    int64_t delta;
+};
+
+struct NetworkInfo {
+    NetworkMode mode;
+    NetworkRole role;
+    int id = 0;
 };

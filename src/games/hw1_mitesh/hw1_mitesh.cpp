@@ -33,29 +33,29 @@ void Update(std::vector<GameObject *> *game_objects) {
     wall_right->SetSize(Size{100, window_size.height - 100});
 
     // Collision with left wall
-    if (ball_pos.x <= wall_left->GetPosition().x + wall_left->GetSize().width) {
+    if (ball_pos.x <= wall_left->GetPosition().x + float(wall_left->GetSize().width)) {
         ball->SetVelocity({-ball_vel.x, ball_vel.y}); // Reflect horizontally
     }
 
     // Collision with right wall
-    if (ball_pos.x + ball_size.width >= wall_right->GetPosition().x) {
+    if (ball_pos.x + float(ball_size.width) >= wall_right->GetPosition().x) {
         ball->SetVelocity({-ball_vel.x, ball_vel.y}); // Reflect horizontally
     }
 
     // Collision with top wall
-    if (ball_pos.y <= wall_top->GetPosition().y + wall_top->GetSize().height) {
+    if (ball_pos.y <= wall_top->GetPosition().y + float(wall_top->GetSize().height)) {
         ball->SetVelocity({ball_vel.x, -ball_vel.y}); // Reflect vertically
     }
 
     // Collision with platform
-    if (ball_pos.y + ball_size.height >= platform->GetPosition().y &&
-        ball_pos.x + ball_size.width >= platform->GetPosition().x &&
-        ball_pos.x <= platform->GetPosition().x + platform->GetSize().width) {
+    if (ball_pos.y + float(ball_size.height) >= platform->GetPosition().y &&
+        ball_pos.x + float(ball_size.width) >= platform->GetPosition().x &&
+        ball_pos.x <= platform->GetPosition().x + float(platform->GetSize().width)) {
         ball->SetVelocity({ball_vel.x, -ball_vel.y}); // Reflect vertically
     }
 
     // If ball goes out of the boundary
-    if (ball_pos.y + ball_size.height > 1080) {
+    if (ball_pos.y + float(ball_size.height) > 1080) {
         Log(LogLevel::Info, "You lost!");
         app->quit = true;
     }
@@ -75,6 +75,10 @@ int main(int argc, char *args[]) {
 
     // Initializing the Game Engine
     GameEngine game_engine;
+    if (!SetEngineCLIOptions(&game_engine, argc, args)) {
+        return 0;
+    }
+
     Color background_color = Color{0, 0, 0, 255};
     game_engine.SetBackgroundColor(background_color);
     if (!game_engine.Init(game_title.c_str())) {

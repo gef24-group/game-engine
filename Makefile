@@ -1,4 +1,5 @@
 GAME ?= all
+ARGS ?=
 
 all: build
 
@@ -19,7 +20,7 @@ play:
 		echo; \
 		exit 1; \
 	fi
-	cd ./build/$(GAME) && ./$(GAME)
+	cd ./build/$(GAME) && ./$(GAME) $(ARGS)
 
 format:
 	find src -name '*.[ch]pp' | xargs clang-format -i

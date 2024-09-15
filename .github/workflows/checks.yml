@@ -20,6 +20,7 @@ jobs:
             libsdl2-dev \
             libsdl2-image-2.0-0 \
             libsdl2-image-dev \
+            libzmq3-dev \
             cmake \
             clang-format \
             clang-tidy

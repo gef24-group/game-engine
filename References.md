@@ -14,3 +14,4 @@
 - [CleanPNG, Maroon Basketball for Sports Enthusiasts](https://www.cleanpng.com/png-basketball-court-clip-art-free-basketball-photos-546246/)
 - [Elina Araja, Photo of Gray Surface](https://www.pexels.com/photo/photo-of-gray-surface-3377405/)
 - [Clipart Library](https://clipart-library.com/)
+- [CSC 581 Lecture 5: Time Management](https://docs.google.com/presentation/d/1EZ9PFmYsufonouzSsVSzEfTW6dvkegJ7)

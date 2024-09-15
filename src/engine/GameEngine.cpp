@@ -28,40 +28,19 @@ GameEngine::GameEngine() {
 
 void GameEngine::Start() {
     app->quit = false;
-    // Referred Lecture 5 Slides:
-    // https://docs.google.com/presentation/d/1EZ9PFmYsufonouzSsVSzEfTW6dvkegJ7
-    int64_t last_time = this->engine_timeline.GetTime();
+    this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
 
-    // Game loop
+    // Engine loop
     while (!app->quit) {
-        int64_t current_time = this->engine_timeline.GetTime();
-        int64_t frame_delta = current_time - last_time;
-        last_time = current_time;
-
-        // uint32_t delay = static_cast<uint32_t>(std::round((
-        //     16.0 / this->engine_timeline.GetTic() - (static_cast<double>(frame_delta) /
-        //     1000000))));
-        // SDL_Delay(delay);
-        // frame_delta = static_cast<int64_t>(std::round(16000000 /
-        // this->engine_timeline.GetTic()));
-
-        // if (app->key_map->key_P.pressed) {
-        //     Log(LogLevel::Info, "SDL Delay on Pause: %d", delay);
-        // }
-
-        frame_delta = std::clamp(frame_delta, static_cast<int64_t>(0),
-                                 static_cast<int64_t>(16000000 / this->engine_timeline.GetTic()));
-
-        // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
         app->quit = this->HandleEvents();
-
+        this->GetTimeDelta();
         this->ReadHIDs();
-        this->ApplyObjectPhysics(frame_delta);
+        this->ApplyObjectPhysics();
         this->ApplyObjectUpdates();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
-        this->HandleTimelineInputs(current_time);
+        this->HandleTimelineInputs();
         this->RenderScene();
     }
     this->Shutdown();
@@ -76,7 +55,6 @@ bool GameEngine::Init(const char *game_title) {
 }
 
 bool GameEngine::InitializeDisplay(const char *game_title) {
-    // Referred https://www.willusher.io/sdl2%20tutorials/2013/08/17/lesson-1-hello-world/
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         Log(LogLevel::Error, "SDL_Init Error: %s", SDL_GetError());
         return false;
@@ -107,6 +85,8 @@ bool GameEngine::InitializeDisplay(const char *game_title) {
     return true;
 }
 
+void GameEngine::SetNetworkInfo(NetworkInfo network_info) { this->network_info = network_info; }
+
 void GameEngine::SetBackgroundColor(Color color) { this->background_color = color; }
 
 void GameEngine::ShowWelcomeScreen() {
@@ -132,15 +112,31 @@ void GameEngine::SetCallback(std::function<void(std::vector<GameObject *> *)> ca
 
 void GameEngine::Update() { this->callback(&this->game_objects); }
 
+void GameEngine::GetTimeDelta() {
+    int64_t current = this->engine_timeline.GetTime();
+    int64_t last = this->engine_timeline.GetFrameTime().last;
+    int64_t delta = current - last;
+    last = current;
+    delta = std::clamp(delta, static_cast<int64_t>(0),
+                       static_cast<int64_t>(16'000'000 / this->engine_timeline.GetTic()));
+
+    this->engine_timeline.SetFrameTime(FrameTime{current, last, delta});
+}
+
 void GameEngine::ReadHIDs() {
     const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
     auto now = std::chrono::high_resolution_clock::now();
 
-    auto check_key_press_duration = [&](int scancode, Key &key, int duration) {
+    auto debounce_key = [&](int scancode, Key &key, bool delay) {
+        if (!delay) {
+            key.pressed = keyboard_state[scancode] != 0;
+            return;
+        }
+
         if (keyboard_state[scancode] != 0) {
             auto press_duration =
                 std::chrono::duration_cast<std::chrono::milliseconds>(now - key.last_pressed_time);
-            if (press_duration.count() > duration && !key.pressed) {
+            if (press_duration.count() > 50 && !key.pressed) {
                 key.pressed = true;
             } else {
                 key.pressed = false;
@@ -151,27 +147,27 @@ void GameEngine::ReadHIDs() {
         }
     };
 
-    check_key_press_duration(SDL_SCANCODE_X, app->key_map->key_X, 100);
-    check_key_press_duration(SDL_SCANCODE_P, app->key_map->key_P, 100);
-    check_key_press_duration(SDL_SCANCODE_COMMA, app->key_map->key_comma, 100);
-    check_key_press_duration(SDL_SCANCODE_PERIOD, app->key_map->key_period, 100);
+    debounce_key(SDL_SCANCODE_X, app->key_map->key_X, true);
+    debounce_key(SDL_SCANCODE_P, app->key_map->key_P, true);
+    debounce_key(SDL_SCANCODE_COMMA, app->key_map->key_comma, true);
+    debounce_key(SDL_SCANCODE_PERIOD, app->key_map->key_period, true);
 
-    check_key_press_duration(SDL_SCANCODE_W, app->key_map->key_W, 0);
-    check_key_press_duration(SDL_SCANCODE_A, app->key_map->key_A, 0);
-    check_key_press_duration(SDL_SCANCODE_S, app->key_map->key_S, 0);
-    check_key_press_duration(SDL_SCANCODE_D, app->key_map->key_D, 0);
+    debounce_key(SDL_SCANCODE_W, app->key_map->key_W, false);
+    debounce_key(SDL_SCANCODE_A, app->key_map->key_A, false);
+    debounce_key(SDL_SCANCODE_S, app->key_map->key_S, false);
+    debounce_key(SDL_SCANCODE_D, app->key_map->key_D, false);
 
-    check_key_press_duration(SDL_SCANCODE_UP, app->key_map->key_up, 0);
-    check_key_press_duration(SDL_SCANCODE_LEFT, app->key_map->key_left, 0);
-    check_key_press_duration(SDL_SCANCODE_DOWN, app->key_map->key_down, 0);
-    check_key_press_duration(SDL_SCANCODE_RIGHT, app->key_map->key_right, 0);
+    debounce_key(SDL_SCANCODE_UP, app->key_map->key_up, false);
+    debounce_key(SDL_SCANCODE_LEFT, app->key_map->key_left, false);
+    debounce_key(SDL_SCANCODE_DOWN, app->key_map->key_down, false);
+    debounce_key(SDL_SCANCODE_RIGHT, app->key_map->key_right, false);
 
-    check_key_press_duration(SDL_SCANCODE_SPACE, app->key_map->key_space, 0);
+    debounce_key(SDL_SCANCODE_SPACE, app->key_map->key_space, false);
 }
 
-void GameEngine::ApplyObjectPhysics(int64_t delta) {
+void GameEngine::ApplyObjectPhysics() {
     for (GameObject *game_object : this->game_objects) {
-        game_object->Move(delta);
+        game_object->Move(this->engine_timeline.GetFrameTime().delta);
     }
 }
 
@@ -289,19 +285,15 @@ bool GameEngine::HandleEvents() {
     return quit;
 }
 
-void GameEngine::HandleTimelineInputs(int64_t current_time) {
+void GameEngine::HandleTimelineInputs() {
     if (app->key_map->key_P.pressed) {
-        this->engine_timeline.TogglePause(current_time);
-        Log(LogLevel::Info, "Tick: %f", this->engine_timeline.GetTic());
-        Log(LogLevel::Info, "Toggle Pause");
+        this->engine_timeline.TogglePause(this->engine_timeline.GetFrameTime().current);
     }
     if (app->key_map->key_comma.pressed) {
         this->engine_timeline.ChangeTic(std::min(this->engine_timeline.GetTic() * 2.0, 2.0));
-        Log(LogLevel::Info, "Slowdown");
     }
     if (app->key_map->key_period.pressed) {
         this->engine_timeline.ChangeTic(std::max(this->engine_timeline.GetTic() / 2.0, 0.5));
-        Log(LogLevel::Info, "Speedup");
     }
 }
 

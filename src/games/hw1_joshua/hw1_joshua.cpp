@@ -8,10 +8,6 @@
 
 const int TILE_SIZE = 100;
 
-// All textures sourced from:
-// https://kenney.nl/assets/background-elements-redux
-// https://kenney.nl/assets/platformer-pack-redux
-
 // Game update code
 void Update(std::vector<GameObject *> *game_objects) {
     // Generate a random number
@@ -143,6 +139,10 @@ int main(int argc, char *args[]) {
 
     // Initializing the Game Engine
     GameEngine game_engine;
+    if (!SetEngineCLIOptions(&game_engine, argc, args)) {
+        return 0;
+    }
+
     Color background_color = Color{52, 153, 219, 255};
     game_engine.SetBackgroundColor(background_color);
     if (!game_engine.Init(game_title.c_str())) {

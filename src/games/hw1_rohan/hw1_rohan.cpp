@@ -185,6 +185,10 @@ int main(int argc, char *args[]) {
 
     // Initializing the Game Engine
     GameEngine game_engine;
+    if (!SetEngineCLIOptions(&game_engine, argc, args)) {
+        return 0;
+    }
+
     Color background_color = Color{165, 200, 255, 255};
     game_engine.SetBackgroundColor(background_color);
     if (!game_engine.Init(game_title.c_str())) {
