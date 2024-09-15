@@ -123,16 +123,16 @@ void UpdateAlien(GameObject *alien) {
     }
 }
 
-void GenerateGround(std::vector<GameObject> *ground) {
+void GenerateGround(std::vector<GameObject *> *ground) {
     for (int i = 0; i < (GetWindowSize().width / TILE_SIZE) + 2; i++) {
-        GameObject ground_tile("ground", Moving);
-        ground_tile.SetColor(Color{0, 0, 0, 0});
-        ground_tile.SetPosition(
+        GameObject *ground_tile = new GameObject("ground", Moving);
+        ground_tile->SetColor(Color{0, 0, 0, 0});
+        ground_tile->SetPosition(
             Position{float(i * TILE_SIZE), float(GetWindowSize().height - TILE_SIZE)});
-        ground_tile.SetSize(Size{TILE_SIZE, TILE_SIZE});
-        ground_tile.SetVelocity(Velocity{-50, 0});
-        ground_tile.SetReduceVelocityOnCollision(false);
-        ground_tile.SetTexture("assets/ground.png");
+        ground_tile->SetSize(Size{TILE_SIZE, TILE_SIZE});
+        ground_tile->SetVelocity(Velocity{-50, 0});
+        ground_tile->SetReduceVelocityOnCollision(false);
+        ground_tile->SetTexture("assets/ground.png");
 
         ground->push_back(ground_tile);
     }
@@ -160,7 +160,7 @@ int main(int argc, char *args[]) {
     alien.SetTexture("assets/alien.png");
     alien.SetCallback(UpdateAlien);
 
-    std::vector<GameObject> ground;
+    std::vector<GameObject *> ground;
     GenerateGround(&ground);
 
     GameObject cloud_1("cloud", Stationary);
@@ -184,8 +184,8 @@ int main(int argc, char *args[]) {
     platform.SetTexture("assets/stone.png");
 
     std::vector<GameObject *> objects = std::vector({&alien, &cloud_1, &cloud_2, &platform});
-    for (GameObject &ground_tile : ground) {
-        objects.push_back(&ground_tile);
+    for (GameObject *ground_tile : ground) {
+        objects.push_back(ground_tile);
     }
     game_engine.AddObjects(objects);
     game_engine.SetCallback(Update);
