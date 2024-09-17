@@ -4,6 +4,7 @@
 #include "SDL_log.h"
 #include "SDL_video.h"
 #include "Types.hpp"
+#include <algorithm>
 
 SDL_Texture *LoadTexture(std::string path) {
     SDL_Surface *surface = IMG_Load(path.c_str());
