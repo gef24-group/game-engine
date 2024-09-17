@@ -13,8 +13,10 @@
 #include "Utils.hpp"
 #include <algorithm>
 #include <chrono>
+#include <string>
 #include <thread>
 #include <vector>
+#include <zmq.hpp>
 
 GameEngine::GameEngine() {
     app->window = nullptr;
@@ -61,9 +63,106 @@ bool GameEngine::InitSingleClient() {
     return display_success;
 }
 
-bool GameEngine::InitCSServer() { return false; }
+bool GameEngine::InitCSServer() {
+    zmq::context_t context(1); // Initialize ZMQ context with one I/O thread
 
-bool GameEngine::InitCSClient() { return false; }
+    // Function to handle client-specific communication
+    auto client_handler = [this](zmq::context_t &context, int client_id,
+                                 const std::string &client_address) {
+        zmq::socket_t client_socket(context, zmq::socket_type::rep);
+        client_socket.connect(client_address);
+
+        Log(LogLevel::Info, "Client thread for ID %d started", client_id);
+
+        while (true) {
+            zmq::message_t request;
+            // Receive message from the client
+            client_socket.recv(request, zmq::recv_flags::none);
+            std::string message(static_cast<char *>(request.data()), request.size());
+
+            Log(LogLevel::Info, "Received from client %d : %s", client_id, message.c_str());
+
+            // Send acknowledgment back
+            std::string ack = "ACK from server to client " + std::to_string(client_id);
+            zmq::message_t reply(ack.size());
+            memcpy(reply.data(), ack.c_str(), ack.size());
+            client_socket.send(reply, zmq::send_flags::none);
+        }
+    };
+
+    // Server to listen for initial "hello" and "join" messages
+    auto server_listener = [this, &client_handler](zmq::context_t &context) {
+        zmq::socket_t server_socket(context, zmq::socket_type::rep);
+        server_socket.bind("tcp://*:5555");
+
+        Log(LogLevel::Info, "Server listening for incoming connections...");
+
+        while (true) {
+            zmq::message_t request;
+            // Receive message from the client
+            server_socket.recv(request, zmq::recv_flags::none);
+            std::string message(static_cast<char *>(request.data()), request.size());
+
+            if (message == "join") {
+                int client_id = this->clients_connected.fetch_add(1);
+                std::string client_address = "tcp://localhost:600" + std::to_string(client_id);
+
+                Log(LogLevel::Info, "Received join message, assigning ID %d", client_id);
+
+                // Reply to the client with its assigned ID
+                std::string reply =
+                    "ID: " + std::to_string(client_id) + " | Address: " + client_address;
+                zmq::message_t reply_msg(reply.size());
+                memcpy(reply_msg.data(), reply.c_str(), reply.size());
+                server_socket.send(reply_msg, zmq::send_flags::none);
+
+                // Create a new thread for client-specific communication
+                std::thread client_thread(client_handler, std::ref(context), client_id,
+                                          client_address);
+                client_thread.detach(); // Detach the thread to allow infinite running
+            }
+        }
+    };
+
+    // Start the server listener in a separate thread
+    std::thread server_thread(server_listener, std::ref(context));
+    server_thread.join(); // Keep the main thread alive
+    return false;
+}
+
+// Initialize the client's connection to the server
+bool GameEngine::InitCSClientConnection() {
+    // Sending a connection request to the server
+    zmq::context_t context(1);
+    zmq::socket_t req_socket(context, zmq::socket_type::req);
+    req_socket.connect("tcp://localhost:5555");
+
+    std::string join_message = "join";
+    zmq::message_t connection_request(join_message.size());
+    memcpy(connection_request.data(), join_message.c_str(), join_message.size());
+    req_socket.send(connection_request, zmq::send_flags::none);
+
+    zmq::message_t server_reply;
+    zmq::recv_result_t result = req_socket.recv(server_reply, zmq::recv_flags::none);
+    if (!result) {
+        Log(LogLevel::Error, "Error: Failed to receive message from server.");
+        return false;
+    }
+    std::string client_id(static_cast<const char *>(server_reply.data()), server_reply.size());
+    Log(LogLevel::Info, "The client ID assigned by the server: %s", client_id.c_str());
+    this->network_info.id = std::stoi(client_id);
+
+    return true;
+}
+
+bool GameEngine::InitCSClient() {
+    app->key_map = new KeyMap();
+    bool display_success = InitializeDisplay();
+    bool client_connection_success = InitCSClientConnection();
+    this->ShowWelcomeScreen();
+
+    return display_success && client_connection_success;
+}
 
 bool GameEngine::InitP2PServer() { return false; }
 
@@ -128,8 +227,51 @@ void GameEngine::StartSingleClient() {
 
 void GameEngine::StartCSServer() {}
 
-void GameEngine::StartCSClient() {}
+void GameEngine::ListenServerBroadcasts(zmq::context_t &context) {
+    zmq::socket_t sub_socket(context, ZMQ_SUB);
+    sub_socket.connect("tcp://localhost:600" + std::to_string(this->network_info.id));
+    sub_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0); // Subscribe to all messages
 
+    while (true) {
+        zmq::message_t message;
+        sub_socket.recv(message, zmq::recv_flags::none);
+        std::string received_message(static_cast<char *>(message.data()), message.size());
+        // std::cout << "Broadcast message: " << received_message << std::endl;
+        Log(LogLevel::Info, "Broadcast message received from the server: %s",
+            received_message.c_str());
+    }
+}
+
+void GameEngine::StartCSClient() {
+    zmq::context_t context(1);
+    std::thread([this, &context]() { this->ListenServerBroadcasts(context); }).detach();
+
+    app->quit = false;
+    std::thread input_thread = std::thread([this]() {
+        while (!app->quit) {
+            this->ReadHIDs();
+        }
+    });
+
+    this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
+    // Engine loop
+    while (!app->quit) {
+        app->quit = this->HandleEvents();
+        this->GetTimeDelta();
+        this->ApplyObjectPhysics();
+        this->ApplyObjectUpdates();
+        this->TestCollision();
+        this->HandleCollisions();
+        this->Update();
+        this->RenderScene();
+    }
+
+    if (input_thread.joinable()) {
+        input_thread.join();
+    }
+
+    this->Shutdown();
+}
 void GameEngine::StartP2PServer() {}
 
 void GameEngine::StartP2PPeer() {}

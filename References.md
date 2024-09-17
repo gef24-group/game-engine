@@ -15,3 +15,4 @@
 - [Elina Araja, Photo of Gray Surface](https://www.pexels.com/photo/photo-of-gray-surface-3377405/)
 - [Clipart Library](https://clipart-library.com/)
 - [CSC 581 Lecture 5: Time Management](https://docs.google.com/presentation/d/1EZ9PFmYsufonouzSsVSzEfTW6dvkegJ7)
+- [ZeroMQ - The Guide](https://zguide.zeromq.org/)

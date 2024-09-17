@@ -6,6 +6,7 @@
 #include "Types.hpp"
 #include <functional>
 #include <vector>
+#include <zmq.hpp>
 
 extern App *app;
 
@@ -14,10 +15,13 @@ class GameEngine {
     std::string game_title;
     Timeline engine_timeline;
     NetworkInfo network_info;
+    std::atomic<int> clients_connected = -1;
     Color background_color;
     std::vector<GameObject *> game_objects;
     std::function<void(std::vector<GameObject *> *game_objects)> callback;
     Window window;
+    bool InitCSClientConnection();
+    void ListenServerBroadcasts(zmq::context_t &context);
 
   public:
     GameEngine();
