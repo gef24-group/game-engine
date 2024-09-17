@@ -143,11 +143,8 @@ bool GameEngine::InitCSClientConnection() {
     req_socket.send(connection_request, zmq::send_flags::none);
 
     zmq::message_t server_reply;
-    zmq::recv_result_t result = req_socket.recv(server_reply, zmq::recv_flags::none);
-    if (!result) {
-        Log(LogLevel::Error, "Error: Failed to receive message from server.");
-        return false;
-    }
+    auto res = req_socket.recv(server_reply, zmq::recv_flags::none);
+
     std::string client_id(static_cast<const char *>(server_reply.data()), server_reply.size());
     Log(LogLevel::Info, "The client ID assigned by the server: %s", client_id.c_str());
     this->network_info.id = std::stoi(client_id);
@@ -230,11 +227,11 @@ void GameEngine::StartCSServer() {}
 void GameEngine::ListenServerBroadcasts(zmq::context_t &context) {
     zmq::socket_t sub_socket(context, ZMQ_SUB);
     sub_socket.connect("tcp://localhost:600" + std::to_string(this->network_info.id));
-    sub_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0); // Subscribe to all messages
+    sub_socket.set(zmq::sockopt::subscribe, ""); // Subscribe to all messages
 
-    while (true) {
+    while (!app->quit) {
         zmq::message_t message;
-        sub_socket.recv(message, zmq::recv_flags::none);
+        auto res = sub_socket.recv(message, zmq::recv_flags::none);
         std::string received_message(static_cast<char *>(message.data()), message.size());
         // std::cout << "Broadcast message: " << received_message << std::endl;
         Log(LogLevel::Info, "Broadcast message received from the server: %s",
@@ -243,31 +240,37 @@ void GameEngine::ListenServerBroadcasts(zmq::context_t &context) {
 }
 
 void GameEngine::StartCSClient() {
-    zmq::context_t context(1);
-    std::thread([this, &context]() { this->ListenServerBroadcasts(context); }).detach();
-
     app->quit = false;
-    std::thread input_thread = std::thread([this]() {
-        while (!app->quit) {
-            this->ReadHIDs();
-        }
-    });
 
-    this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
-    // Engine loop
-    while (!app->quit) {
-        app->quit = this->HandleEvents();
-        this->GetTimeDelta();
-        this->ApplyObjectPhysics();
-        this->ApplyObjectUpdates();
-        this->TestCollision();
-        this->HandleCollisions();
-        this->Update();
-        this->RenderScene();
-    }
+    zmq::context_t context(1);
+    std::thread listener_thread =
+        std::thread([this, &context]() { this->ListenServerBroadcasts(context); });
 
-    if (input_thread.joinable()) {
-        input_thread.join();
+    // std::thread input_thread = std::thread([this]() {
+    //     while (!app->quit) {
+    //         this->ReadHIDs();
+    //     }
+    // });
+
+    // this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
+    // // Engine loop
+    // while (!app->quit) {
+    //     app->quit = this->HandleEvents();
+    //     this->GetTimeDelta();
+    //     this->ApplyObjectPhysics();
+    //     this->ApplyObjectUpdates();
+    //     this->TestCollision();
+    //     this->HandleCollisions();
+    //     this->Update();
+    //     this->RenderScene();
+    // }
+
+    // if (input_thread.joinable() && listener_thread.joinable()) {
+    //     input_thread.join();
+    //     listener_thread.join();
+    // }
+    if (listener_thread.joinable()) {
+        listener_thread.join();
     }
 
     this->Shutdown();
