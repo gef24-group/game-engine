@@ -98,13 +98,18 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
     }
 
     if (std::find(valid_modes.begin(), valid_modes.end(), mode) == valid_modes.end()) {
-        Log(LogLevel::Error, "Error: Invalid mode. Must be one of [single, cs, p2p]");
+        Log(LogLevel::Error, "Invalid mode. Must be one of [single, cs, p2p]");
         return false;
     }
 
     if (std::find(valid_roles.begin(), valid_roles.end(), role) == valid_roles.end()) {
-        Log(LogLevel::Error, "Error: Invalid role. Must be one of [server, client, peer]");
+        Log(LogLevel::Error, "Invalid role. Must be one of [server, client, peer]");
         return false;
+    }
+
+    if ((mode == "single" && (role == "server" || role == "peer")) ||
+        (mode == "cs" && role == "peer") || (mode == "p2p" && role == "client")) {
+        Log(LogLevel::Error, "[%s] mode does not support [%s] role!", mode.c_str(), role.c_str());
     }
 
     NetworkMode network_mode;

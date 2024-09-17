@@ -51,7 +51,7 @@ void Update(std::vector<GameObject *> *game_objects) {
         enemy->SetVelocity(Velocity{-50, 0});
         enemy->SetSize(Size{TILE_SIZE, TILE_SIZE});
         enemy->SetColor(Color{0, 0, 0, 0});
-        enemy->SetReduceVelocityOnCollision(false);
+        enemy->SetAffectedByCollision(false);
         enemy->SetTexture(enemies[random_enemy]);
         game_objects->push_back(enemy);
     }
@@ -90,17 +90,17 @@ void Update(std::vector<GameObject *> *game_objects) {
 }
 
 void UpdateAlien(GameObject *alien) {
-    if (app->key_map->key_up.pressed || app->key_map->key_W.pressed) {
+    if (app->key_map->key_up.pressed.load() || app->key_map->key_W.pressed.load()) {
         alien->SetVelocity({alien->GetVelocity().x, -60});
     }
 
-    if (app->key_map->key_down.pressed || app->key_map->key_S.pressed) {
+    if (app->key_map->key_down.pressed.load() || app->key_map->key_S.pressed.load()) {
         alien->SetVelocity({alien->GetVelocity().x, 60});
     }
 
-    if (app->key_map->key_left.pressed || app->key_map->key_A.pressed) {
+    if (app->key_map->key_left.pressed.load() || app->key_map->key_A.pressed.load()) {
         alien->SetVelocity({-60, alien->GetVelocity().y});
-    } else if (app->key_map->key_right.pressed || app->key_map->key_D.pressed) {
+    } else if (app->key_map->key_right.pressed.load() || app->key_map->key_D.pressed.load()) {
         alien->SetVelocity({60, alien->GetVelocity().y});
     } else {
         alien->SetVelocity({0, alien->GetVelocity().y});
@@ -127,7 +127,7 @@ void GenerateGround(std::vector<GameObject *> *ground) {
             Position{float(i * TILE_SIZE), float(GetWindowSize().height - TILE_SIZE)});
         ground_tile->SetSize(Size{TILE_SIZE, TILE_SIZE});
         ground_tile->SetVelocity(Velocity{-50, 0});
-        ground_tile->SetReduceVelocityOnCollision(false);
+        ground_tile->SetAffectedByCollision(false);
         ground_tile->SetTexture("assets/ground.png");
 
         ground->push_back(ground_tile);
@@ -140,12 +140,17 @@ int main(int argc, char *args[]) {
     // Initializing the Game Engine
     GameEngine game_engine;
     if (!SetEngineCLIOptions(&game_engine, argc, args)) {
-        return 0;
+        return 1;
     }
 
-    Color background_color = Color{52, 153, 219, 255};
-    game_engine.SetBackgroundColor(background_color);
-    if (!game_engine.Init(game_title.c_str())) {
+    if (game_engine.GetNetworkInfo().role == NetworkRole::Client ||
+        game_engine.GetNetworkInfo().role == NetworkRole::Peer) {
+        Color background_color = Color{52, 153, 219, 255};
+        game_engine.SetBackgroundColor(background_color);
+        game_engine.SetGameTitle(game_title);
+    }
+
+    if (!game_engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }
@@ -168,19 +173,21 @@ int main(int argc, char *args[]) {
     cloud_1.SetTexture("assets/cloud_1.png");
     cloud_1.SetPosition(Position{float(GetWindowSize().width) / 2 - 500, TILE_SIZE});
     cloud_1.SetSize(Size{203, 121});
+    cloud_1.SetAffectedByCollision(false);
 
     GameObject cloud_2("cloud", Stationary);
     cloud_2.SetColor(Color{0, 0, 0, 0});
     cloud_2.SetTexture("assets/cloud_2.png");
     cloud_2.SetPosition(Position{float(GetWindowSize().width) / 2 + 300, TILE_SIZE});
     cloud_2.SetSize(Size{216, 139});
+    cloud_2.SetAffectedByCollision(false);
 
     GameObject platform("platform", Moving);
     platform.SetColor(Color{0, 0, 0, 0});
     platform.SetPosition(Position{20, TILE_SIZE * 4});
     platform.SetSize(Size{TILE_SIZE * 3, TILE_SIZE / 2});
     platform.SetVelocity(Velocity{40, 0});
-    platform.SetReduceVelocityOnCollision(false);
+    platform.SetAffectedByCollision(false);
     platform.SetTexture("assets/stone.png");
 
     std::vector<GameObject *> objects = std::vector({&alien, &cloud_1, &cloud_2, &platform});

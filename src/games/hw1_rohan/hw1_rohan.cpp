@@ -41,15 +41,15 @@ void Update(std::vector<GameObject *> *game_objects) {
 void UpdatePlayer(GameObject *player) {
     bool player_moved = false;
 
-    if (app->key_map->key_right.pressed) {
+    if (app->key_map->key_right.pressed.load()) {
         player_moved = true;
         player->SetVelocity({60, player->GetVelocity().y}); // Move left
-    } else if (app->key_map->key_left.pressed) {
+    } else if (app->key_map->key_left.pressed.load()) {
         player_moved = true;
         player->SetVelocity({-60, player->GetVelocity().y}); // Move right
     }
 
-    if (app->key_map->key_up.pressed) {
+    if (app->key_map->key_up.pressed.load()) {
         player_moved = true;
         player->SetVelocity({player->GetVelocity().x, -60});
     }
@@ -73,7 +73,7 @@ void UpdateBall(GameObject *ball) {
             // Log(LogLevel::Info, "The ball is being set to velocity: %d",
             // collider->GetVelocity().x);
             ball->SetVelocity(collider->GetVelocity());
-            if (app->key_map->key_space.pressed) {
+            if (app->key_map->key_space.pressed.load()) {
                 ball->SetVelocity({60, -60});
             }
         }
@@ -123,8 +123,8 @@ GameObject *CreateOpponent() {
     opponent->SetVelocity({-30, 0});
     opponent->SetAcceleration({0, 10});
     opponent->SetTexture("assets/soccer_player_left_facing.png");
+    opponent->SetRestitution(1);
     opponent->SetCallback(UpdateOpponent);
-    opponent->SetReduceVelocityOnCollision(false);
 
     return opponent;
 }
@@ -146,6 +146,7 @@ GameObject *CreateBasket() {
     basket->SetPosition({float(window_size.width - 100), float(window_size.height - 275)});
     basket->SetAcceleration({0, 10});
     basket->SetTexture("assets/basket.png");
+    basket->SetAffectedByCollision(false);
 
     return basket;
 }
@@ -156,6 +157,7 @@ GameObject *CreateGround() {
     ground->SetPosition({0, float(window_size.height - 200)});
     ground->SetAcceleration({0, 10});
     ground->SetColor({0, 255, 0, 255});
+    ground->SetAffectedByCollision(false);
 
     return ground;
 }
@@ -186,12 +188,17 @@ int main(int argc, char *args[]) {
     // Initializing the Game Engine
     GameEngine game_engine;
     if (!SetEngineCLIOptions(&game_engine, argc, args)) {
-        return 0;
+        return 1;
     }
 
-    Color background_color = Color{165, 200, 255, 255};
-    game_engine.SetBackgroundColor(background_color);
-    if (!game_engine.Init(game_title.c_str())) {
+    if (game_engine.GetNetworkInfo().role == NetworkRole::Client ||
+        game_engine.GetNetworkInfo().role == NetworkRole::Peer) {
+        Color background_color = Color{165, 200, 255, 255};
+        game_engine.SetBackgroundColor(background_color);
+        game_engine.SetGameTitle(game_title);
+    }
+
+    if (!game_engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }

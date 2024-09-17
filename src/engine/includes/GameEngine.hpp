@@ -11,6 +11,7 @@ extern App *app;
 
 class GameEngine {
   private:
+    std::string game_title;
     Timeline engine_timeline;
     NetworkInfo network_info;
     Color background_color;
@@ -20,10 +21,23 @@ class GameEngine {
 
   public:
     GameEngine();
+    bool Init();
+    bool InitSingleClient();
+    bool InitCSServer();
+    bool InitCSClient();
+    bool InitP2PServer();
+    bool InitP2PPeer();
     void Start();
-    bool Init(const char *game_title);
-    bool InitializeDisplay(const char *game_title);
+    void StartSingleClient();
+    void StartCSServer();
+    void StartCSClient();
+    void StartP2PServer();
+    void StartP2PPeer();
+    void SetupDefaultInputs();
+    bool InitializeDisplay();
+    void SetGameTitle(std::string game_title);
     void SetNetworkInfo(NetworkInfo network_info);
+    NetworkInfo GetNetworkInfo();
     void SetBackgroundColor(Color color);
     void ShowWelcomeScreen();
     std::vector<GameObject *> GetObjects();
@@ -38,7 +52,6 @@ class GameEngine {
     bool HandleEvents();
     void HandleCollisions();
     void HandleScaling();
-    void HandleTimelineInputs();
     void RenderScene();
     void RenderBackground();
     void Shutdown();

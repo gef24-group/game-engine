@@ -63,9 +63,9 @@ void Update(std::vector<GameObject *> *game_objects) {
 
 void UpdatePlatform(GameObject *platform) {
 
-    if (app->key_map->key_left.pressed) {
+    if (app->key_map->key_left.pressed.load()) {
         platform->SetPosition({platform->GetPosition().x - 10, platform->GetPosition().y});
-    } else if (app->key_map->key_right.pressed) {
+    } else if (app->key_map->key_right.pressed.load()) {
         platform->SetPosition({platform->GetPosition().x + 10, platform->GetPosition().y});
     }
 }
@@ -76,12 +76,17 @@ int main(int argc, char *args[]) {
     // Initializing the Game Engine
     GameEngine game_engine;
     if (!SetEngineCLIOptions(&game_engine, argc, args)) {
-        return 0;
+        return 1;
     }
 
-    Color background_color = Color{0, 0, 0, 255};
-    game_engine.SetBackgroundColor(background_color);
-    if (!game_engine.Init(game_title.c_str())) {
+    if (game_engine.GetNetworkInfo().role == NetworkRole::Client ||
+        game_engine.GetNetworkInfo().role == NetworkRole::Peer) {
+        Color background_color = Color{0, 0, 0, 255};
+        game_engine.SetBackgroundColor(background_color);
+        game_engine.SetGameTitle(game_title);
+    }
+
+    if (!game_engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }
@@ -101,22 +106,25 @@ int main(int argc, char *args[]) {
     ball.SetVelocity(Velocity{40, 40});
     ball.SetRestitution(1);
     ball.SetTexture("assets/ball.png");
-    ball.SetReduceVelocityOnCollision(false);
+    ball.SetAffectedByCollision(false);
 
     wall_left.SetColor(Color{255, 0, 0, 255});
     wall_left.SetPosition(Position{0, 0});
     wall_left.SetSize(Size{100, 1080});
     wall_left.SetTexture("assets/wall.jpeg");
+    wall_left.SetAffectedByCollision(false);
 
     wall_top.SetColor(Color{255, 0, 0, 255});
     wall_top.SetPosition(Position{100, 0});
     wall_top.SetSize(Size{1820, 100});
     wall_top.SetTexture("assets/wall.jpeg");
+    wall_top.SetAffectedByCollision(false);
 
     wall_right.SetColor(Color{255, 0, 0, 255});
     wall_right.SetPosition(Position{1620, 100});
     wall_right.SetSize(Size{100, 980});
     wall_right.SetTexture("assets/wall.jpeg");
+    wall_right.SetAffectedByCollision(false);
     // enemy.SetVelocity(Velocity{50, 0});
     // enemy.SetCallback(UpdateEnemy);
 
@@ -124,6 +132,7 @@ int main(int argc, char *args[]) {
     platform.SetPosition(Position{250, 1010});
     platform.SetSize(Size{200, 30});
     platform.SetCallback(UpdatePlatform);
+    platform.SetAffectedByCollision(false);
 
     std::vector<GameObject *> objects =
         std::vector({&ball, &wall_left, &wall_top, &wall_right, &platform});

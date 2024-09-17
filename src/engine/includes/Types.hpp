@@ -1,5 +1,8 @@
 #pragma once
+
+#include <atomic>
 #include <chrono>
+#include <functional>
 
 enum Shape { Circle, Square, Rectangle, Triangle };
 enum GameObjectCategory { Controllable, Moving, Stationary };
@@ -35,8 +38,9 @@ struct Acceleration {
 };
 
 struct Key {
-    bool pressed = false;
+    std::atomic<bool> pressed = false;
     std::chrono::time_point<std::chrono::high_resolution_clock> last_pressed_time;
+    std::function<void()> OnPress = []() {};
 };
 
 struct KeyMap {

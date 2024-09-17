@@ -19,6 +19,7 @@
 GameEngine::GameEngine() {
     app->window = nullptr;
     app->renderer = nullptr;
+    this->game_title = "";
     this->engine_timeline = Timeline();
     this->background_color = Color{0, 0, 0, 255};
     this->game_objects = std::vector<GameObject *>();
@@ -26,43 +27,141 @@ GameEngine::GameEngine() {
     this->window = {1920, 1080, false};
 }
 
+bool GameEngine::Init() {
+    if (this->network_info.mode == NetworkMode::Single &&
+        this->network_info.role == NetworkRole::Client) {
+        return this->InitSingleClient();
+    }
+
+    if (this->network_info.mode == NetworkMode::ClientServer) {
+        if (this->network_info.role == NetworkRole::Server) {
+            return this->InitCSServer();
+        }
+        if (this->network_info.role == NetworkRole::Client) {
+            return this->InitCSClient();
+        }
+    }
+
+    if (this->network_info.mode == NetworkMode::PeerToPeer) {
+        if (this->network_info.role == NetworkRole::Server) {
+            return this->InitP2PServer();
+        }
+        if (this->network_info.role == NetworkRole::Peer) {
+            return this->InitP2PPeer();
+        }
+    }
+
+    return false;
+}
+
+bool GameEngine::InitSingleClient() {
+    app->key_map = new KeyMap();
+    bool display_success = InitializeDisplay();
+    this->ShowWelcomeScreen();
+    return display_success;
+}
+
+bool GameEngine::InitCSServer() { return false; }
+
+bool GameEngine::InitCSClient() { return false; }
+
+bool GameEngine::InitP2PServer() { return false; }
+
+bool GameEngine::InitP2PPeer() { return false; }
+
 void GameEngine::Start() {
+    if (this->network_info.mode == NetworkMode::Single &&
+        this->network_info.role == NetworkRole::Client) {
+        this->StartSingleClient();
+    }
+
+    if (this->network_info.mode == NetworkMode::ClientServer) {
+        if (this->network_info.role == NetworkRole::Server) {
+            this->StartCSServer();
+        }
+        if (this->network_info.role == NetworkRole::Client) {
+            this->StartCSClient();
+        }
+    }
+
+    if (this->network_info.mode == NetworkMode::PeerToPeer) {
+        if (this->network_info.role == NetworkRole::Server) {
+            this->StartP2PServer();
+        }
+        if (this->network_info.role == NetworkRole::Peer) {
+            this->StartP2PPeer();
+        }
+    }
+}
+
+void GameEngine::StartSingleClient() {
     app->quit = false;
+
+    this->SetupDefaultInputs();
+
+    std::thread input_thread = std::thread([this]() {
+        while (!app->quit) {
+            this->ReadHIDs();
+        }
+    });
+
     this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
 
     // Engine loop
     while (!app->quit) {
         app->quit = this->HandleEvents();
         this->GetTimeDelta();
-        this->ReadHIDs();
         this->ApplyObjectPhysics();
         this->ApplyObjectUpdates();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
-        this->HandleTimelineInputs();
         this->RenderScene();
     }
+
+    if (input_thread.joinable()) {
+        input_thread.join();
+    }
+
     this->Shutdown();
 }
 
-bool GameEngine::Init(const char *game_title) {
-    app->key_map = new KeyMap();
-    bool display_success = InitializeDisplay(game_title);
-    this->ShowWelcomeScreen();
+void GameEngine::StartCSServer() {}
 
-    return display_success;
+void GameEngine::StartCSClient() {}
+
+void GameEngine::StartP2PServer() {}
+
+void GameEngine::StartP2PPeer() {}
+
+void GameEngine::SetupDefaultInputs() {
+    // toggle constant and proportional scaling
+    app->key_map->key_X.OnPress = [this]() {
+        this->window.proportional_scaling = !this->window.proportional_scaling;
+    };
+    // toggle pause or unpause
+    app->key_map->key_P.OnPress = [this]() {
+        this->engine_timeline.TogglePause(this->engine_timeline.GetFrameTime().current);
+    };
+    // slow down the timeline
+    app->key_map->key_comma.OnPress = [this]() {
+        this->engine_timeline.ChangeTic(std::min(this->engine_timeline.GetTic() * 2.0, 2.0));
+    };
+    // speed up the timeline
+    app->key_map->key_period.OnPress = [this]() {
+        this->engine_timeline.ChangeTic(std::max(this->engine_timeline.GetTic() / 2.0, 0.5));
+    };
 }
 
-bool GameEngine::InitializeDisplay(const char *game_title) {
+bool GameEngine::InitializeDisplay() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         Log(LogLevel::Error, "SDL_Init Error: %s", SDL_GetError());
         return false;
     }
 
     SDL_Window *window = SDL_CreateWindow(
-        game_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, this->window.width,
-        this->window.height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        this->game_title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        this->window.width, this->window.height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!window) {
         Log(LogLevel::Error, "SDL_CreateWindow Error: %s", SDL_GetError());
         SDL_Quit();
@@ -85,7 +184,11 @@ bool GameEngine::InitializeDisplay(const char *game_title) {
     return true;
 }
 
+void GameEngine::SetGameTitle(std::string game_title) { this->game_title = game_title; }
+
 void GameEngine::SetNetworkInfo(NetworkInfo network_info) { this->network_info = network_info; }
+
+NetworkInfo GameEngine::GetNetworkInfo() { return this->network_info; }
 
 void GameEngine::SetBackgroundColor(Color color) { this->background_color = color; }
 
@@ -129,21 +232,22 @@ void GameEngine::ReadHIDs() {
 
     auto debounce_key = [&](int scancode, Key &key, bool delay) {
         if (!delay) {
-            key.pressed = keyboard_state[scancode] != 0;
+            key.pressed.store(keyboard_state[scancode] != 0);
             return;
         }
 
         if (keyboard_state[scancode] != 0) {
             auto press_duration =
                 std::chrono::duration_cast<std::chrono::milliseconds>(now - key.last_pressed_time);
-            if (press_duration.count() > 50 && !key.pressed) {
-                key.pressed = true;
+            if (press_duration.count() > 50 && !key.pressed.load()) {
+                key.pressed.store(true);
+                key.OnPress();
             } else {
-                key.pressed = false;
+                key.pressed.store(false);
                 key.last_pressed_time = now;
             }
         } else {
-            key.pressed = false;
+            key.pressed.store(false);
         }
     };
 
@@ -242,25 +346,22 @@ void GameEngine::HandleCollisions() {
 
                 game_object->SetPosition(Position{float(pos_x), float(pos_y)});
 
-                if (game_object->GetReduceVelocityOnCollision()) {
-                    float vel_x = game_object->GetVelocity().x;
-                    float vel_y = game_object->GetVelocity().y;
-                    if (min_overlap == left_overlap || min_overlap == right_overlap) {
-                        vel_x *= -game_object->GetRestitution();
-                    }
-                    if (min_overlap == top_overlap || min_overlap == bottom_overlap) {
-                        vel_y *= -game_object->GetRestitution();
-                    }
-                    game_object->SetVelocity(Velocity{vel_x, vel_y});
+                float vel_x = game_object->GetVelocity().x;
+                float vel_y = game_object->GetVelocity().y;
+                if (min_overlap == left_overlap || min_overlap == right_overlap) {
+                    vel_x *= -game_object->GetRestitution();
                 }
-                // }
+                if (min_overlap == top_overlap || min_overlap == bottom_overlap) {
+                    vel_y *= -game_object->GetRestitution();
+                }
+                game_object->SetVelocity(Velocity{vel_x, vel_y});
             }
         }
     };
 
     // Iterate over each game object
     for (GameObject *game_object : this->game_objects) {
-        if (game_object->GetCategory() == Controllable || game_object->GetCategory() == Moving) {
+        if (game_object->GetAffectedByCollision()) {
             // Spawn a new thread for each game object
             threads.emplace_back(handle_collision, game_object);
         }
@@ -285,18 +386,6 @@ bool GameEngine::HandleEvents() {
     return quit;
 }
 
-void GameEngine::HandleTimelineInputs() {
-    if (app->key_map->key_P.pressed) {
-        this->engine_timeline.TogglePause(this->engine_timeline.GetFrameTime().current);
-    }
-    if (app->key_map->key_comma.pressed) {
-        this->engine_timeline.ChangeTic(std::min(this->engine_timeline.GetTic() * 2.0, 2.0));
-    }
-    if (app->key_map->key_period.pressed) {
-        this->engine_timeline.ChangeTic(std::max(this->engine_timeline.GetTic() / 2.0, 0.5));
-    }
-}
-
 void GameEngine::RenderScene() {
     this->HandleScaling();
 
@@ -316,11 +405,6 @@ void GameEngine::RenderBackground() {
 }
 
 void GameEngine::HandleScaling() {
-
-    if (app->key_map->key_X.pressed) {
-        this->window.proportional_scaling = !this->window.proportional_scaling;
-    }
-
     int set_logical_size_err;
 
     if (this->window.proportional_scaling) {

@@ -17,7 +17,7 @@ GameObject::GameObject(std::string name, GameObjectCategory category) {
     this->size = Size{0, 0};
     this->velocity = Velocity{0, 0};
     this->acceleration = Acceleration{0, 0};
-    this->reduce_velocity_on_collision = true;
+    this->affected_by_collision = true;
     this->restitution = 0;
     this->theta_x = 0;
     this->colliders = std::unordered_set<GameObject *>();
@@ -70,7 +70,7 @@ Position GameObject::GetPosition() {
 Size GameObject::GetSize() { return this->size; }
 Velocity GameObject::GetVelocity() { return this->velocity; }
 Acceleration GameObject::GetAcceleration() { return this->acceleration; }
-bool GameObject::GetReduceVelocityOnCollision() { return this->reduce_velocity_on_collision; }
+bool GameObject::GetAffectedByCollision() { return this->affected_by_collision; }
 float GameObject::GetRestitution() { return this->restitution; }
 float GameObject::GetAngle() { return this->theta_x; }
 std::unordered_set<GameObject *> GameObject::GetColliders() { return this->colliders; }
@@ -92,8 +92,8 @@ void GameObject::SetAcceleration(Acceleration acceleration) {
         this->acceleration = acceleration;
     }
 }
-void GameObject::SetReduceVelocityOnCollision(bool reduce_velocity_on_collision) {
-    this->reduce_velocity_on_collision = reduce_velocity_on_collision;
+void GameObject::SetAffectedByCollision(bool affected_by_collision) {
+    this->affected_by_collision = affected_by_collision;
 }
 void GameObject::SetRestitution(float restitution) { this->restitution = restitution; }
 void GameObject::SetAngle(float theta_x) { this->theta_x = theta_x; }
