@@ -23,6 +23,7 @@ GameEngine::GameEngine() {
     app->renderer = nullptr;
     this->game_title = "";
     this->engine_timeline = Timeline();
+    this->clients_connected = 0;
     this->background_color = Color{0, 0, 0, 255};
     this->game_objects = std::vector<GameObject *>();
     this->callback = [](std::vector<GameObject *> *) {};
@@ -58,104 +59,107 @@ bool GameEngine::Init() {
 
 bool GameEngine::InitSingleClient() {
     app->key_map = new KeyMap();
-    bool display_success = InitializeDisplay();
+    bool display_success = this->InitializeDisplay();
     this->ShowWelcomeScreen();
     return display_success;
 }
 
+void GameEngine::CSServerClientThread(JoinReply join_reply) {
+    zmq::socket_t client_socket(this->zmq_context, zmq::socket_type::rep);
+    client_socket.bind(join_reply.client_address);
+
+    Log(LogLevel::Info, "Client thread for client [%d] started", join_reply.client_id);
+
+    while (true) {
+        zmq::message_t request;
+        zmq::recv_result_t result = client_socket.recv(request, zmq::recv_flags::none);
+        std::string message(static_cast<char *>(request.data()), request.size());
+        Log(LogLevel::Info, "Receive client [%d] : %s", join_reply.client_id, message.c_str());
+
+        std::string ack = "Acknowledge client [" + std::to_string(join_reply.client_id) + "]";
+        zmq::message_t reply(ack.size());
+        std::memcpy(reply.data(), ack.c_str(), ack.size());
+        client_socket.send(reply, zmq::send_flags::none);
+    }
+};
+
+void GameEngine::CSServerListenerThread() {
+    this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::rep);
+    this->join_socket.bind("tcp://*:5555");
+
+    Log(LogLevel::Info, "Server listening for incoming connections at port 5555");
+
+    while (true) {
+        zmq::message_t request;
+        zmq::recv_result_t result = this->join_socket.recv(request, zmq::recv_flags::none);
+        std::string message(static_cast<char *>(request.data()), request.size());
+
+        if (message == "join") {
+            int client_id = this->clients_connected += 1;
+
+            JoinReply join_reply;
+            join_reply.client_id = client_id;
+            std::snprintf(join_reply.client_address, sizeof(join_reply.client_address),
+                          "tcp://localhost:600%d", client_id);
+
+            zmq::message_t reply_msg(sizeof(JoinReply));
+            std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
+            this->join_socket.send(reply_msg, zmq::send_flags::none);
+
+            std::thread client_thread([&, this]() { this->CSServerClientThread(join_reply); });
+            client_thread.detach();
+        }
+    }
+};
+
 bool GameEngine::InitCSServer() {
-    zmq::context_t context(1); // Initialize ZMQ context with one I/O thread
+    this->zmq_context = zmq::context_t(1);
+    std::thread server_thread([&, this]() { this->CSServerListenerThread(); });
+    server_thread.detach();
 
-    // Function to handle client-specific communication
-    auto client_handler = [this](zmq::context_t &context, int client_id,
-                                 const std::string &client_address) {
-        zmq::socket_t client_socket(context, zmq::socket_type::rep);
-        client_socket.connect(client_address);
+    this->server_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::pub);
+    this->server_broadcast_socket.bind("tcp://*:5556");
 
-        Log(LogLevel::Info, "Client thread for ID %d started", client_id);
+    // TODO: remove this and refactor
+    bool display_success = this->InitializeDisplay();
 
-        while (true) {
-            zmq::message_t request;
-            // Receive message from the client
-            client_socket.recv(request, zmq::recv_flags::none);
-            std::string message(static_cast<char *>(request.data()), request.size());
-
-            Log(LogLevel::Info, "Received from client %d : %s", client_id, message.c_str());
-
-            // Send acknowledgment back
-            std::string ack = "ACK from server to client " + std::to_string(client_id);
-            zmq::message_t reply(ack.size());
-            memcpy(reply.data(), ack.c_str(), ack.size());
-            client_socket.send(reply, zmq::send_flags::none);
-        }
-    };
-
-    // Server to listen for initial "hello" and "join" messages
-    auto server_listener = [this, &client_handler](zmq::context_t &context) {
-        zmq::socket_t server_socket(context, zmq::socket_type::rep);
-        server_socket.bind("tcp://*:5555");
-
-        Log(LogLevel::Info, "Server listening for incoming connections...");
-
-        while (true) {
-            zmq::message_t request;
-            // Receive message from the client
-            server_socket.recv(request, zmq::recv_flags::none);
-            std::string message(static_cast<char *>(request.data()), request.size());
-
-            if (message == "join") {
-                int client_id = this->clients_connected.fetch_add(1);
-                std::string client_address = "tcp://localhost:600" + std::to_string(client_id);
-
-                Log(LogLevel::Info, "Received join message, assigning ID %d", client_id);
-
-                // Reply to the client with its assigned ID
-                std::string reply =
-                    "ID: " + std::to_string(client_id) + " | Address: " + client_address;
-                zmq::message_t reply_msg(reply.size());
-                memcpy(reply_msg.data(), reply.c_str(), reply.size());
-                server_socket.send(reply_msg, zmq::send_flags::none);
-
-                // Create a new thread for client-specific communication
-                std::thread client_thread(client_handler, std::ref(context), client_id,
-                                          client_address);
-                client_thread.detach(); // Detach the thread to allow infinite running
-            }
-        }
-    };
-
-    // Start the server listener in a separate thread
-    std::thread server_thread(server_listener, std::ref(context));
-    server_thread.join(); // Keep the main thread alive
-    return false;
+    return true;
 }
 
-// Initialize the client's connection to the server
 bool GameEngine::InitCSClientConnection() {
-    // Sending a connection request to the server
-    zmq::context_t context(1);
-    zmq::socket_t req_socket(context, zmq::socket_type::req);
-    req_socket.connect("tcp://localhost:5555");
+    this->zmq_context = zmq::context_t(1);
+    this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::req);
+    this->join_socket.connect("tcp://localhost:5555");
 
     std::string join_message = "join";
     zmq::message_t connection_request(join_message.size());
-    memcpy(connection_request.data(), join_message.c_str(), join_message.size());
-    req_socket.send(connection_request, zmq::send_flags::none);
+    std::memcpy(connection_request.data(), join_message.c_str(), join_message.size());
+    this->join_socket.send(connection_request, zmq::send_flags::none);
 
     zmq::message_t server_reply;
-    auto res = req_socket.recv(server_reply, zmq::recv_flags::none);
+    auto res = this->join_socket.recv(server_reply, zmq::recv_flags::none);
 
-    std::string client_id(static_cast<const char *>(server_reply.data()), server_reply.size());
-    Log(LogLevel::Info, "The client ID assigned by the server: %s", client_id.c_str());
-    this->network_info.id = std::stoi(client_id);
+    JoinReply join_reply;
+    std::memcpy(&join_reply, server_reply.data(), sizeof(JoinReply));
+    Log(LogLevel::Info, "The client ID assigned by the server: %s",
+        std::to_string(join_reply.client_id).c_str());
+    this->network_info.id = join_reply.client_id;
+
+    this->client_update_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::req);
+    this->client_update_socket.connect("tcp://localhost:600" +
+                                       std::to_string(this->network_info.id));
+
+    this->server_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::sub);
+    this->server_broadcast_socket.connect("tcp://localhost:5556");
+    this->server_broadcast_socket.set(zmq::sockopt::subscribe, "");
 
     return true;
 }
 
 bool GameEngine::InitCSClient() {
     app->key_map = new KeyMap();
-    bool display_success = InitializeDisplay();
-    bool client_connection_success = InitCSClientConnection();
+    bool display_success = this->InitializeDisplay();
+    bool client_connection_success = this->InitCSClientConnection();
     this->ShowWelcomeScreen();
 
     return display_success && client_connection_success;
@@ -222,29 +226,47 @@ void GameEngine::StartSingleClient() {
     this->Shutdown();
 }
 
-void GameEngine::StartCSServer() {}
-
-void GameEngine::ListenServerBroadcasts(zmq::context_t &context) {
-    zmq::socket_t sub_socket(context, ZMQ_SUB);
-    sub_socket.connect("tcp://localhost:600" + std::to_string(this->network_info.id));
-    sub_socket.set(zmq::sockopt::subscribe, ""); // Subscribe to all messages
-
-    while (!app->quit) {
-        zmq::message_t message;
-        auto res = sub_socket.recv(message, zmq::recv_flags::none);
-        std::string received_message(static_cast<char *>(message.data()), message.size());
-        // std::cout << "Broadcast message: " << received_message << std::endl;
-        Log(LogLevel::Info, "Broadcast message received from the server: %s",
-            received_message.c_str());
+void GameEngine::StartCSServer() {
+    int message_counter = 0;
+    while (true) {
+        std::string broadcast_message = std::to_string(message_counter);
+        zmq::message_t broadcast(broadcast_message.size());
+        std::memcpy(broadcast.data(), broadcast_message.c_str(), broadcast_message.size());
+        this->server_broadcast_socket.send(broadcast, zmq::send_flags::none);
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        message_counter += 1;
     }
+}
+
+void GameEngine::CSClientReceiveServerBroadcast() {
+    zmq::message_t message;
+    auto res = this->server_broadcast_socket.recv(message, zmq::recv_flags::dontwait);
+
+    if (res) {
+        std::string received_message(static_cast<char *>(message.data()), message.size());
+        Log(LogLevel::Info, "Broadcast counter: %s", received_message.c_str());
+    }
+}
+
+void GameEngine::CSClientSendUpdate(int message_counter) {
+    std::string update_message = "Message counter: " + std::to_string(message_counter) +
+                                 ", Client ID: " + std::to_string(this->network_info.id);
+    zmq::message_t update(update_message.size());
+    std::memcpy(update.data(), update_message.c_str(), update_message.size());
+    this->client_update_socket.send(update, zmq::send_flags::none);
+
+    zmq::message_t server_reply;
+    auto res = this->client_update_socket.recv(server_reply, zmq::recv_flags::none);
+
+    std::string server_reply_message(static_cast<const char *>(server_reply.data()),
+                                     server_reply.size());
+    Log(LogLevel::Info, "Message counter:  %s", std::to_string(message_counter).c_str());
 }
 
 void GameEngine::StartCSClient() {
     app->quit = false;
 
-    zmq::context_t context(1);
-    std::thread listener_thread =
-        std::thread([this, &context]() { this->ListenServerBroadcasts(context); });
+    // this->SetupDefaultInputs();
 
     // std::thread input_thread = std::thread([this]() {
     //     while (!app->quit) {
@@ -253,25 +275,26 @@ void GameEngine::StartCSClient() {
     // });
 
     // this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
-    // // Engine loop
-    // while (!app->quit) {
-    //     app->quit = this->HandleEvents();
-    //     this->GetTimeDelta();
-    //     this->ApplyObjectPhysics();
-    //     this->ApplyObjectUpdates();
-    //     this->TestCollision();
-    //     this->HandleCollisions();
-    //     this->Update();
-    //     this->RenderScene();
-    // }
 
-    // if (input_thread.joinable() && listener_thread.joinable()) {
-    //     input_thread.join();
-    //     listener_thread.join();
-    // }
-    if (listener_thread.joinable()) {
-        listener_thread.join();
+    // Engine loop
+    int message_counter = 0;
+    while (!app->quit) {
+        // app->quit = this->HandleEvents();
+        // this->GetTimeDelta();
+        // this->ApplyObjectPhysics();
+        // this->ApplyObjectUpdates();
+        // this->TestCollision();
+        // this->HandleCollisions();
+        // this->Update();
+        this->CSClientSendUpdate(++message_counter);
+        this->CSClientReceiveServerBroadcast();
+        // this->RenderScene();
+        std::this_thread::sleep_for(std::chrono::seconds(this->network_info.id));
     }
+
+    // if (input_thread.joinable()) {
+    //     input_thread.join();
+    // }
 
     this->Shutdown();
 }
@@ -345,8 +368,6 @@ void GameEngine::ShowWelcomeScreen() {
     SDL_RenderClear(app->renderer);
     SDL_RenderPresent(app->renderer);
 }
-
-std::vector<GameObject *> GameEngine::GetObjects() { return this->game_objects; }
 
 void GameEngine::AddObjects(std::vector<GameObject *> game_objects) {
     // TODO: Insert game objects in such a way that "Controllable" ones comes first, followed by
@@ -565,6 +586,9 @@ void GameEngine::HandleScaling() {
 }
 
 void GameEngine::Shutdown() {
+    this->join_socket.close();
+    this->server_broadcast_socket.close();
+    this->client_update_socket.close();
     SDL_DestroyRenderer(app->renderer);
     SDL_DestroyWindow(app->window);
     SDL_Quit();

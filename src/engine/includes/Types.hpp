@@ -76,3 +76,8 @@ struct NetworkInfo {
     NetworkRole role;
     int id = 0;
 };
+
+struct JoinReply {
+    int client_id;
+    char client_address[100];
+};
