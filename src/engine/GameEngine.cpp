@@ -289,6 +289,19 @@ void GameEngine::CSClientAddExistingPlayers() {
     }
 }
 
+GameObject *GameEngine::CSClientCreateNewPlayer(ObjectUpdate object_update) {
+    GameObject *controllable = GetControllable(this->game_objects);
+    GameObject *player = new GameObject(object_update.name, controllable->GetCategory());
+    player->SetColor(controllable->GetColor());
+    player->SetSize(controllable->GetSize());
+    player->SetTextureTemplate(controllable->GetTextureTemplate());
+    int player_id = GetPlayerIdFromName(object_update.name);
+    SetPlayerTexture(player, player_id);
+
+    this->game_objects.push_back(player);
+    return player;
+}
+
 void GameEngine::CSClientReceiveBroadcastThread() {
     try {
         zmq::message_t message;
@@ -299,6 +312,11 @@ void GameEngine::CSClientReceiveBroadcastThread() {
             ObjectUpdate object_update;
             std::memcpy(&object_update, message.data(), sizeof(ObjectUpdate));
             GameObject *game_object = GetObjectByName(object_update.name, this->game_objects);
+            // If the object received does not already exist in the client, create it. Occurs
+            // whenever a new client joins the game
+            if (game_object == nullptr) {
+                game_object = this->CSClientCreateNewPlayer(object_update);
+            }
             GameObject *player = GetClientPlayer(this->network_info.id, this->game_objects);
 
             if (game_object->GetName() != player->GetName()) {

@@ -162,7 +162,7 @@ int main(int argc, char *args[]) {
     alien.SetAcceleration(Acceleration{0, 15});
     alien.SetVelocity(Velocity{0, 0});
     alien.SetRestitution(0.5);
-    alien.SetTextureTemplate("assets/alien{}.png");
+    alien.SetTextureTemplate("assets/alien_{}.png");
     alien.SetCallback(UpdateAlien);
 
     std::vector<GameObject *> ground;

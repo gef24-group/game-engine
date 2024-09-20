@@ -212,3 +212,19 @@ void HandleSIGINT(int signum) {
     app->sigint.store(true);
     Log(LogLevel::Info, "SIGINT received!");
 }
+
+int GetPlayerIdFromName(std::string player_name) {
+    unsigned long player_name_length = player_name.size();
+    unsigned long index = player_name_length - 1;
+    // Traverse backwards to find the start of the integer
+    while (index >= 0 && std::isdigit(player_name[index])) {
+        index--;
+    }
+
+    if (index < player_name_length - 1) {
+        return std::stoi(player_name.substr(index + 1));
+    }
+
+    // If no integers were found at the end of the player name
+    return -1;
+}

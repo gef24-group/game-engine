@@ -48,6 +48,7 @@ class GameEngine {
     void CSClientAddExistingPlayers();
     void CSClientReceiveBroadcastThread();
     void CSClientSendUpdate();
+    GameObject *CSClientCreateNewPlayer(ObjectUpdate object_update);
 
     void SetupDefaultInputs();
     void ReadInputsThread();
