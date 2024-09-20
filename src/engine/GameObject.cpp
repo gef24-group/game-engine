@@ -22,6 +22,7 @@ GameObject::GameObject(std::string name, GameObjectCategory category) {
     this->theta_x = 0;
     this->colliders = std::unordered_set<GameObject *>();
     this->callback = [](GameObject *) {};
+    this->owner = NetworkRole::Client;
 }
 
 void GameObject::Update() { this->callback(this); }
@@ -59,6 +60,7 @@ void GameObject::Render() {
 }
 
 SDL_Texture *GameObject::GetTexture() { return this->texture; }
+std::string GameObject::GetTextureTemplate() { return this->texture_template; }
 std::string GameObject::GetName() { return this->name; }
 GameObjectCategory GameObject::GetCategory() { return this->category; }
 Shape GameObject::GetShape() { return this->shape; }
@@ -74,7 +76,13 @@ bool GameObject::GetAffectedByCollision() { return this->affected_by_collision; 
 float GameObject::GetRestitution() { return this->restitution; }
 float GameObject::GetAngle() { return this->theta_x; }
 std::unordered_set<GameObject *> GameObject::GetColliders() { return this->colliders; }
+NetworkRole GameObject::GetOwner() { return this->owner; }
+
 void GameObject::SetTexture(std::string path) { this->texture = LoadTexture(path); }
+void GameObject::SetTextureTemplate(std::string texture_template) {
+    this->texture_template = texture_template;
+}
+void GameObject::SetName(std::string name) { this->name = name; }
 void GameObject::SetShape(Shape shape) { this->shape = shape; }
 void GameObject::SetColor(Color color) { this->color = color; }
 void GameObject::SetPosition(Position position) {
@@ -102,3 +110,4 @@ void GameObject::RemoveCollider(GameObject *game_object) { this->colliders.erase
 void GameObject::SetCallback(std::function<void(GameObject *)> callback) {
     this->callback = callback;
 }
+void GameObject::SetOwner(NetworkRole owner) { this->owner = owner; }

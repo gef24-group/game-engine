@@ -81,3 +81,8 @@ struct JoinReply {
     int client_id;
     char client_address[100];
 };
+
+struct ObjectUpdate {
+    char name[100];
+    Position position;
+};

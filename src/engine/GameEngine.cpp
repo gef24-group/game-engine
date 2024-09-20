@@ -13,14 +13,20 @@
 #include "Utils.hpp"
 #include <algorithm>
 #include <chrono>
+#include <csignal>
 #include <string>
 #include <thread>
 #include <vector>
 #include <zmq.hpp>
 
 GameEngine::GameEngine() {
+    std::signal(SIGINT, HandleSIGINT);
     app->window = nullptr;
     app->renderer = nullptr;
+    app->quit = false;
+    app->sigint.store(false);
+    app->key_map = new KeyMap();
+
     this->game_title = "";
     this->engine_timeline = Timeline();
     this->clients_connected = 0;
@@ -58,7 +64,6 @@ bool GameEngine::Init() {
 }
 
 bool GameEngine::InitSingleClient() {
-    app->key_map = new KeyMap();
     bool display_success = this->InitializeDisplay();
     this->ShowWelcomeScreen();
     return display_success;
@@ -70,64 +75,98 @@ void GameEngine::CSServerClientThread(JoinReply join_reply) {
 
     Log(LogLevel::Info, "Client thread for client [%d] started", join_reply.client_id);
 
-    while (true) {
-        zmq::message_t request;
-        zmq::recv_result_t result = client_socket.recv(request, zmq::recv_flags::none);
-        std::string message(static_cast<char *>(request.data()), request.size());
-        Log(LogLevel::Info, "Receive client [%d] : %s", join_reply.client_id, message.c_str());
+    while (!app->sigint.load()) {
+        try {
+            zmq::message_t request;
+            zmq::recv_result_t result = client_socket.recv(request, zmq::recv_flags::none);
+            ObjectUpdate object_update;
+            std::memcpy(&object_update, request.data(), sizeof(ObjectUpdate));
 
-        std::string ack = "Acknowledge client [" + std::to_string(join_reply.client_id) + "]";
-        zmq::message_t reply(ack.size());
-        std::memcpy(reply.data(), ack.c_str(), ack.size());
-        client_socket.send(reply, zmq::send_flags::none);
+            std::string ack = "Acknowledge client [" + std::to_string(join_reply.client_id) + "]";
+            zmq::message_t reply(ack.size());
+            std::memcpy(reply.data(), ack.c_str(), ack.size());
+            client_socket.send(reply, zmq::send_flags::none);
+
+            zmq::message_t broadcast_update(sizeof(ObjectUpdate));
+            std::memcpy(broadcast_update.data(), &object_update, sizeof(ObjectUpdate));
+            this->server_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error in the server client thread: %s", e.what());
+            client_socket.close();
+            this->server_broadcast_socket.close();
+        }
     }
 };
 
-void GameEngine::CSServerListenerThread() {
-    this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::rep);
-    this->join_socket.bind("tcp://*:5555");
+void GameEngine::CSServerBroadcastUpdates() {
+    std::vector<GameObject *> game_objects =
+        GetObjectsByRole(this->network_info, this->game_objects);
 
+    for (GameObject *game_object : game_objects) {
+        try {
+            ObjectUpdate object_update;
+            std::snprintf(object_update.name, sizeof(object_update.name), "%s",
+                          game_object->GetName().c_str());
+            object_update.position = game_object->GetPosition();
+
+            zmq::message_t broadcast_update(sizeof(ObjectUpdate));
+            std::memcpy(broadcast_update.data(), &object_update, sizeof(ObjectUpdate));
+            this->server_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error while broadcasting server updates: %s", e.what());
+            this->server_broadcast_socket.close();
+        }
+    }
+}
+
+void GameEngine::CSServerListenerThread() {
     Log(LogLevel::Info, "Server listening for incoming connections at port 5555");
 
-    while (true) {
-        zmq::message_t request;
-        zmq::recv_result_t result = this->join_socket.recv(request, zmq::recv_flags::none);
-        std::string message(static_cast<char *>(request.data()), request.size());
+    while (!app->sigint.load()) {
+        try {
+            zmq::message_t request;
+            zmq::recv_result_t result = this->join_socket.recv(request, zmq::recv_flags::none);
+            std::string message(static_cast<char *>(request.data()), request.size());
 
-        if (message == "join") {
-            int client_id = this->clients_connected += 1;
+            if (message == "join") {
+                int client_id = this->clients_connected += 1;
 
-            JoinReply join_reply;
-            join_reply.client_id = client_id;
-            std::snprintf(join_reply.client_address, sizeof(join_reply.client_address),
-                          "tcp://localhost:600%d", client_id);
+                JoinReply join_reply;
+                join_reply.client_id = client_id;
+                std::snprintf(join_reply.client_address, sizeof(join_reply.client_address),
+                              "tcp://localhost:600%d", client_id);
 
-            zmq::message_t reply_msg(sizeof(JoinReply));
-            std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
-            this->join_socket.send(reply_msg, zmq::send_flags::none);
+                zmq::message_t reply_msg(sizeof(JoinReply));
+                std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
+                this->join_socket.send(reply_msg, zmq::send_flags::none);
 
-            std::thread client_thread([&, this]() { this->CSServerClientThread(join_reply); });
-            client_thread.detach();
+                std::thread client_thread([&, this]() { this->CSServerClientThread(join_reply); });
+                client_thread.detach();
+            }
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error in the server listener thread: %s", e.what());
+            this->join_socket.close();
         }
     }
 };
 
 bool GameEngine::InitCSServer() {
     this->zmq_context = zmq::context_t(1);
-    std::thread server_thread([&, this]() { this->CSServerListenerThread(); });
-    server_thread.detach();
+
+    this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::rep);
+    this->join_socket.bind("tcp://*:5555");
+    std::thread listener_thread([&, this]() { this->CSServerListenerThread(); });
+    listener_thread.detach();
 
     this->server_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::pub);
     this->server_broadcast_socket.bind("tcp://*:5556");
-
-    // TODO: remove this and refactor
-    bool display_success = this->InitializeDisplay();
 
     return true;
 }
 
 bool GameEngine::InitCSClientConnection() {
     this->zmq_context = zmq::context_t(1);
+
     this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::req);
     this->join_socket.connect("tcp://localhost:5555");
 
@@ -137,7 +176,7 @@ bool GameEngine::InitCSClientConnection() {
     this->join_socket.send(connection_request, zmq::send_flags::none);
 
     zmq::message_t server_reply;
-    auto res = this->join_socket.recv(server_reply, zmq::recv_flags::none);
+    zmq::recv_result_t res = this->join_socket.recv(server_reply, zmq::recv_flags::none);
 
     JoinReply join_reply;
     std::memcpy(&join_reply, server_reply.data(), sizeof(JoinReply));
@@ -146,8 +185,7 @@ bool GameEngine::InitCSClientConnection() {
     this->network_info.id = join_reply.client_id;
 
     this->client_update_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::req);
-    this->client_update_socket.connect("tcp://localhost:600" +
-                                       std::to_string(this->network_info.id));
+    this->client_update_socket.connect(join_reply.client_address);
 
     this->server_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::sub);
     this->server_broadcast_socket.connect("tcp://localhost:5556");
@@ -157,7 +195,6 @@ bool GameEngine::InitCSClientConnection() {
 }
 
 bool GameEngine::InitCSClient() {
-    app->key_map = new KeyMap();
     bool display_success = this->InitializeDisplay();
     bool client_connection_success = this->InitCSClientConnection();
     this->ShowWelcomeScreen();
@@ -195,24 +232,21 @@ void GameEngine::Start() {
 }
 
 void GameEngine::StartSingleClient() {
-    app->quit = false;
-
     this->SetupDefaultInputs();
 
     std::thread input_thread = std::thread([this]() {
-        while (!app->quit) {
-            this->ReadHIDs();
+        while (!app->quit && !app->sigint.load()) {
+            this->ReadInputsThread();
         }
     });
 
     this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
 
     // Engine loop
-    while (!app->quit) {
+    while (!app->quit && !app->sigint.load()) {
         app->quit = this->HandleEvents();
         this->GetTimeDelta();
-        this->ApplyObjectPhysics();
-        this->ApplyObjectUpdates();
+        this->ApplyObjectPhysicsAndUpdates();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
@@ -227,74 +261,121 @@ void GameEngine::StartSingleClient() {
 }
 
 void GameEngine::StartCSServer() {
-    int message_counter = 0;
-    while (true) {
-        std::string broadcast_message = std::to_string(message_counter);
-        zmq::message_t broadcast(broadcast_message.size());
-        std::memcpy(broadcast.data(), broadcast_message.c_str(), broadcast_message.size());
-        this->server_broadcast_socket.send(broadcast, zmq::send_flags::none);
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        message_counter += 1;
+    this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
+
+    while (!app->sigint.load()) {
+        this->GetTimeDelta();
+        this->ApplyObjectPhysicsAndUpdates();
+        this->CSServerBroadcastUpdates();
     }
 }
 
-void GameEngine::CSClientReceiveServerBroadcast() {
-    zmq::message_t message;
-    auto res = this->server_broadcast_socket.recv(message, zmq::recv_flags::dontwait);
+void GameEngine::CSClientAddExistingPlayers() {
+    if (this->network_info.id > 1) {
+        GameObject *controllable = GetControllable(this->game_objects);
 
-    if (res) {
-        std::string received_message(static_cast<char *>(message.data()), message.size());
-        Log(LogLevel::Info, "Broadcast counter: %s", received_message.c_str());
+        for (int player_id = 1; player_id < this->network_info.id; player_id++) {
+            GameObject *player =
+                new GameObject(controllable->GetName(), controllable->GetCategory());
+            std::string player_name = player->GetName() + "_" + std::to_string(player_id);
+            player->SetName(player_name);
+            player->SetColor(controllable->GetColor());
+            player->SetSize(controllable->GetSize());
+            player->SetTextureTemplate(controllable->GetTextureTemplate());
+            SetPlayerTexture(player, player_id);
+
+            this->game_objects.push_back(player);
+        }
     }
 }
 
-void GameEngine::CSClientSendUpdate(int message_counter) {
-    std::string update_message = "Message counter: " + std::to_string(message_counter) +
-                                 ", Client ID: " + std::to_string(this->network_info.id);
-    zmq::message_t update(update_message.size());
-    std::memcpy(update.data(), update_message.c_str(), update_message.size());
-    this->client_update_socket.send(update, zmq::send_flags::none);
+void GameEngine::CSClientReceiveBroadcastThread() {
+    try {
+        zmq::message_t message;
+        zmq::recv_result_t res =
+            this->server_broadcast_socket.recv(message, zmq::recv_flags::dontwait);
 
-    zmq::message_t server_reply;
-    auto res = this->client_update_socket.recv(server_reply, zmq::recv_flags::none);
+        if (res) {
+            ObjectUpdate object_update;
+            std::memcpy(&object_update, message.data(), sizeof(ObjectUpdate));
+            GameObject *game_object = GetObjectByName(object_update.name, this->game_objects);
+            GameObject *player = GetClientPlayer(this->network_info.id, this->game_objects);
 
-    std::string server_reply_message(static_cast<const char *>(server_reply.data()),
-                                     server_reply.size());
-    Log(LogLevel::Info, "Message counter:  %s", std::to_string(message_counter).c_str());
+            if (game_object->GetName() != player->GetName()) {
+                game_object->SetPosition(object_update.position);
+            }
+        }
+    } catch (const zmq::error_t &e) {
+        Log(LogLevel::Info, "Caught error in the client receive broadcast thread: %s", e.what());
+        this->server_broadcast_socket.close();
+    }
+}
+
+void GameEngine::CSClientSendUpdate() {
+    try {
+        GameObject *player = GetClientPlayer(this->network_info.id, this->game_objects);
+        ObjectUpdate object_update;
+        std::snprintf(object_update.name, sizeof(object_update.name), "%s",
+                      player->GetName().c_str());
+        object_update.position = player->GetPosition();
+
+        zmq::message_t update(sizeof(ObjectUpdate));
+        std::memcpy(update.data(), &object_update, sizeof(ObjectUpdate));
+        this->client_update_socket.send(update, zmq::send_flags::none);
+
+        zmq::message_t server_ack;
+        zmq::recv_result_t res = this->client_update_socket.recv(server_ack, zmq::recv_flags::none);
+
+        std::string server_ack_message(static_cast<const char *>(server_ack.data()),
+                                       server_ack.size());
+    } catch (const zmq::error_t &e) {
+        Log(LogLevel::Info, "Caught error in the client send update thread: %s", e.what());
+        this->client_update_socket.close();
+    }
 }
 
 void GameEngine::StartCSClient() {
-    app->quit = false;
+    GameObject *controllable = GetControllable(this->game_objects);
+    std::string player_name = controllable->GetName() + "_" + std::to_string(this->network_info.id);
+    this->CSClientAddExistingPlayers();
+    controllable->SetName(player_name);
+    SetPlayerTexture(controllable, this->network_info.id);
 
-    // this->SetupDefaultInputs();
+    this->SetupDefaultInputs();
 
-    // std::thread input_thread = std::thread([this]() {
-    //     while (!app->quit) {
-    //         this->ReadHIDs();
-    //     }
-    // });
+    std::thread input_thread = std::thread([this]() {
+        while (!app->quit && !app->sigint.load()) {
+            this->ReadInputsThread();
+        }
+    });
 
-    // this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
+    std::thread receive_broadcast_thread = std::thread([this]() {
+        while (!app->quit && !app->sigint.load()) {
+            this->CSClientReceiveBroadcastThread();
+        }
+    });
+
+    this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
 
     // Engine loop
-    int message_counter = 0;
-    while (!app->quit) {
-        // app->quit = this->HandleEvents();
-        // this->GetTimeDelta();
-        // this->ApplyObjectPhysics();
-        // this->ApplyObjectUpdates();
-        // this->TestCollision();
-        // this->HandleCollisions();
-        // this->Update();
-        this->CSClientSendUpdate(++message_counter);
-        this->CSClientReceiveServerBroadcast();
-        // this->RenderScene();
-        std::this_thread::sleep_for(std::chrono::seconds(this->network_info.id));
+    while (!app->quit && !app->sigint.load()) {
+        app->quit = this->HandleEvents();
+        this->GetTimeDelta();
+        this->ApplyObjectPhysicsAndUpdates();
+        this->TestCollision();
+        this->HandleCollisions();
+        this->Update();
+        this->CSClientSendUpdate();
+        this->RenderScene();
     }
 
-    // if (input_thread.joinable()) {
-    //     input_thread.join();
-    // }
+    if (input_thread.joinable()) {
+        input_thread.join();
+    }
+
+    if (receive_broadcast_thread.joinable()) {
+        receive_broadcast_thread.join();
+    }
 
     this->Shutdown();
 }
@@ -370,8 +451,6 @@ void GameEngine::ShowWelcomeScreen() {
 }
 
 void GameEngine::AddObjects(std::vector<GameObject *> game_objects) {
-    // TODO: Insert game objects in such a way that "Controllable" ones comes first, followed by
-    // "Moveable" and then "Stationary"
     this->game_objects = game_objects;
 }
 
@@ -392,7 +471,7 @@ void GameEngine::GetTimeDelta() {
     this->engine_timeline.SetFrameTime(FrameTime{current, last, delta});
 }
 
-void GameEngine::ReadHIDs() {
+void GameEngine::ReadInputsThread() {
     const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
     auto now = std::chrono::high_resolution_clock::now();
 
@@ -435,14 +514,12 @@ void GameEngine::ReadHIDs() {
     debounce_key(SDL_SCANCODE_SPACE, app->key_map->key_space, false);
 }
 
-void GameEngine::ApplyObjectPhysics() {
-    for (GameObject *game_object : this->game_objects) {
-        game_object->Move(this->engine_timeline.GetFrameTime().delta);
-    }
-}
+void GameEngine::ApplyObjectPhysicsAndUpdates() {
+    std::vector<GameObject *> game_objects =
+        GetObjectsByRole(this->network_info, this->game_objects);
 
-void GameEngine::ApplyObjectUpdates() {
-    for (GameObject *game_object : this->game_objects) {
+    for (GameObject *game_object : game_objects) {
+        game_object->Move(this->engine_timeline.GetFrameTime().delta);
         game_object->Update();
     }
 }

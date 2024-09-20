@@ -15,6 +15,7 @@ class GameObject {
   private:
     SDL_Surface *surface;
     SDL_Texture *texture;
+    std::string texture_template;
     std::string name;
     GameObjectCategory category;
     Shape shape;
@@ -31,6 +32,7 @@ class GameObject {
 
     std::unordered_set<GameObject *> colliders;
     std::function<void(GameObject *)> callback;
+    NetworkRole owner;
 
   public:
     GameObject(std::string name, GameObjectCategory category);
@@ -39,6 +41,7 @@ class GameObject {
     void Render();
 
     SDL_Texture *GetTexture();
+    std::string GetTextureTemplate();
     std::string GetName();
     GameObjectCategory GetCategory();
     Shape GetShape();
@@ -51,18 +54,22 @@ class GameObject {
     bool GetAffectedByCollision();
     float GetAngle();
     std::unordered_set<GameObject *> GetColliders();
+    NetworkRole GetOwner();
 
     void SetTexture(std::string path);
+    void SetTextureTemplate(std::string texture_template);
+    void SetName(std::string name);
     void SetShape(Shape shape);
     void SetColor(Color color);
     void SetPosition(Position position);
     void SetSize(Size size);
     void SetVelocity(Velocity velocity);
     void SetAcceleration(Acceleration acceleration);
-    void SetRestitution(float restitution);
     void SetAffectedByCollision(bool affected_by_collision);
+    void SetRestitution(float restitution);
     void SetAngle(float theta_x);
     void AddCollider(GameObject *game_object);
     void RemoveCollider(GameObject *game_object);
     void SetCallback(std::function<void(GameObject *)> callback);
+    void SetOwner(NetworkRole owner);
 };

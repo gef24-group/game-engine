@@ -43,16 +43,17 @@ class GameEngine {
     void ShowWelcomeScreen();
 
     void CSServerClientThread(JoinReply join_reply);
+    void CSServerBroadcastUpdates();
     void CSServerListenerThread();
-    void CSClientSendUpdate(int message_counter);
-    void CSClientReceiveServerBroadcast();
+    void CSClientAddExistingPlayers();
+    void CSClientReceiveBroadcastThread();
+    void CSClientSendUpdate();
 
     void SetupDefaultInputs();
-    void ReadHIDs();
+    void ReadInputsThread();
     bool HandleEvents();
     void GetTimeDelta();
-    void ApplyObjectPhysics();
-    void ApplyObjectUpdates();
+    void ApplyObjectPhysicsAndUpdates();
     void TestCollision();
     void HandleCollisions();
     void Update();

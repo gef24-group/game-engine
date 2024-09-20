@@ -7,6 +7,10 @@
 #include <algorithm>
 
 SDL_Texture *LoadTexture(std::string path) {
+    if (app->renderer == nullptr) {
+        return NULL;
+    }
+
     SDL_Surface *surface = IMG_Load(path.c_str());
     if (surface == NULL) {
         Log(LogLevel::Error, "Error: \'%s\' while loading the image file: %s", IMG_GetError(),
@@ -69,6 +73,68 @@ GameObject *GetObjectByName(std::string name, std::vector<GameObject *> game_obj
     for (GameObject *game_object : game_objects) {
         if (game_object->GetName() == name) {
             return game_object;
+        }
+    }
+    return nullptr;
+}
+
+GameObject *GetControllable(std::vector<GameObject *> game_objects) {
+    for (GameObject *game_object : game_objects) {
+        if (game_object->GetCategory() == GameObjectCategory::Controllable) {
+            return game_object;
+        }
+    }
+    return nullptr;
+}
+
+std::vector<GameObject *> GetObjectsByRole(NetworkInfo network_info,
+                                           std::vector<GameObject *> game_objects) {
+    std::vector<GameObject *> objects;
+
+    if (network_info.mode == NetworkMode::Single) {
+        return game_objects;
+    }
+
+    if (network_info.mode == NetworkMode::ClientServer ||
+        network_info.mode == NetworkMode::PeerToPeer) {
+        for (auto *game_object : game_objects) {
+            if (game_object->GetOwner() == network_info.role) {
+                objects.push_back(game_object);
+            }
+        }
+    }
+
+    return objects;
+}
+
+void SetPlayerTexture(GameObject *controllable, int player_id) {
+    std::string texture_template = controllable->GetTextureTemplate();
+    size_t pos = texture_template.find("{}");
+
+    if (pos != std::string::npos) {
+        texture_template.replace(pos, 2, std::to_string(player_id));
+    }
+
+    controllable->SetTexture(texture_template);
+}
+
+GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_objects) {
+    for (GameObject *game_object : game_objects) {
+        if (game_object->GetCategory() == GameObjectCategory::Controllable) {
+            std::string name = game_object->GetName();
+            size_t underscore = name.rfind('_');
+
+            if (underscore != std::string::npos && (underscore + 1) < name.size()) {
+                std::string number = name.substr(underscore + 1);
+                try {
+                    int player = std::stoi(number);
+                    if (player == player_id) {
+                        return game_object;
+                    }
+                } catch (const std::invalid_argument &e) {
+                    Log(LogLevel::Error, "Could not locate the client player to update");
+                }
+            }
         }
     }
     return nullptr;
@@ -139,4 +205,10 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
     game_engine->SetNetworkInfo(NetworkInfo{network_mode, network_role, 0});
 
     return true;
+}
+
+// Signal handler for SIGINT
+void HandleSIGINT(int signum) {
+    app->sigint.store(true);
+    Log(LogLevel::Info, "SIGINT received!");
 }

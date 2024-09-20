@@ -7,5 +7,6 @@ typedef struct {
     SDL_Window *window;
     SDL_Renderer *renderer;
     bool quit;
+    std::atomic<bool> sigint;
     KeyMap *key_map;
 } App;
