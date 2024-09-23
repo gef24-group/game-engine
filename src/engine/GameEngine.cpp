@@ -21,11 +21,12 @@
 
 GameEngine::GameEngine() {
     std::signal(SIGINT, HandleSIGINT);
-    app->window = nullptr;
+    app->sdl_window = nullptr;
     app->renderer = nullptr;
     app->quit = false;
     app->sigint.store(false);
     app->key_map = new KeyMap();
+    app->window = {1920, 1080, false};
 
     this->game_title = "";
     this->engine_timeline = Timeline();
@@ -33,7 +34,6 @@ GameEngine::GameEngine() {
     this->background_color = Color{0, 0, 0, 255};
     this->game_objects = std::vector<GameObject *>();
     this->callback = [](std::vector<GameObject *> *) {};
-    this->window = {1920, 1080, false};
 }
 
 bool GameEngine::Init() {
@@ -87,9 +87,8 @@ void GameEngine::CSServerClientThread(JoinReply join_reply) {
             std::memcpy(reply.data(), ack.c_str(), ack.size());
             client_socket.send(reply, zmq::send_flags::none);
 
-            zmq::message_t broadcast_update(sizeof(ObjectUpdate));
-            std::memcpy(broadcast_update.data(), &object_update, sizeof(ObjectUpdate));
-            this->server_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+            GameObject *game_object = GetObjectByName(object_update.name, this->game_objects);
+            game_object->SetPosition(object_update.position);
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the server client thread: %s", e.what());
             client_socket.close();
@@ -99,10 +98,8 @@ void GameEngine::CSServerClientThread(JoinReply join_reply) {
 };
 
 void GameEngine::CSServerBroadcastUpdates() {
-    std::vector<GameObject *> game_objects =
-        GetObjectsByRole(this->network_info, this->game_objects);
 
-    for (GameObject *game_object : game_objects) {
+    for (GameObject *game_object : this->game_objects) {
         try {
             ObjectUpdate object_update;
             std::snprintf(object_update.name, sizeof(object_update.name), "%s",
@@ -139,6 +136,8 @@ void GameEngine::CSServerListenerThread() {
                 zmq::message_t reply_msg(sizeof(JoinReply));
                 std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
                 this->join_socket.send(reply_msg, zmq::send_flags::none);
+
+                CSServerCreateNewPlayer(client_id);
 
                 std::thread client_thread([&, this]() { this->CSServerClientThread(join_reply); });
                 client_thread.detach();
@@ -267,6 +266,9 @@ void GameEngine::StartCSServer() {
         this->GetTimeDelta();
         this->ApplyObjectPhysicsAndUpdates();
         this->CSServerBroadcastUpdates();
+        this->TestCollision();
+        this->HandleCollisions();
+        this->Update();
     }
 }
 
@@ -300,6 +302,24 @@ GameObject *GameEngine::CSClientCreateNewPlayer(ObjectUpdate object_update) {
 
     this->game_objects.push_back(player);
     return player;
+}
+
+void GameEngine::CSServerCreateNewPlayer(int client_id) {
+    GameObject *controllable = GetControllable(this->game_objects);
+    if (client_id == 1) {
+        controllable->SetName(Split(controllable->GetName(), '_')[0] + "_" +
+                              std::to_string(client_id));
+    } else {
+        GameObject *player =
+            new GameObject(Split(controllable->GetName(), '_')[0] + "_" + std::to_string(client_id),
+                           controllable->GetCategory());
+        player->SetColor(controllable->GetColor());
+        player->SetSize(controllable->GetSize());
+        player->SetTextureTemplate(controllable->GetTextureTemplate());
+        SetPlayerTexture(player, client_id);
+
+        this->game_objects.push_back(player);
+    }
 }
 
 void GameEngine::CSClientReceiveBroadcastThread() {
@@ -380,10 +400,10 @@ void GameEngine::StartCSClient() {
         app->quit = this->HandleEvents();
         this->GetTimeDelta();
         this->ApplyObjectPhysicsAndUpdates();
+        this->CSClientSendUpdate();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
-        this->CSClientSendUpdate();
         this->RenderScene();
     }
 
@@ -404,7 +424,7 @@ void GameEngine::StartP2PPeer() {}
 void GameEngine::SetupDefaultInputs() {
     // toggle constant and proportional scaling
     app->key_map->key_X.OnPress = [this]() {
-        this->window.proportional_scaling = !this->window.proportional_scaling;
+        app->window.proportional_scaling = !app->window.proportional_scaling;
     };
     // toggle pause or unpause
     app->key_map->key_P.OnPress = [this]() {
@@ -428,13 +448,13 @@ bool GameEngine::InitializeDisplay() {
 
     SDL_Window *window = SDL_CreateWindow(
         this->game_title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        this->window.width, this->window.height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        app->window.width, app->window.height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!window) {
         Log(LogLevel::Error, "SDL_CreateWindow Error: %s", SDL_GetError());
         SDL_Quit();
         return false;
     } else {
-        app->window = window;
+        app->sdl_window = window;
     }
 
     SDL_Renderer *renderer =
@@ -621,7 +641,7 @@ void GameEngine::HandleCollisions() {
     };
 
     // Iterate over each game object
-    for (GameObject *game_object : this->game_objects) {
+    for (GameObject *game_object : GetObjectsByRole(this->network_info, this->game_objects)) {
         if (game_object->GetAffectedByCollision()) {
             // Spawn a new thread for each game object
             threads.emplace_back(handle_collision, game_object);
@@ -630,9 +650,7 @@ void GameEngine::HandleCollisions() {
 
     // Join all threads
     for (auto &thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
-        }
+        thread.join();
     }
 }
 
@@ -668,9 +686,9 @@ void GameEngine::RenderBackground() {
 void GameEngine::HandleScaling() {
     int set_logical_size_err;
 
-    if (this->window.proportional_scaling) {
+    if (app->window.proportional_scaling) {
         set_logical_size_err =
-            SDL_RenderSetLogicalSize(app->renderer, this->window.width, this->window.height);
+            SDL_RenderSetLogicalSize(app->renderer, app->window.width, app->window.height);
     } else {
         set_logical_size_err = SDL_RenderSetLogicalSize(app->renderer, 0, 0);
     }
@@ -685,7 +703,7 @@ void GameEngine::Shutdown() {
     this->server_broadcast_socket.close();
     this->client_update_socket.close();
     SDL_DestroyRenderer(app->renderer);
-    SDL_DestroyWindow(app->window);
+    SDL_DestroyWindow(app->sdl_window);
     SDL_Quit();
     delete app->key_map;
     delete app;

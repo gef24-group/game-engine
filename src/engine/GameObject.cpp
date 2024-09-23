@@ -13,7 +13,7 @@ GameObject::GameObject(std::string name, GameObjectCategory category) {
     this->category = category;
     this->shape = Rectangle;
     this->color = Color{0, 0, 0, 255};
-    this->position = Position{0, 0};
+    this->SetPosition(Position{0, 0});
     this->size = Size{0, 0};
     this->velocity = Velocity{0, 0};
     this->acceleration = Acceleration{0, 0};
@@ -30,18 +30,22 @@ void GameObject::Update() { this->callback(this); }
 void GameObject::Move(int64_t delta) {
     const float HALF = 0.5;
     float time = static_cast<float>(delta) / 100'000'000.0f;
-    this->position.x +=
-        (this->velocity.x * time) + (HALF * this->acceleration.x * float(pow(time, 2)));
-    this->position.y +=
-        (this->velocity.y * time) + (HALF * this->acceleration.y * float(pow(time, 2)));
+    Position curr_position = this->GetPosition();
+    float new_pos_x = curr_position.x + (this->velocity.x * time) +
+                      (HALF * this->acceleration.x * float(pow(time, 2)));
+    float new_pos_y = curr_position.y + (this->velocity.y * time) +
+                      (HALF * this->acceleration.y * float(pow(time, 2)));
+
+    this->SetPosition(Position{new_pos_x, new_pos_y});
 
     this->velocity.x += (this->acceleration.x * time);
     this->velocity.y += (this->acceleration.y * time);
 }
 
 void GameObject::Render() {
-    float pos_x = this->position.x;
-    float pos_y = this->position.y;
+    Position position = this->GetPosition();
+    float pos_x = position.x;
+    float pos_y = position.y;
     int width = this->size.width;
     int height = this->size.height;
     int red = this->color.red;

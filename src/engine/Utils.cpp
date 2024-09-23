@@ -2,7 +2,6 @@
 #include "GameEngine.hpp"
 #include "SDL_image.h"
 #include "SDL_log.h"
-#include "SDL_video.h"
 #include "Types.hpp"
 #include <algorithm>
 
@@ -63,11 +62,7 @@ void Log(LogLevel log_level, const char *fmt, ...) {
     va_end(args);
 }
 
-Size GetWindowSize() {
-    int width = 0, height = 0;
-    SDL_GetWindowSize(app->window, &width, &height);
-    return Size{width, height};
-}
+Size GetWindowSize() { return Size{app->window.width, app->window.height}; }
 
 GameObject *GetObjectByName(std::string name, std::vector<GameObject *> game_objects) {
     for (GameObject *game_object : game_objects) {
@@ -227,4 +222,29 @@ int GetPlayerIdFromName(std::string player_name) {
 
     // If no integers were found at the end of the player name
     return -1;
+}
+
+std::vector<std::string> Split(std::string str, char delimiter) {
+    std::vector<std::string> result;
+    std::string current;
+
+    for (char chr : str) {
+        if (chr == delimiter) {
+            // When delimiter is encountered, push the current substring to the result
+            if (!current.empty()) {
+                result.push_back(current);
+                current.clear(); // Reset the current substring
+            }
+        } else {
+            // If the character is not a delimiter, append it to the current substring
+            current += chr;
+        }
+    }
+
+    // Add the last part of the string
+    if (!current.empty()) {
+        result.push_back(current);
+    }
+
+    return result;
 }

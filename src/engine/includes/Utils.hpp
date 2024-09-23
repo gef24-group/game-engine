@@ -21,3 +21,4 @@ GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_object
 bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]);
 void HandleSIGINT(int signum);
 int GetPlayerIdFromName(std::string player_name);
+std::vector<std::string> Split(std::string str, char delimiter);

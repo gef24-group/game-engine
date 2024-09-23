@@ -19,7 +19,6 @@ class GameEngine {
     Color background_color;
     std::vector<GameObject *> game_objects;
     std::function<void(std::vector<GameObject *> *game_objects)> callback;
-    Window window;
 
     zmq::context_t zmq_context;
     zmq::socket_t join_socket;
@@ -49,6 +48,7 @@ class GameEngine {
     void CSClientReceiveBroadcastThread();
     void CSClientSendUpdate();
     GameObject *CSClientCreateNewPlayer(ObjectUpdate object_update);
+    void CSServerCreateNewPlayer(int client_id);
 
     void SetupDefaultInputs();
     void ReadInputsThread();
