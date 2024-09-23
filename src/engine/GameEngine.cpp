@@ -26,7 +26,7 @@ GameEngine::GameEngine() {
     app->quit = false;
     app->sigint.store(false);
     app->key_map = new KeyMap();
-    app->window = {1920, 1080, false};
+    app->window = Window({1920, 1080, true});
 
     this->game_title = "";
     this->engine_timeline = Timeline();
@@ -98,7 +98,6 @@ void GameEngine::CSServerClientThread(JoinReply join_reply) {
 };
 
 void GameEngine::CSServerBroadcastUpdates() {
-
     for (GameObject *game_object : this->game_objects) {
         try {
             ObjectUpdate object_update;
@@ -265,14 +264,17 @@ void GameEngine::StartCSServer() {
     while (!app->sigint.load()) {
         this->GetTimeDelta();
         this->ApplyObjectPhysicsAndUpdates();
-        this->CSServerBroadcastUpdates();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
+        this->CSServerBroadcastUpdates();
     }
 }
 
 void GameEngine::CSClientAddExistingPlayers() {
+    GameObject *controllable = GetControllable(this->game_objects);
+    std::string player_name = controllable->GetName() + "_" + std::to_string(this->network_info.id);
+
     if (this->network_info.id > 1) {
         GameObject *controllable = GetControllable(this->game_objects);
 
@@ -284,11 +286,15 @@ void GameEngine::CSClientAddExistingPlayers() {
             player->SetColor(controllable->GetColor());
             player->SetSize(controllable->GetSize());
             player->SetTextureTemplate(controllable->GetTextureTemplate());
+            player->SetCallback(controllable->GetCallback());
             SetPlayerTexture(player, player_id);
 
             this->game_objects.push_back(player);
         }
     }
+
+    controllable->SetName(player_name);
+    SetPlayerTexture(controllable, this->network_info.id);
 }
 
 GameObject *GameEngine::CSClientCreateNewPlayer(ObjectUpdate object_update) {
@@ -297,6 +303,7 @@ GameObject *GameEngine::CSClientCreateNewPlayer(ObjectUpdate object_update) {
     player->SetColor(controllable->GetColor());
     player->SetSize(controllable->GetSize());
     player->SetTextureTemplate(controllable->GetTextureTemplate());
+    player->SetCallback(controllable->GetCallback());
     int player_id = GetPlayerIdFromName(object_update.name);
     SetPlayerTexture(player, player_id);
 
@@ -316,6 +323,7 @@ void GameEngine::CSServerCreateNewPlayer(int client_id) {
         player->SetColor(controllable->GetColor());
         player->SetSize(controllable->GetSize());
         player->SetTextureTemplate(controllable->GetTextureTemplate());
+        player->SetCallback(controllable->GetCallback());
         SetPlayerTexture(player, client_id);
 
         this->game_objects.push_back(player);
@@ -373,11 +381,7 @@ void GameEngine::CSClientSendUpdate() {
 }
 
 void GameEngine::StartCSClient() {
-    GameObject *controllable = GetControllable(this->game_objects);
-    std::string player_name = controllable->GetName() + "_" + std::to_string(this->network_info.id);
     this->CSClientAddExistingPlayers();
-    controllable->SetName(player_name);
-    SetPlayerTexture(controllable, this->network_info.id);
 
     this->SetupDefaultInputs();
 
@@ -400,10 +404,10 @@ void GameEngine::StartCSClient() {
         app->quit = this->HandleEvents();
         this->GetTimeDelta();
         this->ApplyObjectPhysicsAndUpdates();
-        this->CSClientSendUpdate();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
+        this->CSClientSendUpdate();
         this->RenderScene();
     }
 

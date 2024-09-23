@@ -80,6 +80,7 @@ bool GameObject::GetAffectedByCollision() { return this->affected_by_collision; 
 float GameObject::GetRestitution() { return this->restitution; }
 float GameObject::GetAngle() { return this->theta_x; }
 std::unordered_set<GameObject *> GameObject::GetColliders() { return this->colliders; }
+std::function<void(GameObject *)> GameObject::GetCallback() { return this->callback; }
 NetworkRole GameObject::GetOwner() { return this->owner; }
 
 void GameObject::SetTexture(std::string path) { this->texture = LoadTexture(path); }

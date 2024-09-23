@@ -54,6 +54,7 @@ class GameObject {
     bool GetAffectedByCollision();
     float GetAngle();
     std::unordered_set<GameObject *> GetColliders();
+    std::function<void(GameObject *)> GetCallback();
     NetworkRole GetOwner();
 
     void SetTexture(std::string path);

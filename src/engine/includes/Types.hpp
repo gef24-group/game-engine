@@ -62,7 +62,7 @@ struct KeyMap {
 struct Window {
     int width = 1920;
     int height = 1080;
-    bool proportional_scaling = false;
+    bool proportional_scaling = true;
 };
 
 struct FrameTime {
