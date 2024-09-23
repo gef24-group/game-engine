@@ -264,10 +264,10 @@ void GameEngine::StartCSServer() {
     while (!app->sigint.load()) {
         this->GetTimeDelta();
         this->ApplyObjectPhysicsAndUpdates();
+        this->CSServerBroadcastUpdates();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
-        this->CSServerBroadcastUpdates();
     }
 }
 
@@ -404,10 +404,10 @@ void GameEngine::StartCSClient() {
         app->quit = this->HandleEvents();
         this->GetTimeDelta();
         this->ApplyObjectPhysicsAndUpdates();
+        this->CSClientSendUpdate();
         this->TestCollision();
         this->HandleCollisions();
         this->Update();
-        this->CSClientSendUpdate();
         this->RenderScene();
     }
 
