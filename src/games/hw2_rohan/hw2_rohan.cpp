@@ -68,11 +68,17 @@ void UpdateBall(GameObject *ball) {
         if (collider->GetName() == "ground") {
             collision_with_ground = true;
         }
+        if (app->key_map->key_space.pressed.load()) {
+            Log(LogLevel::Info, "Space pressed");
+        }
         if (collider->GetName().find("player") == 0) {
             collision_with_player = true;
-            Log(LogLevel::Info, "The ball is being set to velocity: %d", 20);
             ball->SetVelocity({16, 0});
             if (app->key_map->key_space.pressed.load()) {
+                Log(LogLevel::Info, "Inside if player Space pressed");
+            }
+            if (app->key_map->key_space.pressed.load()) {
+                Log(LogLevel::Info, "Inside if load: space pressed");
                 ball->SetVelocity({20, -20});
             }
         }
@@ -96,6 +102,10 @@ void UpdateBall(GameObject *ball) {
 GameObject *CreatePlayer(NetworkInfo network_info) {
     GameObject *player = new GameObject("player", Controllable);
     player->SetSize({50, 100});
+    Log(LogLevel::Info, "Window width: %d, window height: %d", window_size.width,
+        window_size.height);
+
+    Log(LogLevel::Info, "Network id: %d", network_info.id);
 
     switch (network_info.id) {
     case 1:
@@ -118,7 +128,6 @@ GameObject *CreatePlayer(NetworkInfo network_info) {
         }
     }
 
-    player->SetPosition({300, float(window_size.height - 300)});
     player->SetAcceleration({0, 10});
     player->SetTextureTemplate("assets/player_{}.png");
     player->SetOwner(NetworkRole::Client);
@@ -131,7 +140,7 @@ GameObject *CreateBall() {
     GameObject *ball = new GameObject("ball", Moving);
     ball->SetSize({50, 50});
     ball->SetPosition({float(window_size.width) / 2, float(window_size.height - 250)});
-    ball->SetAcceleration({0, 2});
+    ball->SetAcceleration({0, 10});
     ball->SetTexture("assets/soccer_ball.png");
     ball->SetOwner(NetworkRole::Server);
     ball->SetCallback(UpdateBall);
