@@ -32,7 +32,7 @@ void Update(std::vector<GameObject *> *game_objects) {
     // If the ball collides with the basket, the player wins: game ends
     for (GameObject *object : ball->GetColliders()) {
         if (object->GetName() == "basket") {
-            app->quit = true;
+            app->quit.store(true);
             Log(LogLevel::Info, "You've scored a GOAL!! You win!");
         }
     }
@@ -124,7 +124,7 @@ GameObject *CreatePlayer(NetworkInfo network_info) {
         if (network_info.role != Server) {
             Log(LogLevel::Error, "More than 4 players spotted: EXITING THE GAME. Player ID: %d",
                 network_info.id);
-            app->quit = true;
+            app->quit.store(true);
         }
     }
 
@@ -182,6 +182,17 @@ std::vector<GameObject *> CreateGameObjects(NetworkInfo network_info) {
 
     std::vector<GameObject *> game_objects = std::vector({player, ball, basket, ground});
 
+    for (GameObject *game_object : game_objects) {
+        if (network_info.mode == NetworkMode::PeerToPeer) {
+            if (game_object->GetOwner() == NetworkRole::Server) {
+                game_object->SetOwner(NetworkRole::Host);
+            }
+            if (game_object->GetOwner() == NetworkRole::Client) {
+                game_object->SetOwner(NetworkRole::Peer);
+            }
+        }
+    }
+
     return game_objects;
 }
 
@@ -209,14 +220,12 @@ int main(int argc, char *args[]) {
     if (network_info.id > 4) {
         Log(LogLevel::Error, "More than 4 players spotted: EXITING THE GAME. Player ID: %d",
             network_info.id);
-        app->quit = true;
+        app->quit.store(true);
     }
 
-    if (network_info.role == NetworkRole::Client || network_info.role == NetworkRole::Peer) {
-        Color background_color = Color{165, 200, 255, 255};
-        game_engine.SetBackgroundColor(background_color);
-        game_engine.SetGameTitle(game_title);
-    }
+    Color background_color = Color{165, 200, 255, 255};
+    game_engine.SetBackgroundColor(background_color);
+    game_engine.SetGameTitle(game_title);
 
     window_size = GetWindowSize();
 

@@ -16,7 +16,7 @@ GameObject *GetObjectByName(std::string name, std::vector<GameObject *> game_obj
 GameObject *GetControllable(std::vector<GameObject *> game_objects);
 std::vector<GameObject *> GetObjectsByRole(NetworkInfo network_info,
                                            std::vector<GameObject *> game_objects);
-void SetPlayerTexture(GameObject *controllable, int player_id);
+void SetPlayerTexture(GameObject *controllable, int player_id, int player_textures);
 GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_objects);
 bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]);
 void HandleSIGINT(int signum);

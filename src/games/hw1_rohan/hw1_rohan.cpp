@@ -32,7 +32,7 @@ void Update(std::vector<GameObject *> *game_objects) {
     // If the ball collides with the basket, the player wins: game ends
     for (GameObject *object : ball->GetColliders()) {
         if (object->GetName() == "basket") {
-            app->quit = true;
+            app->quit.store(true);
             Log(LogLevel::Info, "You've scored a GOAL!! You win!");
         }
     }
@@ -191,12 +191,9 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    if (game_engine.GetNetworkInfo().role == NetworkRole::Client ||
-        game_engine.GetNetworkInfo().role == NetworkRole::Peer) {
-        Color background_color = Color{165, 200, 255, 255};
-        game_engine.SetBackgroundColor(background_color);
-        game_engine.SetGameTitle(game_title);
-    }
+    Color background_color = Color{165, 200, 255, 255};
+    game_engine.SetBackgroundColor(background_color);
+    game_engine.SetGameTitle(game_title);
 
     if (!game_engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");

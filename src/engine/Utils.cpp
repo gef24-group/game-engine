@@ -90,8 +90,7 @@ std::vector<GameObject *> GetObjectsByRole(NetworkInfo network_info,
         return game_objects;
     }
 
-    if (network_info.mode == NetworkMode::ClientServer ||
-        network_info.mode == NetworkMode::PeerToPeer) {
+    if (network_info.role == NetworkRole::Server || network_info.role == NetworkRole::Host) {
         for (auto *game_object : game_objects) {
             if (game_object->GetOwner() == network_info.role) {
                 objects.push_back(game_object);
@@ -99,12 +98,17 @@ std::vector<GameObject *> GetObjectsByRole(NetworkInfo network_info,
         }
     }
 
+    if (network_info.role == NetworkRole::Client || network_info.role == NetworkRole::Peer) {
+        objects.push_back(GetClientPlayer(network_info.id, game_objects));
+    }
+
     return objects;
 }
 
-void SetPlayerTexture(GameObject *controllable, int player_id) {
+void SetPlayerTexture(GameObject *controllable, int player_id, int player_textures) {
     std::string texture_template = controllable->GetTextureTemplate();
     size_t pos = texture_template.find("{}");
+    player_id = (player_id - 1) % player_textures + 1;
 
     if (pos != std::string::npos) {
         texture_template.replace(pos, 2, std::to_string(player_id));
@@ -139,7 +143,7 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
     std::string mode;
     std::string role;
     std::vector<std::string> valid_modes = {"single", "cs", "p2p"};
-    std::vector<std::string> valid_roles = {"server", "client", "peer"};
+    std::vector<std::string> valid_roles = {"server", "client", "host", "peer"};
 
     for (int i = 1; i < argc; i++) {
         std::string arg = args[i];
@@ -165,13 +169,15 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
     }
 
     if (std::find(valid_roles.begin(), valid_roles.end(), role) == valid_roles.end()) {
-        Log(LogLevel::Error, "Invalid role. Must be one of [server, client, peer]");
+        Log(LogLevel::Error, "Invalid role. Must be one of [server, client, host, peer]");
         return false;
     }
 
-    if ((mode == "single" && (role == "server" || role == "peer")) ||
-        (mode == "cs" && role == "peer") || (mode == "p2p" && role == "client")) {
+    if ((mode == "single" && (role == "server" || role == "host" || role == "peer")) ||
+        (mode == "cs" && (role == "host" || role == "peer")) ||
+        (mode == "p2p" && (role == "server" || role == "client"))) {
         Log(LogLevel::Error, "[%s] mode does not support [%s] role!", mode.c_str(), role.c_str());
+        return false;
     }
 
     NetworkMode network_mode;
@@ -193,6 +199,9 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
     if (role == "client") {
         network_role = NetworkRole::Client;
     }
+    if (role == "host") {
+        network_role = NetworkRole::Host;
+    }
     if (role == "peer") {
         network_role = NetworkRole::Peer;
     }
@@ -209,18 +218,12 @@ void HandleSIGINT(int signum) {
 }
 
 int GetPlayerIdFromName(std::string player_name) {
-    unsigned long player_name_length = player_name.size();
-    unsigned long index = player_name_length - 1;
-    // Traverse backwards to find the start of the integer
-    while (index >= 0 && std::isdigit(player_name[index])) {
-        index--;
+    std::vector<std::string> player = Split(player_name, '_');
+
+    if (player.size() == 2) {
+        return std::stoi(player[1]);
     }
 
-    if (index < player_name_length - 1) {
-        return std::stoi(player_name.substr(index + 1));
-    }
-
-    // If no integers were found at the end of the player name
     return -1;
 }
 

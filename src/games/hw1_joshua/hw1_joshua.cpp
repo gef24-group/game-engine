@@ -112,7 +112,7 @@ void UpdateAlien(GameObject *alien) {
                 Log(LogLevel::Info, "");
                 Log(LogLevel::Info, "You lost :(");
                 Log(LogLevel::Info, "");
-                app->quit = true;
+                app->quit.store(true);
                 break;
             }
         }
@@ -143,12 +143,9 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    if (game_engine.GetNetworkInfo().role == NetworkRole::Client ||
-        game_engine.GetNetworkInfo().role == NetworkRole::Peer) {
-        Color background_color = Color{52, 153, 219, 255};
-        game_engine.SetBackgroundColor(background_color);
-        game_engine.SetGameTitle(game_title);
-    }
+    Color background_color = Color{52, 153, 219, 255};
+    game_engine.SetBackgroundColor(background_color);
+    game_engine.SetGameTitle(game_title);
 
     if (!game_engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");

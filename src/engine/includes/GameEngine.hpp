@@ -15,8 +15,10 @@ class GameEngine {
     std::string game_title;
     Timeline engine_timeline;
     NetworkInfo network_info;
-    std::atomic<int> clients_connected;
+    std::atomic<int> players_connected;
     Color background_color;
+    bool show_player_border;
+    int player_textures;
     std::vector<GameObject *> game_objects;
     std::function<void(std::vector<GameObject *> *game_objects)> callback;
 
@@ -24,18 +26,19 @@ class GameEngine {
     zmq::socket_t join_socket;
     zmq::socket_t server_broadcast_socket;
     zmq::socket_t client_update_socket;
+    zmq::socket_t host_broadcast_socket;
+    zmq::socket_t peer_broadcast_socket;
 
     bool InitSingleClient();
     bool InitCSServer();
     bool InitCSClient();
-    bool InitP2PServer();
+    bool InitP2PHost();
     bool InitP2PPeer();
 
     void StartSingleClient();
     void StartCSServer();
     void StartCSClient();
-    void StartP2PServer();
-    void StartP2PPeer();
+    void StartP2P();
 
     bool InitializeDisplay();
     bool InitCSClientConnection();
@@ -47,12 +50,19 @@ class GameEngine {
     void CSClientAddExistingPlayers();
     void CSClientReceiveBroadcastThread();
     void CSClientSendUpdate();
-    GameObject *CSClientCreateNewPlayer(ObjectUpdate object_update);
-    void CSServerCreateNewPlayer(int client_id);
+    GameObject *CreateNewPlayer(int player_id);
+
+    bool InitP2PPeerConnection();
+
+    void P2PHostListenerThread();
+    void P2PHostBroadcastPlayers();
+    void P2PReceiveBroadcastThread(int player_id);
+    void P2PReceiveBroadcastFromHostThread();
+    void P2PBroadcastUpdates();
 
     void SetupDefaultInputs();
     void ReadInputsThread();
-    bool HandleEvents();
+    bool HandleQuitEvent();
     void GetTimeDelta();
     void ApplyObjectPhysicsAndUpdates();
     void TestCollision();
@@ -71,6 +81,8 @@ class GameEngine {
     void SetNetworkInfo(NetworkInfo network_info);
     NetworkInfo GetNetworkInfo();
     void SetBackgroundColor(Color color);
+    void SetShowPlayerBorder(bool show_player_border);
+    void SetPlayerTextures(int player_textures);
     void AddObjects(std::vector<GameObject *> game_objects);
     void SetCallback(std::function<void(std::vector<GameObject *> *)> callback);
 };

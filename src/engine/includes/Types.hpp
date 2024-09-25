@@ -8,13 +8,18 @@ enum Shape { Circle, Square, Rectangle, Triangle };
 enum GameObjectCategory { Controllable, Moving, Stationary };
 enum LogLevel { Verbose = 1, Debug, Info, Warn, Error, Critical, Priorities };
 enum NetworkMode { Single, ClientServer, PeerToPeer };
-enum NetworkRole { Server, Client, Peer };
+enum NetworkRole { Server, Client, Host, Peer };
 
 struct Color {
     int red;
     int green;
     int blue;
     int alpha = 255;
+};
+
+struct Border {
+    bool show = false;
+    Color color;
 };
 
 struct Position {
@@ -78,8 +83,8 @@ struct NetworkInfo {
 };
 
 struct JoinReply {
-    int client_id;
-    char client_address[100];
+    int player_id;
+    char player_address[100];
 };
 
 struct ObjectUpdate {

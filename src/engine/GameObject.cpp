@@ -13,6 +13,7 @@ GameObject::GameObject(std::string name, GameObjectCategory category) {
     this->category = category;
     this->shape = Rectangle;
     this->color = Color{0, 0, 0, 255};
+    this->border = Border{false, Color{0, 0, 0, 255}};
     this->SetPosition(Position{0, 0});
     this->size = Size{0, 0};
     this->velocity = Velocity{0, 0};
@@ -60,6 +61,11 @@ void GameObject::Render() {
         SDL_RenderFillRect(app->renderer, &object);
     } else {
         SDL_RenderCopy(app->renderer, this->texture, NULL, &object);
+        if (this->border.show) {
+            SDL_SetRenderDrawColor(app->renderer, this->border.color.red, this->border.color.green,
+                                   this->border.color.blue, this->border.color.alpha);
+            SDL_RenderDrawRect(app->renderer, &object);
+        }
     }
 }
 
@@ -69,6 +75,7 @@ std::string GameObject::GetName() { return this->name; }
 GameObjectCategory GameObject::GetCategory() { return this->category; }
 Shape GameObject::GetShape() { return this->shape; }
 Color GameObject::GetColor() { return this->color; }
+Border GameObject::GetBorder() { return this->border; }
 Position GameObject::GetPosition() {
     std::lock_guard<std::mutex> lock(this->position_mutex);
     return this->position;
@@ -90,6 +97,7 @@ void GameObject::SetTextureTemplate(std::string texture_template) {
 void GameObject::SetName(std::string name) { this->name = name; }
 void GameObject::SetShape(Shape shape) { this->shape = shape; }
 void GameObject::SetColor(Color color) { this->color = color; }
+void GameObject::SetBorder(Border border) { this->border = border; }
 void GameObject::SetPosition(Position position) {
     std::lock_guard<std::mutex> lock(this->position_mutex);
     this->position = position;

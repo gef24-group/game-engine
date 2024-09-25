@@ -14,10 +14,10 @@ std::vector<const char *> enemy_textures =
 void Update(std::vector<GameObject *> *game_objects) {
     std::random_device random_device;
     std::mt19937 eng(random_device());
-    std::uniform_int_distribution<> include_dist(0, 5);
+    std::uniform_int_distribution<> include_dist(0, 50);
     std::uniform_int_distribution<> enemy_dist(0, int(enemy_textures.size() - 1));
 
-    bool include_enemy = include_dist(eng) == 3;
+    bool include_enemy = include_dist(eng) == 25;
     size_t random_enemy = enemy_dist(eng);
 
     float max_ground_x = 0;
@@ -97,7 +97,7 @@ void UpdateAlien(GameObject *alien) {
                 Log(LogLevel::Info, "");
                 Log(LogLevel::Info, "You lost :(");
                 Log(LogLevel::Info, "");
-                app->quit = true;
+                app->quit.store(true);
                 break;
             }
         }
@@ -217,6 +217,17 @@ std::vector<GameObject *> CreateGameObjects() {
         game_objects.push_back(enemy);
     }
 
+    for (GameObject *game_object : game_objects) {
+        if (network_info.mode == NetworkMode::PeerToPeer) {
+            if (game_object->GetOwner() == NetworkRole::Server) {
+                game_object->SetOwner(NetworkRole::Host);
+            }
+            if (game_object->GetOwner() == NetworkRole::Client) {
+                game_object->SetOwner(NetworkRole::Peer);
+            }
+        }
+    }
+
     return game_objects;
 }
 
@@ -227,7 +238,7 @@ void DestroyObjects(std::vector<GameObject *> game_objects) {
 }
 
 int main(int argc, char *args[]) {
-    std::string game_title = "CSC581 HW1 Joshua's Game";
+    std::string game_title = "CSC581 HW2 Joshua's Game";
 
     GameEngine game_engine;
     if (!SetEngineCLIOptions(&game_engine, argc, args)) {
@@ -235,11 +246,10 @@ int main(int argc, char *args[]) {
     }
     network_info = game_engine.GetNetworkInfo();
 
-    if (network_info.role == NetworkRole::Client || network_info.role == NetworkRole::Peer) {
-        Color background_color = Color{52, 153, 219, 255};
-        game_engine.SetBackgroundColor(background_color);
-        game_engine.SetGameTitle(game_title);
-    }
+    Color background_color = Color{52, 153, 219, 255};
+    game_engine.SetBackgroundColor(background_color);
+    game_engine.SetGameTitle(game_title);
+    game_engine.SetShowPlayerBorder(true);
 
     if (!game_engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
@@ -250,6 +260,7 @@ int main(int argc, char *args[]) {
 
     std::vector<GameObject *> game_objects = CreateGameObjects();
     game_engine.AddObjects(game_objects);
+    game_engine.SetPlayerTextures(5);
     game_engine.SetCallback(Update);
 
     game_engine.Start();

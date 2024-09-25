@@ -23,15 +23,17 @@ GameEngine::GameEngine() {
     std::signal(SIGINT, HandleSIGINT);
     app->sdl_window = nullptr;
     app->renderer = nullptr;
-    app->quit = false;
+    app->quit.store(false);
     app->sigint.store(false);
     app->key_map = new KeyMap();
     app->window = Window({1920, 1080, true});
 
     this->game_title = "";
     this->engine_timeline = Timeline();
-    this->clients_connected = 0;
+    this->players_connected.store(0);
     this->background_color = Color{0, 0, 0, 255};
+    this->show_player_border = false;
+    this->player_textures = 0;
     this->game_objects = std::vector<GameObject *>();
     this->callback = [](std::vector<GameObject *> *) {};
 }
@@ -52,8 +54,8 @@ bool GameEngine::Init() {
     }
 
     if (this->network_info.mode == NetworkMode::PeerToPeer) {
-        if (this->network_info.role == NetworkRole::Server) {
-            return this->InitP2PServer();
+        if (this->network_info.role == NetworkRole::Host) {
+            return this->InitP2PHost();
         }
         if (this->network_info.role == NetworkRole::Peer) {
             return this->InitP2PPeer();
@@ -71,9 +73,9 @@ bool GameEngine::InitSingleClient() {
 
 void GameEngine::CSServerClientThread(JoinReply join_reply) {
     zmq::socket_t client_socket(this->zmq_context, zmq::socket_type::rep);
-    client_socket.bind(join_reply.client_address);
+    client_socket.bind(join_reply.player_address);
 
-    Log(LogLevel::Info, "Client thread for client [%d] started", join_reply.client_id);
+    Log(LogLevel::Info, "Client thread for client [%d] started", join_reply.player_id);
 
     while (!app->sigint.load()) {
         try {
@@ -82,7 +84,7 @@ void GameEngine::CSServerClientThread(JoinReply join_reply) {
             ObjectUpdate object_update;
             std::memcpy(&object_update, request.data(), sizeof(ObjectUpdate));
 
-            std::string ack = "Acknowledge client [" + std::to_string(join_reply.client_id) + "]";
+            std::string ack = "Acknowledge client [" + std::to_string(join_reply.player_id) + "]";
             zmq::message_t reply(ack.size());
             std::memcpy(reply.data(), ack.c_str(), ack.size());
             client_socket.send(reply, zmq::send_flags::none);
@@ -125,18 +127,18 @@ void GameEngine::CSServerListenerThread() {
             std::string message(static_cast<char *>(request.data()), request.size());
 
             if (message == "join") {
-                int client_id = this->clients_connected += 1;
+                int player_id = this->players_connected += 1;
 
                 JoinReply join_reply;
-                join_reply.client_id = client_id;
-                std::snprintf(join_reply.client_address, sizeof(join_reply.client_address),
-                              "tcp://localhost:600%d", client_id);
+                join_reply.player_id = player_id;
+                std::snprintf(join_reply.player_address, sizeof(join_reply.player_address),
+                              "tcp://localhost:600%d", player_id);
 
                 zmq::message_t reply_msg(sizeof(JoinReply));
                 std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
                 this->join_socket.send(reply_msg, zmq::send_flags::none);
 
-                CSServerCreateNewPlayer(client_id);
+                this->CreateNewPlayer(player_id);
 
                 std::thread client_thread([&, this]() { this->CSServerClientThread(join_reply); });
                 client_thread.detach();
@@ -178,16 +180,51 @@ bool GameEngine::InitCSClientConnection() {
 
     JoinReply join_reply;
     std::memcpy(&join_reply, server_reply.data(), sizeof(JoinReply));
-    Log(LogLevel::Info, "The client ID assigned by the server: %s",
-        std::to_string(join_reply.client_id).c_str());
-    this->network_info.id = join_reply.client_id;
+    Log(LogLevel::Info, "The player ID assigned by the server: %s",
+        std::to_string(join_reply.player_id).c_str());
+    this->network_info.id = join_reply.player_id;
 
     this->client_update_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::req);
-    this->client_update_socket.connect(join_reply.client_address);
+    this->client_update_socket.connect(join_reply.player_address);
 
     this->server_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::sub);
     this->server_broadcast_socket.connect("tcp://localhost:5556");
     this->server_broadcast_socket.set(zmq::sockopt::subscribe, "");
+
+    return true;
+}
+
+bool GameEngine::InitP2PPeerConnection() {
+    this->zmq_context = zmq::context_t(1);
+
+    // The peer connects to the host peer's broadcast socket
+    // One of the peers is called the 'host' since our design employs a listen-server architecture
+    this->host_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::sub);
+    this->host_broadcast_socket.connect("tcp://localhost:6001");
+    this->host_broadcast_socket.set(zmq::sockopt::subscribe, "");
+
+    // Connecting to the host in order to send a join message
+    this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::req);
+    this->join_socket.connect("tcp://localhost:5555");
+
+    std::string join_message = "join";
+    zmq::message_t connection_request(join_message.size());
+    std::memcpy(connection_request.data(), join_message.c_str(), join_message.size());
+    this->join_socket.send(connection_request, zmq::send_flags::none);
+
+    zmq::message_t server_reply;
+    zmq::recv_result_t res = this->join_socket.recv(server_reply, zmq::recv_flags::none);
+
+    // From the host's reply, it gets its own client ID.
+    JoinReply join_reply;
+    std::memcpy(&join_reply, server_reply.data(), sizeof(JoinReply));
+    Log(LogLevel::Info, "The player ID assigned by the host: %s",
+        std::to_string(join_reply.player_id).c_str());
+    this->network_info.id = join_reply.player_id;
+
+    // The peer acts as a server here that broadcasts its own position to all the peers
+    this->peer_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::pub);
+    this->peer_broadcast_socket.bind(join_reply.player_address);
 
     return true;
 }
@@ -200,9 +237,93 @@ bool GameEngine::InitCSClient() {
     return display_success && client_connection_success;
 }
 
-bool GameEngine::InitP2PServer() { return false; }
+void GameEngine::P2PHostBroadcastPlayers() {
+    for (GameObject *game_object : this->game_objects) {
+        try {
+            if (game_object->GetOwner() == Peer) {
+                ObjectUpdate object_update;
+                std::snprintf(object_update.name, sizeof(object_update.name), "%s",
+                              game_object->GetName().c_str());
+                object_update.position = game_object->GetPosition();
 
-bool GameEngine::InitP2PPeer() { return false; }
+                zmq::message_t broadcast_update(sizeof(ObjectUpdate));
+                std::memcpy(broadcast_update.data(), &object_update, sizeof(ObjectUpdate));
+                this->host_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+            }
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error while broadcasting host players: %s", e.what());
+            this->host_broadcast_socket.close();
+        }
+    }
+}
+
+void GameEngine::P2PHostListenerThread() {
+    Log(LogLevel::Info, "Host listening for incoming connections at port 5555");
+
+    while (!app->quit.load() && !app->sigint.load()) {
+        try {
+            zmq::message_t request;
+            zmq::recv_result_t result = this->join_socket.recv(request, zmq::recv_flags::none);
+            std::string message(static_cast<char *>(request.data()), request.size());
+
+            if (message == "join") {
+                int player_id = this->players_connected += 1;
+
+                JoinReply join_reply;
+                join_reply.player_id = player_id;
+                std::snprintf(join_reply.player_address, sizeof(join_reply.player_address),
+                              "tcp://localhost:600%d", player_id);
+
+                zmq::message_t reply_msg(sizeof(JoinReply));
+                std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
+                this->join_socket.send(reply_msg, zmq::send_flags::none);
+
+                this->CreateNewPlayer(player_id);
+                // Whenever a new peer joins the game, broadcasts the status of all peers the host
+                // knows about so that all peers are aware of how many players are playing the game
+                // at the time.
+                this->P2PHostBroadcastPlayers();
+
+                std::thread peer_thread(
+                    [&, this]() { this->P2PReceiveBroadcastThread(join_reply.player_id); });
+                peer_thread.detach();
+            }
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error in the host listener thread: %s", e.what());
+            // app->quit.store(true);
+            this->join_socket.close();
+        }
+    }
+};
+
+bool GameEngine::InitP2PHost() {
+    bool display_success = this->InitializeDisplay();
+
+    this->zmq_context = zmq::context_t(1);
+
+    this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::rep);
+    this->join_socket.bind("tcp://*:5555");
+    std::thread listener_thread([&, this]() { this->P2PHostListenerThread(); });
+    listener_thread.detach();
+
+    this->host_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::pub);
+    this->network_info.id = 1;
+    this->players_connected.store(1);
+    this->host_broadcast_socket.bind("tcp://*:600" +
+                                     std::to_string(this->players_connected.load()));
+
+    this->ShowWelcomeScreen();
+
+    return display_success;
+}
+
+bool GameEngine::InitP2PPeer() {
+    bool display_success = this->InitializeDisplay();
+    bool connection_success = this->InitP2PPeerConnection();
+    this->ShowWelcomeScreen();
+
+    return display_success && connection_success;
+}
 
 void GameEngine::Start() {
     if (this->network_info.mode == NetworkMode::Single &&
@@ -220,29 +341,20 @@ void GameEngine::Start() {
     }
 
     if (this->network_info.mode == NetworkMode::PeerToPeer) {
-        if (this->network_info.role == NetworkRole::Server) {
-            this->StartP2PServer();
-        }
-        if (this->network_info.role == NetworkRole::Peer) {
-            this->StartP2PPeer();
-        }
+        this->StartP2P();
     }
 }
 
 void GameEngine::StartSingleClient() {
     this->SetupDefaultInputs();
 
-    std::thread input_thread = std::thread([this]() {
-        while (!app->quit && !app->sigint.load()) {
-            this->ReadInputsThread();
-        }
-    });
+    std::thread input_thread = std::thread([this]() { this->ReadInputsThread(); });
 
     this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
 
     // Engine loop
-    while (!app->quit && !app->sigint.load()) {
-        app->quit = this->HandleEvents();
+    while (!app->quit.load() && !app->sigint.load()) {
+        app->quit.store(this->HandleQuitEvent());
         this->GetTimeDelta();
         this->ApplyObjectPhysicsAndUpdates();
         this->TestCollision();
@@ -272,88 +384,82 @@ void GameEngine::StartCSServer() {
 }
 
 void GameEngine::CSClientAddExistingPlayers() {
+    for (int player_id = 1; player_id <= this->network_info.id; player_id++) {
+        this->CreateNewPlayer(player_id);
+    }
+}
+
+GameObject *GameEngine::CreateNewPlayer(int player_id) {
+    bool is_p2p = this->network_info.mode == NetworkMode::PeerToPeer;
+    bool is_host = this->network_info.role == NetworkRole::Host;
+    bool is_cs = this->network_info.mode == NetworkMode::ClientServer;
+    bool is_server = this->network_info.role == NetworkRole::Server;
+    bool is_client = this->network_info.role == NetworkRole::Client;
+
     GameObject *controllable = GetControllable(this->game_objects);
-    std::string player_name = controllable->GetName() + "_" + std::to_string(this->network_info.id);
+    std::string player_name = Split(controllable->GetName(), '_')[0];
+    player_name += "_" + std::to_string(player_id);
 
-    if (this->network_info.id > 1) {
-        GameObject *controllable = GetControllable(this->game_objects);
-
-        for (int player_id = 1; player_id < this->network_info.id; player_id++) {
-            GameObject *player =
-                new GameObject(controllable->GetName(), controllable->GetCategory());
-            std::string player_name = player->GetName() + "_" + std::to_string(player_id);
-            player->SetName(player_name);
-            player->SetColor(controllable->GetColor());
-            player->SetSize(controllable->GetSize());
-            player->SetTextureTemplate(controllable->GetTextureTemplate());
-            player->SetCallback(controllable->GetCallback());
-            SetPlayerTexture(player, player_id);
-
-            this->game_objects.push_back(player);
+    if (is_p2p && is_host) {
+        if (player_id == 1) {
+            controllable->SetOwner(NetworkRole::Host);
         }
     }
-
-    controllable->SetName(player_name);
-    SetPlayerTexture(controllable, this->network_info.id);
-}
-
-GameObject *GameEngine::CSClientCreateNewPlayer(ObjectUpdate object_update) {
-    GameObject *controllable = GetControllable(this->game_objects);
-    GameObject *player = new GameObject(object_update.name, controllable->GetCategory());
-    player->SetColor(controllable->GetColor());
-    player->SetSize(controllable->GetSize());
-    player->SetTextureTemplate(controllable->GetTextureTemplate());
-    player->SetCallback(controllable->GetCallback());
-    int player_id = GetPlayerIdFromName(object_update.name);
-    SetPlayerTexture(player, player_id);
-
-    this->game_objects.push_back(player);
-    return player;
-}
-
-void GameEngine::CSServerCreateNewPlayer(int client_id) {
-    GameObject *controllable = GetControllable(this->game_objects);
-    if (client_id == 1) {
-        controllable->SetName(Split(controllable->GetName(), '_')[0] + "_" +
-                              std::to_string(client_id));
-    } else {
-        GameObject *player =
-            new GameObject(Split(controllable->GetName(), '_')[0] + "_" + std::to_string(client_id),
-                           controllable->GetCategory());
+    if ((is_cs && is_server && player_id == 1) || (player_id == this->network_info.id)) {
+        controllable->SetName(player_name);
+        SetPlayerTexture(controllable, player_id, this->player_textures);
+        if (this->show_player_border) {
+            controllable->SetBorder(Border{true, Color{0, 0, 0, 255}});
+        }
+        return controllable;
+    }
+    if ((is_cs && is_server && player_id > 1) || (player_id != this->network_info.id)) {
+        GameObject *player = new GameObject(player_name, controllable->GetCategory());
         player->SetColor(controllable->GetColor());
         player->SetSize(controllable->GetSize());
         player->SetTextureTemplate(controllable->GetTextureTemplate());
         player->SetCallback(controllable->GetCallback());
-        SetPlayerTexture(player, client_id);
+        player->SetOwner(controllable->GetOwner());
+        if (is_p2p) {
+            player->SetOwner(NetworkRole::Peer);
+        }
+        SetPlayerTexture(player, player_id, this->player_textures);
 
         this->game_objects.push_back(player);
+        return player;
     }
+
+    return nullptr;
 }
 
 void GameEngine::CSClientReceiveBroadcastThread() {
-    try {
-        zmq::message_t message;
-        zmq::recv_result_t res =
-            this->server_broadcast_socket.recv(message, zmq::recv_flags::dontwait);
+    while (!app->quit.load() && !app->sigint.load()) {
+        try {
+            zmq::message_t message;
+            zmq::recv_result_t res =
+                this->server_broadcast_socket.recv(message, zmq::recv_flags::dontwait);
 
-        if (res) {
-            ObjectUpdate object_update;
-            std::memcpy(&object_update, message.data(), sizeof(ObjectUpdate));
-            GameObject *game_object = GetObjectByName(object_update.name, this->game_objects);
-            // If the object received does not already exist in the client, create it. Occurs
-            // whenever a new client joins the game
-            if (game_object == nullptr) {
-                game_object = this->CSClientCreateNewPlayer(object_update);
-            }
-            GameObject *player = GetClientPlayer(this->network_info.id, this->game_objects);
+            if (res) {
+                ObjectUpdate object_update;
+                std::memcpy(&object_update, message.data(), sizeof(ObjectUpdate));
+                GameObject *game_object = GetObjectByName(object_update.name, this->game_objects);
+                // If the object received does not already exist in the client, create it. Occurs
+                // whenever a new client joins the game
+                if (game_object == nullptr) {
+                    int player_id = GetPlayerIdFromName(object_update.name);
+                    game_object = this->CreateNewPlayer(player_id);
+                }
+                GameObject *player = GetClientPlayer(this->network_info.id, this->game_objects);
 
-            if (game_object->GetName() != player->GetName()) {
-                game_object->SetPosition(object_update.position);
+                if (game_object->GetName() != player->GetName()) {
+                    game_object->SetPosition(object_update.position);
+                }
             }
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error in the client receive broadcast thread: %s",
+                e.what());
+            this->server_broadcast_socket.close();
         }
-    } catch (const zmq::error_t &e) {
-        Log(LogLevel::Info, "Caught error in the client receive broadcast thread: %s", e.what());
-        this->server_broadcast_socket.close();
     }
 }
 
@@ -385,23 +491,16 @@ void GameEngine::StartCSClient() {
 
     this->SetupDefaultInputs();
 
-    std::thread input_thread = std::thread([this]() {
-        while (!app->quit && !app->sigint.load()) {
-            this->ReadInputsThread();
-        }
-    });
+    std::thread input_thread = std::thread([this]() { this->ReadInputsThread(); });
 
-    std::thread receive_broadcast_thread = std::thread([this]() {
-        while (!app->quit && !app->sigint.load()) {
-            this->CSClientReceiveBroadcastThread();
-        }
-    });
+    std::thread receive_broadcast_thread =
+        std::thread([this]() { this->CSClientReceiveBroadcastThread(); });
 
     this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
 
     // Engine loop
-    while (!app->quit && !app->sigint.load()) {
-        app->quit = this->HandleEvents();
+    while (!app->quit.load() && !app->sigint.load()) {
+        app->quit.store(this->HandleQuitEvent());
         this->GetTimeDelta();
         this->ApplyObjectPhysicsAndUpdates();
         this->CSClientSendUpdate();
@@ -421,9 +520,141 @@ void GameEngine::StartCSClient() {
 
     this->Shutdown();
 }
-void GameEngine::StartP2PServer() {}
 
-void GameEngine::StartP2PPeer() {}
+void GameEngine::P2PBroadcastUpdates() {
+    for (GameObject *game_object : GetObjectsByRole(this->network_info, this->game_objects)) {
+        try {
+            ObjectUpdate object_update;
+            std::snprintf(object_update.name, sizeof(object_update.name), "%s",
+                          game_object->GetName().c_str());
+            object_update.position = game_object->GetPosition();
+
+            zmq::message_t broadcast_update(sizeof(ObjectUpdate));
+            std::memcpy(broadcast_update.data(), &object_update, sizeof(ObjectUpdate));
+
+            if (this->network_info.role == Host) {
+                // The host peer broadcasts the positions of all host governed objects
+                this->host_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+
+            } else if (this->network_info.role == Peer &&
+                       this->network_info.id == GetPlayerIdFromName(game_object->GetName())) {
+                // The other peers broadcast the position of its own controllable player
+                this->peer_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+            }
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error while broadcasting p2p updates: %s", e.what());
+            if (this->network_info.role == Host) {
+                this->host_broadcast_socket.close();
+            } else if (this->network_info.role == Peer) {
+                this->peer_broadcast_socket.close();
+            }
+        }
+    }
+}
+
+void GameEngine::P2PReceiveBroadcastThread(int player_id) {
+    Log(LogLevel::Info, "Receiving broadcasts from player: [%d]", player_id);
+
+    zmq::socket_t peer_receive_socket(this->zmq_context, zmq::socket_type::sub);
+    peer_receive_socket.connect("tcp://localhost:600" + std::to_string(player_id));
+    peer_receive_socket.set(zmq::sockopt::subscribe, "");
+
+    while (!app->quit.load() && !app->sigint.load()) {
+        try {
+            zmq::message_t message;
+            zmq::recv_result_t res = peer_receive_socket.recv(message, zmq::recv_flags::dontwait);
+
+            if (res) {
+                ObjectUpdate object_update;
+                std::memcpy(&object_update, message.data(), sizeof(ObjectUpdate));
+                GameObject *game_object = GetObjectByName(object_update.name, this->game_objects);
+                game_object->SetPosition(object_update.position);
+            }
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error in the peer receive broadcast thread: %s", e.what());
+            peer_receive_socket.close();
+        }
+    }
+}
+
+void GameEngine::P2PReceiveBroadcastFromHostThread() {
+    Log(LogLevel::Info, "Receiving broadcasts from the host");
+
+    while (!app->quit.load() && !app->sigint.load()) {
+        try {
+            zmq::message_t message;
+            zmq::recv_result_t res =
+                this->host_broadcast_socket.recv(message, zmq::recv_flags::dontwait);
+
+            if (res) {
+                ObjectUpdate object_update;
+                std::memcpy(&object_update, message.data(), sizeof(ObjectUpdate));
+                GameObject *game_object = GetObjectByName(object_update.name, this->game_objects);
+                // If the object received does not already exist in the client, create it. Occurs
+                // whenever a new client joins the game
+                if (game_object == nullptr) {
+                    int player_id = GetPlayerIdFromName(object_update.name);
+                    game_object = this->CreateNewPlayer(player_id);
+                    // spawn a new thread to receive broadcasts from the new peer
+                    if (player_id != 1) {
+                        std::thread peer_thread(
+                            [&, this]() { this->P2PReceiveBroadcastThread(player_id); });
+                        peer_thread.detach();
+                    }
+                }
+                GameObject *player = GetClientPlayer(this->network_info.id, this->game_objects);
+
+                if (game_object->GetName() != player->GetName()) {
+                    game_object->SetPosition(object_update.position);
+                }
+            }
+        } catch (const zmq::error_t &e) {
+            Log(LogLevel::Info, "Caught error in the peer receive broadcast from host thread: %s",
+                e.what());
+            this->host_broadcast_socket.close();
+        }
+    }
+}
+
+void GameEngine::StartP2P() {
+    this->SetupDefaultInputs();
+    std::thread receive_broadcast_thread;
+
+    std::thread input_thread = std::thread([this]() { this->ReadInputsThread(); });
+
+    this->CreateNewPlayer(this->network_info.id);
+
+    if (this->network_info.role == NetworkRole::Peer) {
+        receive_broadcast_thread =
+            std::thread([this]() { this->P2PReceiveBroadcastFromHostThread(); });
+    }
+
+    this->engine_timeline.SetFrameTime(FrameTime{0, this->engine_timeline.GetTime(), 0});
+
+    // Engine loop
+    while (!app->quit.load() && !app->sigint.load()) {
+        app->quit.store(this->HandleQuitEvent());
+        this->GetTimeDelta();
+        this->ApplyObjectPhysicsAndUpdates();
+        this->P2PBroadcastUpdates();
+        this->TestCollision();
+        this->HandleCollisions();
+        this->Update();
+        this->RenderScene();
+    }
+
+    if (input_thread.joinable()) {
+        input_thread.join();
+    }
+
+    if (this->network_info.role == NetworkRole::Peer) {
+        if (receive_broadcast_thread.joinable()) {
+            receive_broadcast_thread.join();
+        }
+    }
+
+    this->Shutdown();
+}
 
 void GameEngine::SetupDefaultInputs() {
     // toggle constant and proportional scaling
@@ -475,13 +706,31 @@ bool GameEngine::InitializeDisplay() {
     return true;
 }
 
-void GameEngine::SetGameTitle(std::string game_title) { this->game_title = game_title; }
+void GameEngine::SetGameTitle(std::string game_title) {
+    if (this->network_info.role == NetworkRole::Client ||
+        this->network_info.role == NetworkRole::Host ||
+        this->network_info.role == NetworkRole::Peer) {
+        this->game_title = game_title;
+    }
+}
 
 void GameEngine::SetNetworkInfo(NetworkInfo network_info) { this->network_info = network_info; }
 
 NetworkInfo GameEngine::GetNetworkInfo() { return this->network_info; }
 
-void GameEngine::SetBackgroundColor(Color color) { this->background_color = color; }
+void GameEngine::SetBackgroundColor(Color color) {
+    if (this->network_info.role == NetworkRole::Client ||
+        this->network_info.role == NetworkRole::Host ||
+        this->network_info.role == NetworkRole::Peer) {
+        this->background_color = color;
+    }
+}
+
+void GameEngine::SetShowPlayerBorder(bool show_player_border) {
+    this->show_player_border = show_player_border;
+}
+
+void GameEngine::SetPlayerTextures(int player_textures) { this->player_textures = player_textures; }
 
 void GameEngine::ShowWelcomeScreen() {
     // Sets the background to blue
@@ -514,46 +763,48 @@ void GameEngine::GetTimeDelta() {
 }
 
 void GameEngine::ReadInputsThread() {
-    const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
-    auto now = std::chrono::high_resolution_clock::now();
+    while (!app->quit.load() && !app->sigint.load()) {
+        const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
+        auto now = std::chrono::high_resolution_clock::now();
 
-    auto debounce_key = [&](int scancode, Key &key, bool delay) {
-        if (!delay) {
-            key.pressed.store(keyboard_state[scancode] != 0);
-            return;
-        }
+        auto debounce_key = [&](int scancode, Key &key, bool delay) {
+            if (!delay) {
+                key.pressed.store(keyboard_state[scancode] != 0);
+                return;
+            }
 
-        if (keyboard_state[scancode] != 0) {
-            auto press_duration =
-                std::chrono::duration_cast<std::chrono::milliseconds>(now - key.last_pressed_time);
-            if (press_duration.count() > 50 && !key.pressed.load()) {
-                key.pressed.store(true);
-                key.OnPress();
+            if (keyboard_state[scancode] != 0) {
+                auto press_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - key.last_pressed_time);
+                if (press_duration.count() > 50 && !key.pressed.load()) {
+                    key.pressed.store(true);
+                    key.OnPress();
+                } else {
+                    key.pressed.store(false);
+                    key.last_pressed_time = now;
+                }
             } else {
                 key.pressed.store(false);
-                key.last_pressed_time = now;
             }
-        } else {
-            key.pressed.store(false);
-        }
-    };
+        };
 
-    debounce_key(SDL_SCANCODE_X, app->key_map->key_X, true);
-    debounce_key(SDL_SCANCODE_P, app->key_map->key_P, true);
-    debounce_key(SDL_SCANCODE_COMMA, app->key_map->key_comma, true);
-    debounce_key(SDL_SCANCODE_PERIOD, app->key_map->key_period, true);
+        debounce_key(SDL_SCANCODE_X, app->key_map->key_X, true);
+        debounce_key(SDL_SCANCODE_P, app->key_map->key_P, true);
+        debounce_key(SDL_SCANCODE_COMMA, app->key_map->key_comma, true);
+        debounce_key(SDL_SCANCODE_PERIOD, app->key_map->key_period, true);
 
-    debounce_key(SDL_SCANCODE_W, app->key_map->key_W, false);
-    debounce_key(SDL_SCANCODE_A, app->key_map->key_A, false);
-    debounce_key(SDL_SCANCODE_S, app->key_map->key_S, false);
-    debounce_key(SDL_SCANCODE_D, app->key_map->key_D, false);
+        debounce_key(SDL_SCANCODE_W, app->key_map->key_W, false);
+        debounce_key(SDL_SCANCODE_A, app->key_map->key_A, false);
+        debounce_key(SDL_SCANCODE_S, app->key_map->key_S, false);
+        debounce_key(SDL_SCANCODE_D, app->key_map->key_D, false);
 
-    debounce_key(SDL_SCANCODE_UP, app->key_map->key_up, false);
-    debounce_key(SDL_SCANCODE_LEFT, app->key_map->key_left, false);
-    debounce_key(SDL_SCANCODE_DOWN, app->key_map->key_down, false);
-    debounce_key(SDL_SCANCODE_RIGHT, app->key_map->key_right, false);
+        debounce_key(SDL_SCANCODE_UP, app->key_map->key_up, false);
+        debounce_key(SDL_SCANCODE_LEFT, app->key_map->key_left, false);
+        debounce_key(SDL_SCANCODE_DOWN, app->key_map->key_down, false);
+        debounce_key(SDL_SCANCODE_RIGHT, app->key_map->key_right, false);
 
-    debounce_key(SDL_SCANCODE_SPACE, app->key_map->key_space, false);
+        debounce_key(SDL_SCANCODE_SPACE, app->key_map->key_space, false);
+    }
 }
 
 void GameEngine::ApplyObjectPhysicsAndUpdates() {
@@ -592,7 +843,7 @@ void GameEngine::TestCollision() {
 void GameEngine::HandleCollisions() {
     std::vector<std::thread> threads;
 
-    auto handle_collision = [&](GameObject *game_object) {
+    auto handle_collision_thread = [&](GameObject *game_object) {
         if (game_object->GetColliders().size() > 0) {
             for (GameObject *collider : game_object->GetColliders()) {
                 int obj_x = static_cast<int>(std::round(game_object->GetPosition().x));
@@ -648,7 +899,7 @@ void GameEngine::HandleCollisions() {
     for (GameObject *game_object : GetObjectsByRole(this->network_info, this->game_objects)) {
         if (game_object->GetAffectedByCollision()) {
             // Spawn a new thread for each game object
-            threads.emplace_back(handle_collision, game_object);
+            threads.emplace_back(handle_collision_thread, game_object);
         }
     }
 
@@ -658,7 +909,7 @@ void GameEngine::HandleCollisions() {
     }
 }
 
-bool GameEngine::HandleEvents() {
+bool GameEngine::HandleQuitEvent() {
     SDL_Event event;
     bool quit = false;
     while (SDL_PollEvent(&event) != 0) {
@@ -706,6 +957,8 @@ void GameEngine::Shutdown() {
     this->join_socket.close();
     this->server_broadcast_socket.close();
     this->client_update_socket.close();
+    this->peer_broadcast_socket.close();
+    this->host_broadcast_socket.close();
     SDL_DestroyRenderer(app->renderer);
     SDL_DestroyWindow(app->sdl_window);
     SDL_Quit();

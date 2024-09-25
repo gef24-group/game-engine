@@ -20,6 +20,7 @@ class GameObject {
     GameObjectCategory category;
     Shape shape;
     Color color;
+    Border border;
     std::mutex position_mutex;
     Position position;
     Size size;
@@ -46,6 +47,7 @@ class GameObject {
     GameObjectCategory GetCategory();
     Shape GetShape();
     Color GetColor();
+    Border GetBorder();
     Position GetPosition();
     Size GetSize();
     Velocity GetVelocity();
@@ -62,6 +64,7 @@ class GameObject {
     void SetName(std::string name);
     void SetShape(Shape shape);
     void SetColor(Color color);
+    void SetBorder(Border border);
     void SetPosition(Position position);
     void SetSize(Size size);
     void SetVelocity(Velocity velocity);

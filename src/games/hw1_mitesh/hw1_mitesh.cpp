@@ -57,7 +57,7 @@ void Update(std::vector<GameObject *> *game_objects) {
     // If ball goes out of the boundary
     if (ball_pos.y + float(ball_size.height) > 1080) {
         Log(LogLevel::Info, "You lost!");
-        app->quit = true;
+        app->quit.store(true);
     }
 }
 
@@ -79,12 +79,9 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    if (game_engine.GetNetworkInfo().role == NetworkRole::Client ||
-        game_engine.GetNetworkInfo().role == NetworkRole::Peer) {
-        Color background_color = Color{0, 0, 0, 255};
-        game_engine.SetBackgroundColor(background_color);
-        game_engine.SetGameTitle(game_title);
-    }
+    Color background_color = Color{0, 0, 0, 255};
+    game_engine.SetBackgroundColor(background_color);
+    game_engine.SetGameTitle(game_title);
 
     if (!game_engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
