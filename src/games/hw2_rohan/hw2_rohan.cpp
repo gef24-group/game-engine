@@ -9,6 +9,7 @@
 // Head soccer
 Size window_size;
 int team1_score = 0, team2_score = 0;
+NetworkInfo network_info;
 
 void Update(std::vector<GameObject *> *game_objects) {
     GameObject *ball = NULL, *player = NULL;
@@ -33,19 +34,21 @@ void Update(std::vector<GameObject *> *game_objects) {
 
     // If the ball collides with the basket, the player scores a goal
     for (GameObject *object : ball->GetColliders()) {
-        if (object->GetName() == "basket_1") {
-            // app->quit.store(true);
-            team1_score++;
-            Log(LogLevel::Info, "Team 1 has scored - Current score: Team 1 %d - %d Team 2",
-                team1_score, team2_score);
-            ball->SetVelocity({-20, -60});
-        }
-        if (object->GetName() == "basket_2") {
-            // app->quit.store(true);
-            team2_score++;
-            Log(LogLevel::Info, "Team 1 has scored - Current score: Team 1 %d - %d Team 2",
-                team1_score, team2_score);
-            ball->SetVelocity({20, -60});
+        if (network_info.role == NetworkRole::Server || network_info.role == NetworkRole::Host) {
+            if (object->GetName() == "basket_1") {
+                // app->quit.store(true);
+                team1_score++;
+                Log(LogLevel::Info, "Team 1 has scored - Current score: Team 1 %d - %d Team 2",
+                    team1_score, team2_score);
+                ball->SetVelocity({-20, -60});
+            }
+            if (object->GetName() == "basket_2") {
+                // app->quit.store(true);
+                team2_score++;
+                Log(LogLevel::Info, "Team 2 has scored - Current score: Team 1 %d - %d Team 2",
+                    team1_score, team2_score);
+                ball->SetVelocity({20, -60});
+            }
         }
     }
 }
@@ -194,7 +197,7 @@ GameObject *CreateGround() {
 
 // std::vector<GameObject *> CreateWalls() { return std::vector<GameObject *>(); }
 
-std::vector<GameObject *> CreateGameObjects(NetworkInfo network_info) {
+std::vector<GameObject *> CreateGameObjects() {
     GameObject *player = CreatePlayer(network_info);
     GameObject *ball = CreateBall();
     std::vector<GameObject *> baskets = CreateBaskets();
@@ -242,7 +245,7 @@ int main(int argc, char *args[]) {
     game_engine.SetMaxPlayers(max_player_count);
     game_engine.SetShowPlayerBorder(true);
 
-    NetworkInfo network_info = game_engine.GetNetworkInfo();
+    network_info = game_engine.GetNetworkInfo();
     if (network_info.id > 4) {
         Log(LogLevel::Error, "More than 4 players spotted: EXITING THE GAME. Player ID: %d",
             network_info.id);
@@ -255,7 +258,7 @@ int main(int argc, char *args[]) {
 
     window_size = GetWindowSize();
 
-    std::vector<GameObject *> game_objects = CreateGameObjects(network_info);
+    std::vector<GameObject *> game_objects = CreateGameObjects();
     game_engine.AddObjects(game_objects);
     game_engine.SetCallback(Update);
 

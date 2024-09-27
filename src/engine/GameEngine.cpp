@@ -280,7 +280,9 @@ void GameEngine::P2PHostListenerThread() {
                 std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
                 this->join_socket.send(reply_msg, zmq::send_flags::none);
 
-                this->CreateNewPlayer(player_id);
+                if (this->players_connected <= this->max_players) {
+                    this->CreateNewPlayer(player_id);
+                }
 
                 std::thread peer_thread(
                     [&, this]() { this->P2PReceiveBroadcastThread(join_reply.player_id); });
