@@ -45,7 +45,7 @@ class GameEngine {
     bool InitCSClientConnection();
     void ShowWelcomeScreen();
 
-    void CSServerClientThread(JoinReply join_reply);
+    void CSServerClientThread(int player_id);
     void CSServerBroadcastUpdates();
     void CSServerListenerThread();
     void CSClientAddExistingPlayers();

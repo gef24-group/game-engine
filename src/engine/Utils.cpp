@@ -18,10 +18,19 @@ SDL_Texture *LoadTexture(std::string path) {
     }
 
     SDL_Texture *texture = SDL_CreateTextureFromSurface(app->renderer, surface);
+    SDL_FreeSurface(surface);
+
     if (texture == NULL) {
         Log(LogLevel::Error,
             "Error: '%s' while creating texture from surface for the image file: %s",
             SDL_GetError(), path.c_str());
+        return NULL;
+    }
+
+    if (SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND) != 0) {
+        Log(LogLevel::Error, "Error: '%s' while setting blend mode for texture: %s", SDL_GetError(),
+            path.c_str());
+        SDL_DestroyTexture(texture);
         return NULL;
     }
 

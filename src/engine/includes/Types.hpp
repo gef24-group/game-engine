@@ -84,7 +84,6 @@ struct NetworkInfo {
 
 struct JoinReply {
     int player_id;
-    char player_address[100];
 };
 
 struct ObjectUpdate {
