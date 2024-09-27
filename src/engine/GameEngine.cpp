@@ -13,6 +13,7 @@
 #include "Utils.hpp"
 #include <algorithm>
 #include <chrono>
+#include <climits>
 #include <csignal>
 #include <string>
 #include <thread>
@@ -33,7 +34,8 @@ GameEngine::GameEngine() {
     this->players_connected.store(0);
     this->background_color = Color{0, 0, 0, 255};
     this->show_player_border = false;
-    this->player_textures = 0;
+    this->player_textures = INT_MAX;
+    this->max_players = INT_MAX;
     this->game_objects = std::vector<GameObject *>();
     this->callback = [](std::vector<GameObject *> *) {};
 }
@@ -138,7 +140,9 @@ void GameEngine::CSServerListenerThread() {
                 std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
                 this->join_socket.send(reply_msg, zmq::send_flags::none);
 
-                this->CreateNewPlayer(player_id);
+                if (this->players_connected <= this->max_players) {
+                    this->CreateNewPlayer(player_id);
+                }
 
                 std::thread client_thread([&, this]() { this->CSServerClientThread(join_reply); });
                 client_thread.detach();
@@ -731,6 +735,8 @@ void GameEngine::SetShowPlayerBorder(bool show_player_border) {
 }
 
 void GameEngine::SetPlayerTextures(int player_textures) { this->player_textures = player_textures; }
+
+void GameEngine::SetMaxPlayers(int max_players) { this->max_players = max_players; }
 
 void GameEngine::ShowWelcomeScreen() {
     // Sets the background to blue

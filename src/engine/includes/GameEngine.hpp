@@ -19,6 +19,7 @@ class GameEngine {
     Color background_color;
     bool show_player_border;
     int player_textures;
+    int max_players;
     std::vector<GameObject *> game_objects;
     std::function<void(std::vector<GameObject *> *game_objects)> callback;
 
@@ -83,6 +84,7 @@ class GameEngine {
     void SetBackgroundColor(Color color);
     void SetShowPlayerBorder(bool show_player_border);
     void SetPlayerTextures(int player_textures);
+    void SetMaxPlayers(int max_players);
     void AddObjects(std::vector<GameObject *> game_objects);
     void SetCallback(std::function<void(std::vector<GameObject *> *)> callback);
 };

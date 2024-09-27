@@ -2,11 +2,13 @@
 #include "GameObject.hpp"
 #include "Types.hpp"
 #include "Utils.hpp"
+#include <atomic>
 #include <string>
 #include <vector>
 
 // Head soccer
 Size window_size;
+int team1_score = 0, team2_score = 0;
 
 void Update(std::vector<GameObject *> *game_objects) {
     GameObject *ball = NULL, *player = NULL;
@@ -29,11 +31,21 @@ void Update(std::vector<GameObject *> *game_objects) {
         ball->SetVelocity({-ball_velocity.x, ball_velocity.y});
     }
 
-    // If the ball collides with the basket, the player wins: game ends
+    // If the ball collides with the basket, the player scores a goal
     for (GameObject *object : ball->GetColliders()) {
-        if (object->GetName() == "basket") {
-            app->quit.store(true);
-            Log(LogLevel::Info, "You've scored a GOAL!! You win!");
+        if (object->GetName() == "basket_1") {
+            // app->quit.store(true);
+            team1_score++;
+            Log(LogLevel::Info, "Team 1 has scored - Current score: Team 1 %d - %d Team 2",
+                team1_score, team2_score);
+            ball->SetVelocity({-20, -60});
+        }
+        if (object->GetName() == "basket_2") {
+            // app->quit.store(true);
+            team2_score++;
+            Log(LogLevel::Info, "Team 1 has scored - Current score: Team 1 %d - %d Team 2",
+                team1_score, team2_score);
+            ball->SetVelocity({20, -60});
         }
     }
 }
@@ -65,35 +77,30 @@ void UpdateBall(GameObject *ball) {
     bool collision_with_opponent = false;
 
     for (GameObject *collider : ball->GetColliders()) {
-        if (collider->GetName() == "ground") {
+        std::string collider_name = collider->GetName();
+        if (collider_name == "ground") {
             collision_with_ground = true;
         }
-        if (app->key_map->key_space.pressed.load()) {
-            Log(LogLevel::Info, "Space pressed");
-        }
-        if (collider->GetName().find("player") == 0) {
+        if (collider_name.find("player") == 0) {
             collision_with_player = true;
-            ball->SetVelocity({16, 0});
-            if (app->key_map->key_space.pressed.load()) {
-                Log(LogLevel::Info, "Inside if player Space pressed");
-            }
-            if (app->key_map->key_space.pressed.load()) {
-                Log(LogLevel::Info, "Inside if load: space pressed");
-                ball->SetVelocity({20, -20});
+            if (GetPlayerIdFromName(collider_name) < 3) {
+                ball->SetVelocity({20, -60});
+            } else {
+                ball->SetVelocity({-20, -60});
             }
         }
-        if (collider->GetName() == "opponent") {
+        if (collider_name == "opponent") {
             collision_with_opponent = true;
             ball->SetVelocity({-20, -20});
         }
-        if (collider->GetName() == "basket") {
+        if (collider_name == "basket") {
             // Once the ball hits the basket, it sticks to the basket
             ball->SetVelocity({0, 0});
         }
     }
 
-    if (collision_with_ground && !collision_with_player && !collision_with_opponent) {
-        ball->SetAcceleration({-ball->GetVelocity().x / 2, 10});
+    if (collision_with_ground) {
+        ball->SetAcceleration({-ball->GetVelocity().x, 10});
     } else {
         ball->SetAcceleration({0, 10});
     }
@@ -122,6 +129,7 @@ GameObject *CreatePlayer(NetworkInfo network_info) {
         break;
     default:
         if (network_info.role != Server) {
+            player->SetColor({0, 0, 0, 0});
             Log(LogLevel::Error, "More than 4 players spotted: EXITING THE GAME. Player ID: %d",
                 network_info.id);
             app->quit.store(true);
@@ -148,16 +156,28 @@ GameObject *CreateBall() {
     return ball;
 }
 
-GameObject *CreateBasket() {
-    GameObject *basket = new GameObject("basket", Stationary);
-    basket->SetSize({50, 75});
-    basket->SetPosition({float(window_size.width - 100), float(window_size.height - 275)});
-    basket->SetAcceleration({0, 10});
-    basket->SetTexture("assets/basket.png");
-    basket->SetOwner(NetworkRole::Server);
-    basket->SetAffectedByCollision(false);
+std::vector<GameObject *> CreateBaskets() {
+    std::vector<GameObject *> baskets;
 
-    return basket;
+    GameObject *basket_1 = new GameObject("basket_1", Stationary);
+    basket_1->SetSize({50, 75});
+    basket_1->SetPosition({float(window_size.width - 100), float(window_size.height - 275)});
+    basket_1->SetAcceleration({0, 10});
+    basket_1->SetTexture("assets/basket_1.png");
+    basket_1->SetOwner(NetworkRole::Server);
+    basket_1->SetAffectedByCollision(false);
+    baskets.push_back(basket_1);
+
+    GameObject *basket_2 = new GameObject("basket_2", Stationary);
+    basket_2->SetSize({50, 75});
+    basket_2->SetPosition({float(100), float(window_size.height - 275)});
+    basket_2->SetAcceleration({0, 10});
+    basket_2->SetTexture("assets/basket_2.png");
+    basket_2->SetOwner(NetworkRole::Server);
+    basket_2->SetAffectedByCollision(false);
+    baskets.push_back(basket_2);
+
+    return baskets;
 }
 
 GameObject *CreateGround() {
@@ -177,10 +197,11 @@ GameObject *CreateGround() {
 std::vector<GameObject *> CreateGameObjects(NetworkInfo network_info) {
     GameObject *player = CreatePlayer(network_info);
     GameObject *ball = CreateBall();
-    GameObject *basket = CreateBasket();
+    std::vector<GameObject *> baskets = CreateBaskets();
     GameObject *ground = CreateGround();
 
-    std::vector<GameObject *> game_objects = std::vector({player, ball, basket, ground});
+    std::vector<GameObject *> game_objects =
+        std::vector({player, ball, baskets[0], baskets[1], ground});
 
     for (GameObject *game_object : game_objects) {
         if (network_info.mode == NetworkMode::PeerToPeer) {
@@ -204,6 +225,7 @@ void DestroyObjects(std::vector<GameObject *> game_objects) {
 
 int main(int argc, char *args[]) {
     std::string game_title = "Rohan's CSC581 HW2 Game: Multiplayer Backyard Soccer";
+    int max_player_count = 4;
 
     // Initializing the Game Engine
     GameEngine game_engine;
@@ -216,11 +238,15 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
+    game_engine.SetPlayerTextures(max_player_count);
+    game_engine.SetMaxPlayers(max_player_count);
+    game_engine.SetShowPlayerBorder(true);
+
     NetworkInfo network_info = game_engine.GetNetworkInfo();
     if (network_info.id > 4) {
         Log(LogLevel::Error, "More than 4 players spotted: EXITING THE GAME. Player ID: %d",
             network_info.id);
-        app->quit.store(true);
+        exit(0);
     }
 
     Color background_color = Color{165, 200, 255, 255};
