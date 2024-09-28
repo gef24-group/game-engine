@@ -33,6 +33,7 @@ class GameObject {
 
     std::unordered_set<GameObject *> colliders;
     std::function<void(GameObject *)> callback;
+    std::string player_address;
     NetworkRole owner;
 
   public:
@@ -57,6 +58,7 @@ class GameObject {
     float GetAngle();
     std::unordered_set<GameObject *> GetColliders();
     std::function<void(GameObject *)> GetCallback();
+    std::string GetPlayerAddress();
     NetworkRole GetOwner();
 
     void SetTexture(std::string path);
@@ -75,5 +77,6 @@ class GameObject {
     void AddCollider(GameObject *game_object);
     void RemoveCollider(GameObject *game_object);
     void SetCallback(std::function<void(GameObject *)> callback);
+    void SetPlayerAddress(std::string player_address);
     void SetOwner(NetworkRole owner);
 };

@@ -23,6 +23,7 @@ GameObject::GameObject(std::string name, GameObjectCategory category) {
     this->theta_x = 0;
     this->colliders = std::unordered_set<GameObject *>();
     this->callback = [](GameObject *) {};
+    this->player_address = "";
     this->owner = NetworkRole::Client;
 }
 
@@ -88,6 +89,7 @@ float GameObject::GetRestitution() { return this->restitution; }
 float GameObject::GetAngle() { return this->theta_x; }
 std::unordered_set<GameObject *> GameObject::GetColliders() { return this->colliders; }
 std::function<void(GameObject *)> GameObject::GetCallback() { return this->callback; }
+std::string GameObject::GetPlayerAddress() { return this->player_address; }
 NetworkRole GameObject::GetOwner() { return this->owner; }
 
 void GameObject::SetTexture(std::string path) { this->texture = LoadTexture(path); }
@@ -122,5 +124,8 @@ void GameObject::AddCollider(GameObject *game_object) { this->colliders.insert(g
 void GameObject::RemoveCollider(GameObject *game_object) { this->colliders.erase(game_object); }
 void GameObject::SetCallback(std::function<void(GameObject *)> callback) {
     this->callback = callback;
+}
+void GameObject::SetPlayerAddress(std::string player_address) {
+    this->player_address = player_address;
 }
 void GameObject::SetOwner(NetworkRole owner) { this->owner = owner; }

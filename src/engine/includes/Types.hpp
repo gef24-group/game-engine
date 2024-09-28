@@ -80,6 +80,9 @@ struct NetworkInfo {
     NetworkMode mode;
     NetworkRole role;
     int id = 0;
+    std::string server_ip;
+    std::string host_ip;
+    std::string peer_ip;
 };
 
 struct JoinReply {
@@ -89,4 +92,5 @@ struct JoinReply {
 struct ObjectUpdate {
     char name[100];
     Position position;
+    char player_address[100];
 };

@@ -19,6 +19,7 @@ std::vector<GameObject *> GetObjectsByRole(NetworkInfo network_info,
 void SetPlayerTexture(GameObject *controllable, int player_id, int player_textures);
 GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_objects);
 bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]);
+std::string GetConnectionAddress(std::string address, int port);
 void HandleSIGINT(int signum);
 int GetPlayerIdFromName(std::string player_name);
 std::vector<std::string> Split(std::string str, char delimiter);

@@ -51,13 +51,13 @@ class GameEngine {
     void CSClientAddExistingPlayers();
     void CSClientReceiveBroadcastThread();
     void CSClientSendUpdate();
-    GameObject *CreateNewPlayer(int player_id);
+    GameObject *CreateNewPlayer(int player_id, std::string player_address = "");
 
     bool InitP2PPeerConnection();
 
     void P2PHostListenerThread();
     void P2PHostBroadcastPlayers();
-    void P2PReceiveBroadcastThread(int player_id);
+    void P2PReceiveBroadcastThread(int player_id, std::string player_address);
     void P2PReceiveBroadcastFromHostThread();
     void P2PBroadcastUpdates();
 

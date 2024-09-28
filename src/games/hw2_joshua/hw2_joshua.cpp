@@ -14,10 +14,10 @@ std::vector<const char *> enemy_textures =
 void Update(std::vector<GameObject *> *game_objects) {
     std::random_device random_device;
     std::mt19937 eng(random_device());
-    std::uniform_int_distribution<> include_dist(0, 50);
+    std::uniform_int_distribution<> include_dist(0, 25);
     std::uniform_int_distribution<> enemy_dist(0, int(enemy_textures.size() - 1));
 
-    bool include_enemy = include_dist(eng) == 25;
+    bool include_enemy = include_dist(eng) == 12;
     size_t random_enemy = enemy_dist(eng);
 
     float max_ground_x = 0;
@@ -133,7 +133,7 @@ GameObject *CreateAlien() {
 GameObject *CreatePlatform() {
     GameObject *platform = new GameObject("platform", Moving);
     platform->SetColor(Color{0, 0, 0, 0});
-    platform->SetPosition(Position{20, TILE_SIZE * 4});
+    platform->SetPosition(Position{20, TILE_SIZE * 5.5});
     platform->SetSize(Size{TILE_SIZE * 3, TILE_SIZE / 2});
     platform->SetVelocity(Velocity{40, 0});
     platform->SetAffectedByCollision(false);
@@ -164,7 +164,7 @@ std::vector<GameObject *> CreateClouds() {
     GameObject *cloud_1 = new GameObject("cloud_1", Stationary);
     cloud_1->SetColor(Color{0, 0, 0, 0});
     cloud_1->SetTexture("assets/cloud_1.png");
-    cloud_1->SetPosition(Position{float(window_size.width) / 2 - 500, TILE_SIZE});
+    cloud_1->SetPosition(Position{float(window_size.width) / 2 - 500, (TILE_SIZE * 1.5)});
     cloud_1->SetSize(Size{203, 121});
     cloud_1->SetAffectedByCollision(false);
     cloud_1->SetOwner(NetworkRole::Server);
@@ -172,7 +172,7 @@ std::vector<GameObject *> CreateClouds() {
     GameObject *cloud_2 = new GameObject("cloud_2", Stationary);
     cloud_2->SetColor(Color{0, 0, 0, 0});
     cloud_2->SetTexture("assets/cloud_2.png");
-    cloud_2->SetPosition(Position{float(window_size.width) / 2 + 300, TILE_SIZE});
+    cloud_2->SetPosition(Position{float(window_size.width) / 2 + 300, (TILE_SIZE * 1.5)});
     cloud_2->SetSize(Size{216, 139});
     cloud_2->SetAffectedByCollision(false);
     cloud_2->SetOwner(NetworkRole::Server);

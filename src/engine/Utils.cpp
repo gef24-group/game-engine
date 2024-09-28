@@ -151,6 +151,9 @@ GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_object
 bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
     std::string mode;
     std::string role;
+    std::string server_ip;
+    std::string host_ip;
+    std::string peer_ip;
     std::vector<std::string> valid_modes = {"single", "cs", "p2p"};
     std::vector<std::string> valid_roles = {"server", "client", "host", "peer"};
 
@@ -163,8 +166,18 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
         } else if (arg == "--role" && i + 1 < argc) {
             role = args[i + 1];
             i++;
+        } else if (arg == "--server_ip" && i + 1 < argc) {
+            server_ip = args[i + 1];
+            i++;
+        } else if (arg == "--host_ip" && i + 1 < argc) {
+            host_ip = args[i + 1];
+            i++;
+        } else if (arg == "--peer_ip" && i + 1 < argc) {
+            peer_ip = args[i + 1];
+            i++;
         }
     }
+
     if (mode.empty()) {
         mode = "single";
     }
@@ -187,6 +200,40 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
         (mode == "p2p" && (role == "server" || role == "client"))) {
         Log(LogLevel::Error, "[%s] mode does not support [%s] role!", mode.c_str(), role.c_str());
         return false;
+    }
+
+    if (!server_ip.empty() && !(mode == "cs" && role == "client")) {
+        Log(LogLevel::Error,
+            "--server_ip is only supported in the [cs] mode and the [client] role");
+        return false;
+    }
+    if (!host_ip.empty() && !(mode == "p2p" && role == "peer")) {
+        Log(LogLevel::Error, "--host_ip is only supported in the [p2p] mode and the [peer] role");
+        return false;
+    }
+    if (!peer_ip.empty() && !(mode == "p2p" && role == "peer")) {
+        Log(LogLevel::Error, "--peer_ip is only supported in the [p2p] mode and the [peer] role");
+        return false;
+    }
+    if ((mode == "p2p" && role == "peer") && (!host_ip.empty() && peer_ip.empty())) {
+        Log(LogLevel::Error, "Please specify --peer_ip!");
+        return false;
+    }
+    if ((mode == "p2p" && role == "peer") && (host_ip.empty() && !peer_ip.empty())) {
+        Log(LogLevel::Error, "Please specify --host_ip!");
+        return false;
+    }
+
+    if (mode == "cs" && role == "client" && server_ip.empty()) {
+        server_ip = "localhost";
+    }
+    if (mode == "p2p" && role == "peer") {
+        if (host_ip.empty()) {
+            host_ip = "localhost";
+        }
+        if (peer_ip.empty()) {
+            peer_ip = "localhost";
+        }
     }
 
     NetworkMode network_mode;
@@ -215,9 +262,14 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
         network_role = NetworkRole::Peer;
     }
 
-    game_engine->SetNetworkInfo(NetworkInfo{network_mode, network_role, 0});
+    game_engine->SetNetworkInfo(
+        NetworkInfo{network_mode, network_role, 0, server_ip, host_ip, peer_ip});
 
     return true;
+}
+
+std::string GetConnectionAddress(std::string address, int port) {
+    return "tcp://" + address + ":" + std::to_string(port);
 }
 
 // Signal handler for SIGINT
