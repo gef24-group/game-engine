@@ -133,7 +133,7 @@ int main(int argc, char *args[]) {
 
     std::vector<GameObject *> objects =
         std::vector({&ball, &wall_left, &wall_top, &wall_right, &platform});
-    game_engine.AddObjects(objects);
+    game_engine.SetGameObjects(objects);
     game_engine.SetCallback(Update);
 
     // The Start function keeps running until an "exit event occurs"

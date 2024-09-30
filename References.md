@@ -15,4 +15,6 @@
 - [Elina Araja, Photo of Gray Surface](https://www.pexels.com/photo/photo-of-gray-surface-3377405/)
 - [Clipart Library](https://clipart-library.com/)
 - [CSC 581 Lecture 5: Time Management](https://docs.google.com/presentation/d/1EZ9PFmYsufonouzSsVSzEfTW6dvkegJ7)
+- [CSC 581 Lecture 6: Networking](https://docs.google.com/presentation/d/1Evo0XNhas0m4s2KTxB0Ft2Rh5uy-gX0N)
+- [CSC 581 Lecture 7: Multithreading and Game Objects](https://docs.google.com/presentation/d/1X-S2WP45oxZ0FfJpdWAMhga0jutI49if)
 - [ZeroMQ - The Guide](https://zguide.zeromq.org/)

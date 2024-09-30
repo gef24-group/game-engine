@@ -191,7 +191,7 @@ int main(int argc, char *args[]) {
     for (GameObject *ground_tile : ground) {
         objects.push_back(ground_tile);
     }
-    game_engine.AddObjects(objects);
+    game_engine.SetGameObjects(objects);
     game_engine.SetCallback(Update);
 
     // The Start function keeps running until an "exit event occurs"

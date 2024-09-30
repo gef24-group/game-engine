@@ -9,6 +9,26 @@ set(CMAKE_CXX_STANDARD 17)
 # Generate compile_commands.json
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Add SANITIZER support if it is provided
+if(SANITIZER)
+    if(SANITIZER STREQUAL "thread")
+        set(SANITIZER_FLAGS "-fsanitize=thread")
+    elseif(SANITIZER STREQUAL "address")
+        set(SANITIZER_FLAGS "-fsanitize=address")
+    else()
+        set(SANITIZER_FLAGS "")
+    endif()
+
+    # Apply the sanitizer flags on supported compilers
+    if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        if(SANITIZER_FLAGS)
+            message(STATUS "Adding sanitizer flags: ${SANITIZER_FLAGS}")
+            add_compile_options(${SANITIZER_FLAGS} -g -O1 -fno-omit-frame-pointer)
+            add_link_options(${SANITIZER_FLAGS})
+        endif()
+    endif()
+endif()
+
 # Add CMake modules to find external libraries
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 

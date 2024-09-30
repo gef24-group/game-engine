@@ -1,16 +1,17 @@
 GAME ?= all
 ARGS ?=
+SANITIZER ?=
 
 all: build
 
 build:
-	cmake -S . -B build
+	cmake -S . -B build -DSANITIZER=$(SANITIZER)
 	@ln -sf build/compile_commands.json compile_commands.json
 	@echo
 	cmake --build build --target $(GAME)
 
 clean:
-	rm -rf build compile_commands.json
+	rm -rf build compile_commands.json .cache
 
 play:
 	@if [ "$(GAME)" = "all" ]; then \

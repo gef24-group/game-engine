@@ -259,7 +259,7 @@ int main(int argc, char *args[]) {
     window_size = GetWindowSize();
 
     std::vector<GameObject *> game_objects = CreateGameObjects();
-    game_engine.AddObjects(game_objects);
+    game_engine.SetGameObjects(game_objects);
     game_engine.SetCallback(Update);
 
     // The Start function keeps running until an "exit event occurs"

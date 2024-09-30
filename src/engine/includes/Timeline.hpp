@@ -2,9 +2,11 @@
 
 #include "Types.hpp"
 #include <cstdint>
+#include <mutex>
 
 class Timeline {
   private:
+    std::mutex timeline_mutex;
     int64_t start_time;
     int64_t elapsed_paused_time;
     int64_t last_paused_time;

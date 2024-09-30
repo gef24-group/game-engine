@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <string>
 
 enum Shape { Circle, Square, Rectangle, Triangle };
 enum GameObjectCategory { Controllable, Moving, Stationary };

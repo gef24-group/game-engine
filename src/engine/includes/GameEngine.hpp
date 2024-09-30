@@ -5,6 +5,8 @@
 #include "Timeline.hpp"
 #include "Types.hpp"
 #include <functional>
+#include <mutex>
+#include <thread>
 #include <vector>
 #include <zmq.hpp>
 
@@ -13,15 +15,28 @@ extern App *app;
 class GameEngine {
   private:
     std::string game_title;
-    Timeline engine_timeline;
+    std::unique_ptr<Timeline> engine_timeline;
     NetworkInfo network_info;
     std::atomic<int> players_connected;
     Color background_color;
     bool show_player_border;
     int player_textures;
     int max_players;
+    std::mutex game_objects_mutex;
     std::vector<GameObject *> game_objects;
     std::function<void(std::vector<GameObject *> *game_objects)> callback;
+
+    std::thread input_thread;
+    std::thread listener_thread;
+    std::thread receive_broadcast_thread;
+    std::vector<std::thread> client_threads;
+    std::vector<std::thread> peer_threads;
+
+    std::atomic<bool> stop_input_thread;
+    std::atomic<bool> stop_listener_thread;
+    std::atomic<bool> stop_receive_broadcast_thread;
+    std::atomic<bool> stop_client_thread;
+    std::atomic<bool> stop_peer_thread;
 
     zmq::context_t zmq_context;
     zmq::socket_t join_socket;
@@ -51,13 +66,14 @@ class GameEngine {
     void CSClientAddExistingPlayers();
     void CSClientReceiveBroadcastThread();
     void CSClientSendUpdate();
+
     GameObject *CreateNewPlayer(int player_id, std::string player_address = "");
 
     bool InitP2PPeerConnection();
 
     void P2PHostListenerThread();
     void P2PHostBroadcastPlayers();
-    void P2PReceiveBroadcastThread(int player_id, std::string player_address);
+    void P2PReceiveBroadcastFromPeerThread(int player_id, std::string player_address);
     void P2PReceiveBroadcastFromHostThread();
     void P2PBroadcastUpdates();
 
@@ -85,6 +101,8 @@ class GameEngine {
     void SetShowPlayerBorder(bool show_player_border);
     void SetPlayerTextures(int player_textures);
     void SetMaxPlayers(int max_players);
-    void AddObjects(std::vector<GameObject *> game_objects);
+    std::vector<GameObject *> GetGameObjects();
+    void SetGameObjects(std::vector<GameObject *> game_objects);
+    void AddGameObject(GameObject *game_object);
     void SetCallback(std::function<void(std::vector<GameObject *> *)> callback);
 };
