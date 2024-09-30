@@ -237,6 +237,23 @@ void DestroyObjects(std::vector<GameObject *> game_objects) {
     }
 }
 
+void SetupTimelineInputs(GameEngine *game_engine) {
+    // toggle constant and proportional scaling
+    app->key_map->key_X.OnPress = []() {
+        app->window.proportional_scaling = !app->window.proportional_scaling;
+    };
+    // toggle pause or unpause
+    app->key_map->key_P.OnPress = [game_engine]() { game_engine->BaseTimelineTogglePause(); };
+    // slow down the timeline
+    app->key_map->key_comma.OnPress = [game_engine]() {
+        game_engine->BaseTimelineChangeTic(std::min(game_engine->BaseTimelineGetTic() * 2.0, 2.0));
+    };
+    // speed up the timeline
+    app->key_map->key_period.OnPress = [game_engine]() {
+        game_engine->BaseTimelineChangeTic(std::max(game_engine->BaseTimelineGetTic() / 2.0, 0.5));
+    };
+}
+
 int main(int argc, char *args[]) {
     std::string game_title = "CSC581 HW2 Joshua's Game";
 
@@ -255,6 +272,8 @@ int main(int argc, char *args[]) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }
+
+    SetupTimelineInputs(&game_engine);
     network_info = game_engine.GetNetworkInfo();
     window_size = GetWindowSize();
 

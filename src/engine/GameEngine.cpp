@@ -135,6 +135,9 @@ void GameEngine::CSServerListenerThread() {
             zmq::recv_result_t result = this->join_socket.recv(request, zmq::recv_flags::none);
             std::string message(static_cast<char *>(request.data()), request.size());
 
+            // If the server receives a join message from the client, a new game object is created
+            // for the player, and a thread meant solely for communication between the server and
+            // that client is spawned
             if (message == "join") {
                 int player_id = this->players_connected += 1;
 
@@ -318,6 +321,8 @@ void GameEngine::P2PHostListenerThread() {
             zmq::recv_result_t result = this->join_socket.recv(request, zmq::recv_flags::none);
             std::string message(static_cast<char *>(request.data()), request.size());
 
+            // when a join message is received, the listen-server creates a new object for that
+            // player. It also spawns a new thread dedicated to receiving broadcasts from that peer
             if (Split(message, ' ')[0] == "join") {
                 int player_id = this->players_connected += 1;
                 std::string player_address = Split(message, ' ')[1];
@@ -415,7 +420,6 @@ void GameEngine::Start() {
 }
 
 void GameEngine::StartSingleClient() {
-    this->SetupDefaultInputs();
 
     this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
 
@@ -569,8 +573,6 @@ void GameEngine::CSClientSendUpdate() {
 
 void GameEngine::StartCSClient() {
     this->CSClientAddExistingPlayers();
-
-    this->SetupDefaultInputs();
 
     this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
 
@@ -729,7 +731,6 @@ void GameEngine::P2PReceiveBroadcastFromHostThread() {
 }
 
 void GameEngine::StartP2P() {
-    this->SetupDefaultInputs();
 
     this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
 
@@ -778,25 +779,6 @@ void GameEngine::StartP2P() {
     this->Shutdown();
 }
 
-void GameEngine::SetupDefaultInputs() {
-    // toggle constant and proportional scaling
-    app->key_map->key_X.OnPress = [this]() {
-        app->window.proportional_scaling = !app->window.proportional_scaling;
-    };
-    // toggle pause or unpause
-    app->key_map->key_P.OnPress = [this]() {
-        this->engine_timeline->TogglePause(this->engine_timeline->GetFrameTime().current);
-    };
-    // slow down the timeline
-    app->key_map->key_comma.OnPress = [this]() {
-        this->engine_timeline->ChangeTic(std::min(this->engine_timeline->GetTic() * 2.0, 2.0));
-    };
-    // speed up the timeline
-    app->key_map->key_period.OnPress = [this]() {
-        this->engine_timeline->ChangeTic(std::max(this->engine_timeline->GetTic() / 2.0, 0.5));
-    };
-}
-
 bool GameEngine::InitializeDisplay() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         Log(LogLevel::Error, "SDL_Init Error: %s", SDL_GetError());
@@ -838,6 +820,14 @@ void GameEngine::SetGameTitle(std::string game_title) {
 void GameEngine::SetNetworkInfo(NetworkInfo network_info) { this->network_info = network_info; }
 
 NetworkInfo GameEngine::GetNetworkInfo() { return this->network_info; }
+
+void GameEngine::BaseTimelineChangeTic(double tic) { this->engine_timeline->ChangeTic(tic); }
+
+double GameEngine::BaseTimelineGetTic() { return this->engine_timeline->GetTic(); }
+
+void GameEngine::BaseTimelineTogglePause() {
+    this->engine_timeline->TogglePause(this->engine_timeline->GetFrameTime().current);
+}
 
 void GameEngine::SetBackgroundColor(Color color) {
     if (this->network_info.role == NetworkRole::Client ||

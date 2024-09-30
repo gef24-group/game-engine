@@ -101,6 +101,9 @@ class GameEngine {
     void SetShowPlayerBorder(bool show_player_border);
     void SetPlayerTextures(int player_textures);
     void SetMaxPlayers(int max_players);
+    void BaseTimelineChangeTic(double tic);
+    double BaseTimelineGetTic();
+    void BaseTimelineTogglePause();
     std::vector<GameObject *> GetGameObjects();
     void SetGameObjects(std::vector<GameObject *> game_objects);
     void AddGameObject(GameObject *game_object);

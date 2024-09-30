@@ -195,8 +195,6 @@ GameObject *CreateGround() {
     return ground;
 }
 
-// std::vector<GameObject *> CreateWalls() { return std::vector<GameObject *>(); }
-
 std::vector<GameObject *> CreateGameObjects() {
     GameObject *player = CreatePlayer(network_info);
     GameObject *ball = CreateBall();
@@ -226,6 +224,23 @@ void DestroyObjects(std::vector<GameObject *> game_objects) {
     }
 }
 
+void SetupTimelineInputs(GameEngine *game_engine) {
+    // toggle constant and proportional scaling
+    app->key_map->key_X.OnPress = []() {
+        app->window.proportional_scaling = !app->window.proportional_scaling;
+    };
+    // toggle pause or unpause
+    app->key_map->key_P.OnPress = [game_engine]() { game_engine->BaseTimelineTogglePause(); };
+    // slow down the timeline
+    app->key_map->key_comma.OnPress = [game_engine]() {
+        game_engine->BaseTimelineChangeTic(std::min(game_engine->BaseTimelineGetTic() * 2.0, 2.0));
+    };
+    // speed up the timeline
+    app->key_map->key_period.OnPress = [game_engine]() {
+        game_engine->BaseTimelineChangeTic(std::max(game_engine->BaseTimelineGetTic() / 2.0, 0.5));
+    };
+}
+
 int main(int argc, char *args[]) {
     std::string game_title = "Rohan's CSC581 HW2 Game: Multiplayer Backyard Soccer";
     int max_player_count = 4;
@@ -241,6 +256,7 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
+    SetupTimelineInputs(&game_engine);
     game_engine.SetPlayerTextures(max_player_count);
     game_engine.SetMaxPlayers(max_player_count);
     game_engine.SetShowPlayerBorder(true);
