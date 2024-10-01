@@ -33,13 +33,16 @@ src/games
 ├── hw1_joshua
 ├── hw1_mitesh
 └── hw1_rohan
+├── hw2_joshua
+├── hw2_mitesh
+└── hw2_rohan
 ```
-And you would like to only build `hw1_joshua`, then you would need to run:
+And you would like to only build `hw2_joshua`, then you would need to run:
 ```bash
-make GAME=hw1_joshua
+make GAME=hw2_joshua
 ```
 
-## Play
+<!-- ## Play
 After a game has been built, you may play it using this command:
 ```bash
 make play GAME=<game>
@@ -48,6 +51,44 @@ Where `<game>` is one of the games from the `src/games` folder.
 For example, if you would like to play `hw1_rohan` from `src/games`, then you would need to run:
 ```bash
 make play GAME=hw1_rohan
+``` -->
+
+## Playing the game in client-server mode
+The following command has to be executed to run the server:
+```bash
+make play GAME=<game> ARGS="--mode cs --role server"
+```
+
+And, The following command has to be executed to run a client:
+```bash
+make play GAME=<game> ARGS="--mode cs --role client"
+```
+
+Where `<game>` is one of the games from the `src/games` folder. *The HW2 games written by Joshua (jjoseph6), Rohan (rjmathe2), 
+and Mitesh (magarwa3) lie in the `hw2_joshua`, `hw2_rohan` and `hw2_mitesh` folders respectively.*
+For example, if you would like to play `hw2_rohan` from `src/games` in client-server mode, then you would need to run the following 2 commands to run the server and the clients respectively:
+```bash
+make play GAME=hw2_rohan ARGS="--mode cs --role server"
+```
+```bash
+make play GAME=hw2_rohan ARGS="--mode cs --role client"
+```
+
+## Playing the game in peer-to-peer mode
+The following command has to be executed to run the listen-server/host:
+```bash
+make play GAME=<game> ARGS="--mode p2p --role host"
+```
+And, The following command has to be executed to run a peer:
+```bash
+make play GAME=<game> ARGS="--mode p2p --role peer"
+```
+Example: If you would like to play Mitesh's HW2 game in peer-to-peer mode, run the following 2 commands to run the listen-server and the peers respectively:
+```bash
+make play GAME=hw2_mitesh ARGS="--mode p2p --role host"
+```
+```bash
+make play GAME=hw2_mitesh ARGS="--mode p2p --role peer"
 ```
 
 ## Cleanup
