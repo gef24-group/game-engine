@@ -1,82 +1,25 @@
 #pragma once
 
 #include "App.hpp"
-#include "SDL_render.h"
-#include "SDL_surface.h"
+#include "Component.hpp"
 #include "Types.hpp"
-#include <functional>
-#include <mutex>
+#include <memory>
 #include <string>
-#include <unordered_set>
+#include <typeindex>
 
 extern App *app;
 
 class GameObject {
   private:
-    SDL_Surface *surface;
-    SDL_Texture *texture;
-    std::string texture_template;
-    std::string name;
     GameObjectCategory category;
-    Shape shape;
-    Color color;
-    Border border;
-    std::mutex position_mutex;
-    Position position;
-    Size size;
-    Velocity velocity;
-    Acceleration acceleration;
-    bool affected_by_collision;
-    float restitution;
-    // Angle the object makes with the x_axis
-    float theta_x;
-
-    std::unordered_set<GameObject *> colliders;
-    std::function<void(GameObject *)> callback;
-    std::string player_address;
-    NetworkRole owner;
+    std::string uuid;
+    std::unordered_map<std::type_index, std::unique_ptr<Component>> components;
 
   public:
     GameObject(std::string name, GameObjectCategory category);
-    void Update();
-    void Move(int64_t delta);
-    void Render();
-
-    SDL_Texture *GetTexture();
-    std::string GetTextureTemplate();
-    std::string GetName();
     GameObjectCategory GetCategory();
-    Shape GetShape();
-    Color GetColor();
-    Border GetBorder();
-    Position GetPosition();
-    Size GetSize();
-    Velocity GetVelocity();
-    Acceleration GetAcceleration();
-    float GetRestitution();
-    bool GetAffectedByCollision();
-    float GetAngle();
-    std::unordered_set<GameObject *> GetColliders();
-    std::function<void(GameObject *)> GetCallback();
-    std::string GetPlayerAddress();
-    NetworkRole GetOwner();
+    template <typename T, typename... Args> void AddComponent(Args &&...args);
+    template <typename T> T *GetComponent();
 
-    void SetTexture(std::string path);
-    void SetTextureTemplate(std::string texture_template);
-    void SetName(std::string name);
-    void SetShape(Shape shape);
-    void SetColor(Color color);
-    void SetBorder(Border border);
-    void SetPosition(Position position);
-    void SetSize(Size size);
-    void SetVelocity(Velocity velocity);
-    void SetAcceleration(Acceleration acceleration);
-    void SetAffectedByCollision(bool affected_by_collision);
-    void SetRestitution(float restitution);
-    void SetAngle(float theta_x);
-    void AddCollider(GameObject *game_object);
-    void RemoveCollider(GameObject *game_object);
-    void SetCallback(std::function<void(GameObject *)> callback);
-    void SetPlayerAddress(std::string player_address);
-    void SetOwner(NetworkRole owner);
+    void Update();
 };
