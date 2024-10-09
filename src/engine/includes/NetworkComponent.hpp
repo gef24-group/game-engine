@@ -1,4 +1,5 @@
-#include "GameObject.hpp"
+#pragma once
+#include "Component.hpp"
 #include "Types.hpp"
 
 class NetworkComponent : Component {
@@ -12,5 +13,5 @@ class NetworkComponent : Component {
     void SetPlayerAddress(std::string player_address);
     void SetOwner(NetworkRole owner);
 
-    void Update(GameObject *game_object);
+    void Update(GameObject *game_object, int64_t delta);
 };

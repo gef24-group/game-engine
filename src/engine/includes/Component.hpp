@@ -1,5 +1,8 @@
 
+#pragma once
 #include <string>
+
+class GameObject;
 
 class Component {
   private:
@@ -7,5 +10,5 @@ class Component {
 
   public:
     virtual ~Component() = default;
-    virtual void Update() = 0;
+    virtual void Update(GameObject *game_object, int64_t delta) = 0;
 };
