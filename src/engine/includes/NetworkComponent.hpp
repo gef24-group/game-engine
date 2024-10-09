@@ -7,6 +7,7 @@ class NetworkComponent : Component {
     NetworkRole owner;
 
   public:
+    NetworkComponent();
     std::string GetPlayerAddress();
     NetworkRole GetOwner();
 

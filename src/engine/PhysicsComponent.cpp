@@ -8,6 +8,7 @@ PhysicsComponent::PhysicsComponent(GameObject *game_object) {
     this->SetPosition(Position{0, 0});
     this->velocity = Velocity{0, 0};
     this->acceleration = Acceleration{0, 0};
+    this->callback = [](GameObject *) {};
 }
 
 Position PhysicsComponent::GetPosition() {

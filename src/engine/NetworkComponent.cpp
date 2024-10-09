@@ -1,6 +1,11 @@
 #include "NetworkComponent.hpp"
 #include "GameObject.hpp"
 
+NetworkComponent::NetworkComponent() {
+    this->player_address = "";
+    this->owner = NetworkRole::Client;
+}
+
 void NetworkComponent::Update(GameObject *game_object, int64_t delta) {}
 
 std::string NetworkComponent::GetPlayerAddress() { return this->player_address; }

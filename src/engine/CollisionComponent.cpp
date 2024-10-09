@@ -2,7 +2,11 @@
 #include "GameObject.hpp"
 #include "PhysicsComponent.hpp"
 
-CollisionComponent::CollisionComponent() {}
+CollisionComponent::CollisionComponent() {
+    this->affected_by_collision = true;
+    this->restitution = 0;
+    this->colliders = std::unordered_set<GameObject *>();
+}
 
 bool CollisionComponent::GetAffectedByCollision() { return this->affected_by_collision; }
 float CollisionComponent::GetRestitution() { return this->restitution; }
@@ -20,6 +24,7 @@ void CollisionComponent::RemoveCollider(GameObject *game_object) {
     this->colliders.erase(game_object);
 }
 
+// Multithreading for this will have to be handled separately
 void CollisionComponent::HandleCollisions(GameObject *game_object) {
     if (this->GetColliders().size() > 0) {
         for (GameObject *collider : this->GetColliders()) {
