@@ -40,11 +40,19 @@ include_directories(
 # Recursively find all source files in the engine directory
 file(GLOB_RECURSE ENGINE_SRC "src/engine/*.cpp")
 
-# Get all game directories
-file(GLOB GAMES "src/games/*")
+# Read the .targetgames file
+file(READ "${CMAKE_SOURCE_DIR}/.targetgames" TARGET_GAMES)
 
-# Filter out incompatible games due to breaking API changes
-list(FILTER GAMES EXCLUDE REGEX ".*/hw[12].*")
+# Convert TARGET_GAMES to a list (split by lines)
+string(REGEX REPLACE "\n" ";" TARGET_GAMES_LIST "${TARGET_GAMES}")
+
+# Initialize an empty list to store the valid games
+set(GAMES)
+
+# Directly append all the games from the .targetgames list
+foreach(GAME_NAME IN LISTS TARGET_GAMES_LIST)
+    list(APPEND GAMES "src/games/${GAME_NAME}")
+endforeach()
 
 foreach(GAME_DIR ${GAMES})
     # Get the name of the game (the folder name)
