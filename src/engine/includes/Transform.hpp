@@ -3,6 +3,7 @@
 #include "Component.hpp"
 #include "GameObject.hpp"
 #include "Types.hpp"
+#include <mutex>
 
 class Transform : public Component {
   private:
