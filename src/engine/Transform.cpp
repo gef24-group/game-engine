@@ -1,8 +1,8 @@
 #include "Transform.hpp"
-#include "GameObject.hpp"
+#include "Entity.hpp"
 
-Transform::Transform(GameObject *game_object) {
-    this->game_object = game_object;
+Transform::Transform(Entity *entity) {
+    this->entity = entity;
     this->SetPosition(Position{0, 0});
     this->size = Size{0, 0};
 }

@@ -1,5 +1,5 @@
 #include "Utils.hpp"
-#include "GameEngine.hpp"
+#include "Engine.hpp"
 #include "Network.hpp"
 #include "Render.hpp"
 #include "SDL_image.h"
@@ -75,48 +75,47 @@ void Log(LogLevel log_level, const char *fmt, ...) {
 
 Size GetWindowSize() { return Size{app->window.width, app->window.height}; }
 
-GameObject *GetObjectByName(std::string name, std::vector<GameObject *> game_objects) {
-    for (GameObject *game_object : game_objects) {
-        if (game_object->GetName() == name) {
-            return game_object;
+Entity *GetEntityByName(std::string name, std::vector<Entity *> entities) {
+    for (Entity *entity : entities) {
+        if (entity->GetName() == name) {
+            return entity;
         }
     }
     return nullptr;
 }
 
-GameObject *GetControllable(std::vector<GameObject *> game_objects) {
-    for (GameObject *game_object : game_objects) {
-        if (game_object->GetCategory() == GameObjectCategory::Controllable) {
-            return game_object;
+Entity *GetControllable(std::vector<Entity *> entities) {
+    for (Entity *entity : entities) {
+        if (entity->GetCategory() == EntityCategory::Controllable) {
+            return entity;
         }
     }
     return nullptr;
 }
 
-std::vector<GameObject *> GetObjectsByRole(NetworkInfo network_info,
-                                           std::vector<GameObject *> game_objects) {
-    std::vector<GameObject *> objects;
+std::vector<Entity *> GetEntitiesByRole(NetworkInfo network_info, std::vector<Entity *> entities) {
+    std::vector<Entity *> entity_list;
 
     if (network_info.mode == NetworkMode::Single) {
-        return game_objects;
+        return entities;
     }
 
     if (network_info.role == NetworkRole::Server || network_info.role == NetworkRole::Host) {
-        for (auto *game_object : game_objects) {
-            if (game_object->GetComponent<Network>()->GetOwner() == network_info.role) {
-                objects.push_back(game_object);
+        for (auto *entity : entities) {
+            if (entity->GetComponent<Network>()->GetOwner() == network_info.role) {
+                entity_list.push_back(entity);
             }
         }
     }
 
     if (network_info.role == NetworkRole::Client || network_info.role == NetworkRole::Peer) {
-        objects.push_back(GetClientPlayer(network_info.id, game_objects));
+        entity_list.push_back(GetClientPlayer(network_info.id, entities));
     }
 
-    return objects;
+    return entity_list;
 }
 
-void SetPlayerTexture(GameObject *controllable, int player_id, int player_textures) {
+void SetPlayerTexture(Entity *controllable, int player_id, int player_textures) {
     std::string texture_template = controllable->GetComponent<Render>()->GetTextureTemplate();
     size_t pos = texture_template.find("{}");
     player_id = (player_id - 1) % player_textures + 1;
@@ -128,10 +127,10 @@ void SetPlayerTexture(GameObject *controllable, int player_id, int player_textur
     controllable->GetComponent<Render>()->SetTexture(texture_template);
 }
 
-GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_objects) {
-    for (GameObject *game_object : game_objects) {
-        if (game_object->GetCategory() == GameObjectCategory::Controllable) {
-            std::string name = game_object->GetName();
+Entity *GetClientPlayer(int player_id, std::vector<Entity *> entities) {
+    for (Entity *entity : entities) {
+        if (entity->GetCategory() == EntityCategory::Controllable) {
+            std::string name = entity->GetName();
             size_t underscore = name.rfind('_');
 
             if (underscore != std::string::npos && (underscore + 1) < name.size()) {
@@ -139,7 +138,7 @@ GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_object
                 try {
                     int player = std::stoi(number);
                     if (player == player_id) {
-                        return game_object;
+                        return entity;
                     }
                 } catch (const std::invalid_argument &e) {
                     Log(LogLevel::Error, "Could not locate the client player to update");
@@ -150,7 +149,7 @@ GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_object
     return nullptr;
 }
 
-bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
+bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
     std::string mode;
     std::string role;
     std::string server_ip;
@@ -264,8 +263,7 @@ bool SetEngineCLIOptions(GameEngine *game_engine, int argc, char *args[]) {
         network_role = NetworkRole::Peer;
     }
 
-    game_engine->SetNetworkInfo(
-        NetworkInfo{network_mode, network_role, 0, server_ip, host_ip, peer_ip});
+    engine->SetNetworkInfo(NetworkInfo{network_mode, network_role, 0, server_ip, host_ip, peer_ip});
 
     return true;
 }

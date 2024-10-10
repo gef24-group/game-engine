@@ -1,20 +1,20 @@
 #pragma once
 
 #include "Component.hpp"
-#include "GameObject.hpp"
+#include "Entity.hpp"
 #include "Timeline.hpp"
 #include "Types.hpp"
 
 class Physics : public Component {
   private:
-    GameObject *game_object;
+    Entity *entity;
     std::shared_ptr<Timeline> engine_timeline;
 
     Velocity velocity;
     Acceleration acceleration;
 
   public:
-    Physics(GameObject *game_object);
+    Physics(Entity *entity);
 
     void SetEngineTimeline(std::shared_ptr<Timeline> engine_timeline);
 

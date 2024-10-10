@@ -1,6 +1,6 @@
 #include "Collision.hpp"
-#include "GameEngine.hpp"
-#include "GameObject.hpp"
+#include "Engine.hpp"
+#include "Entity.hpp"
 #include "Handler.hpp"
 #include "Network.hpp"
 #include "Physics.hpp"
@@ -16,9 +16,9 @@ Size window_size;
 NetworkInfo network_info;
 std::vector<const char *> enemy_textures =
     std::vector({"assets/ladybug.png", "assets/mouse.png", "assets/worm.png", "assets/bee.png"});
-GameEngine *engine;
+Engine *engine_ptr;
 
-void Update(std::vector<GameObject *> *game_objects) {
+void Update(std::vector<Entity *> *entities) {
     std::random_device random_device;
     std::mt19937 eng(random_device());
     std::uniform_int_distribution<> include_dist(0, 25);
@@ -28,25 +28,25 @@ void Update(std::vector<GameObject *> *game_objects) {
     size_t random_enemy = enemy_dist(eng);
 
     float max_ground_x = 0;
-    GameObject *max_ground = nullptr;
-    for (GameObject *game_object : *game_objects) {
-        if (game_object->GetName().find("ground") == 0) {
-            if (game_object->GetComponent<Transform>()->GetPosition().x > max_ground_x) {
-                max_ground = game_object;
-                max_ground_x = game_object->GetComponent<Transform>()->GetPosition().x;
+    Entity *max_ground = nullptr;
+    for (Entity *entity : *entities) {
+        if (entity->GetName().find("ground") == 0) {
+            if (entity->GetComponent<Transform>()->GetPosition().x > max_ground_x) {
+                max_ground = entity;
+                max_ground_x = entity->GetComponent<Transform>()->GetPosition().x;
             }
         }
     }
 
     bool ground_repositioned = false;
-    for (GameObject *game_object : *game_objects) {
-        if (game_object->GetName().find("ground") == 0) {
-            int right_edge = static_cast<int>(std::round(
-                                 game_object->GetComponent<Transform>()->GetPosition().x)) +
-                             game_object->GetComponent<Transform>()->GetSize().width;
+    for (Entity *entity : *entities) {
+        if (entity->GetName().find("ground") == 0) {
+            int right_edge =
+                static_cast<int>(std::round(entity->GetComponent<Transform>()->GetPosition().x)) +
+                entity->GetComponent<Transform>()->GetSize().width;
             if (right_edge <= 0) {
                 ground_repositioned = true;
-                game_object->GetComponent<Transform>()->SetPosition(
+                entity->GetComponent<Transform>()->SetPosition(
                     Position{max_ground_x + TILE_SIZE, float(window_size.height - TILE_SIZE)});
             }
         }
@@ -54,10 +54,10 @@ void Update(std::vector<GameObject *> *game_objects) {
 
     int enemy_index = 0;
     if (include_enemy && max_ground != nullptr && ground_repositioned) {
-        for (GameObject *game_object : *game_objects) {
-            if (game_object->GetName().find("enemy") == 0) {
+        for (Entity *entity : *entities) {
+            if (entity->GetName().find("enemy") == 0) {
                 if (enemy_index == random_enemy) {
-                    game_object->GetComponent<Physics>()->SetVelocity(Velocity{-50, 0});
+                    entity->GetComponent<Physics>()->SetVelocity(Velocity{-50, 0});
                 }
                 enemy_index += 1;
             }
@@ -65,12 +65,12 @@ void Update(std::vector<GameObject *> *game_objects) {
     }
 
     float min_enemy_x = float(window_size.width * 2.0);
-    GameObject *min_enemy = nullptr;
-    for (GameObject *game_object : *game_objects) {
-        if (game_object->GetName().find("enemy") == 0) {
-            if (game_object->GetComponent<Transform>()->GetPosition().x < min_enemy_x) {
-                min_enemy = game_object;
-                min_enemy_x = game_object->GetComponent<Transform>()->GetPosition().x;
+    Entity *min_enemy = nullptr;
+    for (Entity *entity : *entities) {
+        if (entity->GetName().find("enemy") == 0) {
+            if (entity->GetComponent<Transform>()->GetPosition().x < min_enemy_x) {
+                min_enemy = entity;
+                min_enemy_x = entity->GetComponent<Transform>()->GetPosition().x;
             }
         }
     }
@@ -81,7 +81,7 @@ void Update(std::vector<GameObject *> *game_objects) {
     }
 }
 
-void UpdateAlien(GameObject *alien) {
+void UpdateAlien(Entity *alien) {
     if (app->key_map->key_up.pressed.load() || app->key_map->key_W.pressed.load()) {
         alien->GetComponent<Physics>()->SetVelocity(
             {alien->GetComponent<Physics>()->GetVelocity().x, -60});
@@ -105,8 +105,8 @@ void UpdateAlien(GameObject *alien) {
 
     if (alien->GetName() == "alien_" + std::to_string(network_info.id) &&
         alien->GetComponent<Collision>()->GetColliders().size() > 0) {
-        for (GameObject *game_object : alien->GetComponent<Collision>()->GetColliders()) {
-            if (game_object->GetName().find("enemy") == 0) {
+        for (Entity *entity : alien->GetComponent<Collision>()->GetColliders()) {
+            if (entity->GetName().find("enemy") == 0) {
                 Log(LogLevel::Info, "");
                 Log(LogLevel::Info, "You lost :(");
                 Log(LogLevel::Info, "");
@@ -117,7 +117,7 @@ void UpdateAlien(GameObject *alien) {
     }
 }
 
-void UpdatePlatform(GameObject *platform) {
+void UpdatePlatform(Entity *platform) {
     float platform_right_edge = platform->GetComponent<Transform>()->GetPosition().x +
                                 float(platform->GetComponent<Transform>()->GetSize().width);
     float platform_left_edge = platform->GetComponent<Transform>()->GetPosition().x;
@@ -135,8 +135,8 @@ void UpdatePlatform(GameObject *platform) {
     }
 }
 
-GameObject *CreateAlien() {
-    GameObject *alien = new GameObject("alien", Controllable);
+Entity *CreateAlien() {
+    Entity *alien = new Entity("alien", Controllable);
     alien->AddComponent<Render>();
     alien->AddComponent<Transform>();
     alien->AddComponent<Physics>();
@@ -144,7 +144,7 @@ GameObject *CreateAlien() {
     alien->AddComponent<Handler>();
     alien->AddComponent<Network>();
 
-    alien->GetComponent<Physics>()->SetEngineTimeline(engine->GetBaseTimeline());
+    alien->GetComponent<Physics>()->SetEngineTimeline(engine_ptr->GetBaseTimeline());
 
     alien->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
     alien->GetComponent<Render>()->SetTextureTemplate("assets/alien_{}.png");
@@ -159,8 +159,8 @@ GameObject *CreateAlien() {
     return alien;
 }
 
-GameObject *CreatePlatform() {
-    GameObject *platform = new GameObject("platform", Moving);
+Entity *CreatePlatform() {
+    Entity *platform = new Entity("platform", Moving);
     platform->AddComponent<Render>();
     platform->AddComponent<Transform>();
     platform->AddComponent<Physics>();
@@ -168,7 +168,7 @@ GameObject *CreatePlatform() {
     platform->AddComponent<Handler>();
     platform->AddComponent<Network>();
 
-    platform->GetComponent<Physics>()->SetEngineTimeline(engine->GetBaseTimeline());
+    platform->GetComponent<Physics>()->SetEngineTimeline(engine_ptr->GetBaseTimeline());
 
     platform->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
     platform->GetComponent<Render>()->SetTexture("assets/stone.png");
@@ -181,10 +181,10 @@ GameObject *CreatePlatform() {
     return platform;
 }
 
-std::vector<GameObject *> CreateGround() {
-    std::vector<GameObject *> ground;
+std::vector<Entity *> CreateGround() {
+    std::vector<Entity *> ground;
     for (int i = 0; i < (window_size.width / TILE_SIZE) + 2; i++) {
-        GameObject *ground_tile = new GameObject("ground_" + std::to_string(i), Moving);
+        Entity *ground_tile = new Entity("ground_" + std::to_string(i), Moving);
         ground_tile->AddComponent<Render>();
         ground_tile->AddComponent<Transform>();
         ground_tile->AddComponent<Physics>();
@@ -192,7 +192,7 @@ std::vector<GameObject *> CreateGround() {
         ground_tile->AddComponent<Network>();
         ground_tile->AddComponent<Handler>();
 
-        ground_tile->GetComponent<Physics>()->SetEngineTimeline(engine->GetBaseTimeline());
+        ground_tile->GetComponent<Physics>()->SetEngineTimeline(engine_ptr->GetBaseTimeline());
 
         ground_tile->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
         ground_tile->GetComponent<Transform>()->SetPosition(
@@ -207,8 +207,8 @@ std::vector<GameObject *> CreateGround() {
     return ground;
 }
 
-std::vector<GameObject *> CreateClouds() {
-    GameObject *cloud_1 = new GameObject("cloud_1", Stationary);
+std::vector<Entity *> CreateClouds() {
+    Entity *cloud_1 = new Entity("cloud_1", Stationary);
     cloud_1->AddComponent<Render>();
     cloud_1->AddComponent<Transform>();
     cloud_1->AddComponent<Collision>();
@@ -216,7 +216,7 @@ std::vector<GameObject *> CreateClouds() {
     cloud_1->AddComponent<Physics>();
     cloud_1->AddComponent<Handler>();
 
-    cloud_1->GetComponent<Physics>()->SetEngineTimeline(engine->GetBaseTimeline());
+    cloud_1->GetComponent<Physics>()->SetEngineTimeline(engine_ptr->GetBaseTimeline());
 
     cloud_1->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
     cloud_1->GetComponent<Render>()->SetTexture("assets/cloud_1.png");
@@ -226,7 +226,7 @@ std::vector<GameObject *> CreateClouds() {
     cloud_1->GetComponent<Collision>()->SetAffectedByCollision(false);
     cloud_1->GetComponent<Network>()->SetOwner(NetworkRole::Server);
 
-    GameObject *cloud_2 = new GameObject("cloud_2", Stationary);
+    Entity *cloud_2 = new Entity("cloud_2", Stationary);
     cloud_2->AddComponent<Render>();
     cloud_2->AddComponent<Transform>();
     cloud_2->AddComponent<Collision>();
@@ -234,7 +234,7 @@ std::vector<GameObject *> CreateClouds() {
     cloud_2->AddComponent<Physics>();
     cloud_2->AddComponent<Handler>();
 
-    cloud_2->GetComponent<Physics>()->SetEngineTimeline(engine->GetBaseTimeline());
+    cloud_2->GetComponent<Physics>()->SetEngineTimeline(engine_ptr->GetBaseTimeline());
 
     cloud_2->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
     cloud_2->GetComponent<Render>()->SetTexture("assets/cloud_2.png");
@@ -247,11 +247,11 @@ std::vector<GameObject *> CreateClouds() {
     return std::vector({cloud_1, cloud_2});
 }
 
-std::vector<GameObject *> CreateEnemies() {
-    std::vector<GameObject *> enemies;
+std::vector<Entity *> CreateEnemies() {
+    std::vector<Entity *> enemies;
     int enemy_index = 0;
     for (const char *enemy_texture : enemy_textures) {
-        GameObject *enemy = new GameObject("enemy_" + std::to_string(enemy_index), Moving);
+        Entity *enemy = new Entity("enemy_" + std::to_string(enemy_index), Moving);
         enemy->AddComponent<Transform>();
         enemy->AddComponent<Physics>();
         enemy->AddComponent<Render>();
@@ -259,7 +259,7 @@ std::vector<GameObject *> CreateEnemies() {
         enemy->AddComponent<Network>();
         enemy->AddComponent<Handler>();
 
-        enemy->GetComponent<Physics>()->SetEngineTimeline(engine->GetBaseTimeline());
+        enemy->GetComponent<Physics>()->SetEngineTimeline(engine_ptr->GetBaseTimeline());
 
         enemy->GetComponent<Transform>()->SetPosition(Position{
             float(window_size.width + TILE_SIZE), float(window_size.height - (TILE_SIZE * 2))});
@@ -275,92 +275,92 @@ std::vector<GameObject *> CreateEnemies() {
     return enemies;
 }
 
-std::vector<GameObject *> CreateGameObjects() {
-    GameObject *alien = CreateAlien();
-    GameObject *platform = CreatePlatform();
-    std::vector<GameObject *> clouds = CreateClouds();
-    std::vector<GameObject *> ground = CreateGround();
-    std::vector<GameObject *> enemies = CreateEnemies();
+std::vector<Entity *> CreateEntities() {
+    Entity *alien = CreateAlien();
+    Entity *platform = CreatePlatform();
+    std::vector<Entity *> clouds = CreateClouds();
+    std::vector<Entity *> ground = CreateGround();
+    std::vector<Entity *> enemies = CreateEnemies();
 
-    std::vector<GameObject *> game_objects = std::vector({alien, platform});
-    for (GameObject *cloud : clouds) {
-        game_objects.push_back(cloud);
+    std::vector<Entity *> entities = std::vector({alien, platform});
+    for (Entity *cloud : clouds) {
+        entities.push_back(cloud);
     }
-    for (GameObject *ground_tile : ground) {
-        game_objects.push_back(ground_tile);
+    for (Entity *ground_tile : ground) {
+        entities.push_back(ground_tile);
     }
-    for (GameObject *enemy : enemies) {
-        game_objects.push_back(enemy);
+    for (Entity *enemy : enemies) {
+        entities.push_back(enemy);
     }
 
-    for (GameObject *game_object : game_objects) {
+    for (Entity *entity : entities) {
         if (network_info.mode == NetworkMode::PeerToPeer) {
-            if (game_object->GetComponent<Network>()->GetOwner() == NetworkRole::Server) {
-                game_object->GetComponent<Network>()->SetOwner(NetworkRole::Host);
+            if (entity->GetComponent<Network>()->GetOwner() == NetworkRole::Server) {
+                entity->GetComponent<Network>()->SetOwner(NetworkRole::Host);
             }
-            if (game_object->GetComponent<Network>()->GetOwner() == NetworkRole::Client) {
-                game_object->GetComponent<Network>()->SetOwner(NetworkRole::Peer);
+            if (entity->GetComponent<Network>()->GetOwner() == NetworkRole::Client) {
+                entity->GetComponent<Network>()->SetOwner(NetworkRole::Peer);
             }
         }
     }
 
-    return game_objects;
+    return entities;
 }
 
-void DestroyObjects(std::vector<GameObject *> game_objects) {
-    for (GameObject *object : game_objects) {
-        delete object;
+void DestroyEntities(std::vector<Entity *> entities) {
+    for (Entity *entity : entities) {
+        delete entity;
     }
 }
 
-void SetupTimelineInputs(GameEngine *game_engine) {
+void SetupTimelineInputs(Engine *engine) {
     // toggle constant and proportional scaling
     app->key_map->key_X.OnPress = []() {
         app->window.proportional_scaling = !app->window.proportional_scaling;
     };
     // toggle pause or unpause
-    app->key_map->key_P.OnPress = [game_engine]() { game_engine->BaseTimelineTogglePause(); };
+    app->key_map->key_P.OnPress = [engine]() { engine->BaseTimelineTogglePause(); };
     // slow down the timeline
-    app->key_map->key_comma.OnPress = [game_engine]() {
-        game_engine->BaseTimelineChangeTic(std::min(game_engine->BaseTimelineGetTic() * 2.0, 2.0));
+    app->key_map->key_comma.OnPress = [engine]() {
+        engine->BaseTimelineChangeTic(std::min(engine->BaseTimelineGetTic() * 2.0, 2.0));
     };
     // speed up the timeline
-    app->key_map->key_period.OnPress = [game_engine]() {
-        game_engine->BaseTimelineChangeTic(std::max(game_engine->BaseTimelineGetTic() / 2.0, 0.5));
+    app->key_map->key_period.OnPress = [engine]() {
+        engine->BaseTimelineChangeTic(std::max(engine->BaseTimelineGetTic() / 2.0, 0.5));
     };
 }
 
 int main(int argc, char *args[]) {
-    std::string game_title = "CSC581 HW3 Joshua's Game";
+    std::string title = "CSC581 HW3 Joshua's Game";
 
-    GameEngine game_engine;
-    engine = &game_engine;
-    if (!SetEngineCLIOptions(&game_engine, argc, args)) {
+    Engine engine;
+    engine_ptr = &engine;
+    if (!SetEngineCLIOptions(&engine, argc, args)) {
         return 1;
     }
-    network_info = game_engine.GetNetworkInfo();
+    network_info = engine.GetNetworkInfo();
 
     Color background_color = Color{52, 153, 219, 255};
-    game_engine.SetBackgroundColor(background_color);
-    game_engine.SetGameTitle(game_title);
-    game_engine.SetShowPlayerBorder(true);
+    engine.SetBackgroundColor(background_color);
+    engine.SetTitle(title);
+    engine.SetShowPlayerBorder(true);
 
-    if (!game_engine.Init()) {
+    if (!engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }
 
-    SetupTimelineInputs(engine);
-    network_info = game_engine.GetNetworkInfo();
+    SetupTimelineInputs(engine_ptr);
+    network_info = engine.GetNetworkInfo();
     window_size = GetWindowSize();
 
-    std::vector<GameObject *> game_objects = CreateGameObjects();
-    game_engine.SetGameObjects(game_objects);
-    game_engine.SetPlayerTextures(5);
-    game_engine.SetCallback(Update);
+    std::vector<Entity *> entities = CreateEntities();
+    engine.SetEntities(entities);
+    engine.SetPlayerTextures(5);
+    engine.SetCallback(Update);
 
-    game_engine.Start();
+    engine.Start();
     Log(LogLevel::Info, "The game engine has closed the game cleanly");
-    DestroyObjects(game_objects);
+    DestroyEntities(entities);
     return 0;
 }

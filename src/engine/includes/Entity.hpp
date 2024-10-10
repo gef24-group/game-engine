@@ -9,17 +9,17 @@
 
 extern App *app;
 
-class GameObject {
+class Entity {
   private:
     std::string name;
-    GameObjectCategory category;
+    EntityCategory category;
     std::unordered_map<std::type_index, std::unique_ptr<Component>> components;
 
   public:
-    GameObject(std::string name, GameObjectCategory category);
+    Entity(std::string name, EntityCategory category);
 
     std::string GetName();
-    GameObjectCategory GetCategory();
+    EntityCategory GetCategory();
 
     void SetName(std::string name);
 
@@ -27,11 +27,11 @@ class GameObject {
     template <typename T> T *GetComponent();
 };
 
-template <typename T> void GameObject::AddComponent() {
+template <typename T> void Entity::AddComponent() {
     components[typeid(T)] = std::make_unique<T>(this);
 }
 
-template <typename T> T *GameObject::GetComponent() {
+template <typename T> T *Entity::GetComponent() {
     auto iterator = components.find(typeid(T));
     if (iterator != components.end()) {
         return dynamic_cast<T *>(iterator->second.get());

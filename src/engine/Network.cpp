@@ -1,8 +1,8 @@
 #include "Network.hpp"
-#include "GameObject.hpp"
+#include "Entity.hpp"
 
-Network::Network(GameObject *game_object) {
-    this->game_object = game_object;
+Network::Network(Entity *entity) {
+    this->entity = entity;
     this->player_address = "";
     this->owner = NetworkRole::Client;
 }

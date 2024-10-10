@@ -1,16 +1,16 @@
 #include "Handler.hpp"
-#include "GameObject.hpp"
+#include "Entity.hpp"
 
-Handler::Handler(GameObject *game_object) {
-    this->game_object = game_object;
-    this->callback = [](GameObject *) {};
+Handler::Handler(Entity *entity) {
+    this->entity = entity;
+    this->callback = [](Entity *) {};
 }
 
-std::function<void(GameObject *)> Handler::GetCallback() { return this->callback; }
+std::function<void(Entity *)> Handler::GetCallback() { return this->callback; }
 
-void Handler::SetCallback(std::function<void(GameObject *)> callback) { this->callback = callback; }
+void Handler::SetCallback(std::function<void(Entity *)> callback) { this->callback = callback; }
 
 void Handler::Update() {
     // the callback contains the reaction to keyboard inputs
-    this->callback(this->game_object);
+    this->callback(this->entity);
 }

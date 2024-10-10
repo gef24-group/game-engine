@@ -1,7 +1,7 @@
 #pragma once
 
 #include "App.hpp"
-#include "GameObject.hpp"
+#include "Entity.hpp"
 #include "Timeline.hpp"
 #include "Types.hpp"
 #include <functional>
@@ -13,9 +13,9 @@
 
 extern App *app;
 
-class GameEngine {
+class Engine {
   private:
-    std::string game_title;
+    std::string title;
     std::shared_ptr<Timeline> engine_timeline;
     NetworkInfo network_info;
     std::atomic<int> players_connected;
@@ -23,9 +23,9 @@ class GameEngine {
     bool show_player_border;
     int player_textures;
     int max_players;
-    std::mutex game_objects_mutex;
-    std::vector<GameObject *> game_objects;
-    std::function<void(std::vector<GameObject *> *game_objects)> callback;
+    std::mutex entities_mutex;
+    std::vector<Entity *> entities;
+    std::function<void(std::vector<Entity *> *)> callback;
 
     std::thread input_thread;
     std::thread listener_thread;
@@ -68,7 +68,7 @@ class GameEngine {
     void CSClientReceiveBroadcastThread();
     void CSClientSendUpdate();
 
-    GameObject *CreateNewPlayer(int player_id, std::string player_address = "");
+    Entity *CreateNewPlayer(int player_id, std::string player_address = "");
 
     bool InitP2PPeerConnection();
 
@@ -82,7 +82,7 @@ class GameEngine {
     void ReadInputsThread();
     bool HandleQuitEvent();
     void GetTimeDelta();
-    void ApplyObjectPhysicsAndUpdates();
+    void ApplyEntityPhysicsAndUpdates();
     void TestCollision();
     void HandleCollisions();
     void Update();
@@ -92,10 +92,10 @@ class GameEngine {
     void Shutdown();
 
   public:
-    GameEngine();
+    Engine();
     bool Init();
     void Start();
-    void SetGameTitle(std::string game_title);
+    void SetTitle(std::string title);
     void SetNetworkInfo(NetworkInfo network_info);
     NetworkInfo GetNetworkInfo();
     void SetBackgroundColor(Color color);
@@ -106,8 +106,8 @@ class GameEngine {
     double BaseTimelineGetTic();
     void BaseTimelineTogglePause();
     std::shared_ptr<Timeline> GetBaseTimeline();
-    std::vector<GameObject *> GetGameObjects();
-    void SetGameObjects(std::vector<GameObject *> game_objects);
-    void AddGameObject(GameObject *game_object);
-    void SetCallback(std::function<void(std::vector<GameObject *> *)> callback);
+    std::vector<Entity *> GetEntities();
+    void SetEntities(std::vector<Entity *> entities);
+    void AddEntity(Entity *entity);
+    void SetCallback(std::function<void(std::vector<Entity *> *)> callback);
 };

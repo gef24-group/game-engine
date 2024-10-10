@@ -1,12 +1,12 @@
 #include "Physics.hpp"
-#include "GameObject.hpp"
+#include "Entity.hpp"
 #include "Timeline.hpp"
 #include "Transform.hpp"
 #include <cmath>
 #include <cstdint>
 
-Physics::Physics(GameObject *game_object) {
-    this->game_object = game_object;
+Physics::Physics(Entity *entity) {
+    this->entity = entity;
     this->engine_timeline = std::make_shared<Timeline>();
     this->velocity = Velocity{0, 0};
     this->acceleration = Acceleration{0, 0};
@@ -20,14 +20,14 @@ Velocity Physics::GetVelocity() { return this->velocity; }
 Acceleration Physics::GetAcceleration() { return this->acceleration; }
 
 void Physics::SetVelocity(Velocity velocity) {
-    // maybe add a reference to the game object to deal with this
-    if (this->game_object->GetCategory() != Stationary) {
+    // maybe add a reference to the entity to deal with this
+    if (this->entity->GetCategory() != Stationary) {
         this->velocity = velocity;
     }
 }
 void Physics::SetAcceleration(Acceleration acceleration) {
-    // maybe add a reference to the game object to deal with this
-    if (this->game_object->GetCategory() != Stationary) {
+    // maybe add a reference to the entity to deal with this
+    if (this->entity->GetCategory() != Stationary) {
         this->acceleration = acceleration;
     }
 }
@@ -37,13 +37,13 @@ void Physics::Move() {
 
     const float HALF = 0.5;
     float time = static_cast<float>(delta) / 100'000'000.0f;
-    Position curr_position = this->game_object->GetComponent<Transform>()->GetPosition();
+    Position curr_position = this->entity->GetComponent<Transform>()->GetPosition();
     float new_pos_x = curr_position.x + (this->velocity.x * time) +
                       (HALF * this->acceleration.x * float(pow(time, 2)));
     float new_pos_y = curr_position.y + (this->velocity.y * time) +
                       (HALF * this->acceleration.y * float(pow(time, 2)));
 
-    this->game_object->GetComponent<Transform>()->SetPosition(Position{new_pos_x, new_pos_y});
+    this->entity->GetComponent<Transform>()->SetPosition(Position{new_pos_x, new_pos_y});
 
     this->velocity.x += (this->acceleration.x * time);
     this->velocity.y += (this->acceleration.y * time);

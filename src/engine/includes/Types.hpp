@@ -6,7 +6,7 @@
 #include <string>
 
 enum Shape { Circle, Square, Rectangle, Triangle };
-enum GameObjectCategory { Controllable, Moving, Stationary };
+enum EntityCategory { Controllable, Moving, Stationary };
 enum LogLevel { Verbose = 1, Debug, Info, Warn, Error, Critical, Priorities };
 enum NetworkMode { Single, ClientServer, PeerToPeer };
 enum NetworkRole { Server, Client, Host, Peer };
@@ -90,7 +90,7 @@ struct JoinReply {
     int player_id;
 };
 
-struct ObjectUpdate {
+struct EntityUpdate {
     char name[100];
     Position position;
     char player_address[100];

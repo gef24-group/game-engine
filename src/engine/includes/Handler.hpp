@@ -1,18 +1,18 @@
 #pragma once
 
 #include "Component.hpp"
-#include "GameObject.hpp"
+#include "Entity.hpp"
 
 class Handler : public Component {
   private:
-    GameObject *game_object;
-    std::function<void(GameObject *)> callback;
+    Entity *entity;
+    std::function<void(Entity *)> callback;
 
   public:
-    Handler(GameObject *game_object);
+    Handler(Entity *entity);
 
-    std::function<void(GameObject *)> GetCallback();
-    // The callback references the function that makes the object react to inputs
-    void SetCallback(std::function<void(GameObject *)> callback);
+    std::function<void(Entity *)> GetCallback();
+    // The callback references the function that makes the entity react to inputs
+    void SetCallback(std::function<void(Entity *)> callback);
     void Update() override;
 };
