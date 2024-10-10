@@ -1,5 +1,10 @@
 #include "GameEngine.hpp"
+#include "Collision.hpp"
 #include "GameObject.hpp"
+#include "Handler.hpp"
+#include "Network.hpp"
+#include "Physics.hpp"
+#include "Render.hpp"
 #include "SDL.h"
 #include "SDL_error.h"
 #include "SDL_events.h"
@@ -9,6 +14,7 @@
 #include "SDL_scancode.h"
 #include "SDL_video.h"
 #include "Timeline.hpp"
+#include "Transform.hpp"
 #include "Types.hpp"
 #include "Utils.hpp"
 #include <algorithm>
@@ -30,7 +36,7 @@ GameEngine::GameEngine() {
     app->window = Window({1920, 1080, true});
 
     this->game_title = "";
-    this->engine_timeline = std::make_unique<Timeline>();
+    this->engine_timeline = std::make_shared<Timeline>();
     this->players_connected.store(0);
     this->background_color = Color{0, 0, 0, 255};
     this->show_player_border = false;
@@ -99,7 +105,7 @@ void GameEngine::CSServerClientThread(int player_id) {
             client_socket.send(reply, zmq::send_flags::none);
 
             GameObject *game_object = GetObjectByName(object_update.name, this->GetGameObjects());
-            game_object->SetPosition(object_update.position);
+            game_object->GetComponent<Transform>()->SetPosition(object_update.position);
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the server client thread: %s", e.what());
             client_socket.close();
@@ -114,7 +120,7 @@ void GameEngine::CSServerBroadcastUpdates() {
             ObjectUpdate object_update;
             std::snprintf(object_update.name, sizeof(object_update.name), "%s",
                           game_object->GetName().c_str());
-            object_update.position = game_object->GetPosition();
+            object_update.position = game_object->GetComponent<Transform>()->GetPosition();
 
             zmq::message_t broadcast_update(sizeof(ObjectUpdate));
             std::memcpy(broadcast_update.data(), &object_update, sizeof(ObjectUpdate));
@@ -293,13 +299,14 @@ bool GameEngine::InitCSClient() {
 void GameEngine::P2PHostBroadcastPlayers() {
     for (GameObject *game_object : this->GetGameObjects()) {
         try {
-            if (game_object->GetOwner() == Peer) {
+            if (game_object->GetComponent<Network>()->GetOwner() == Peer) {
                 ObjectUpdate object_update;
                 std::snprintf(object_update.name, sizeof(object_update.name), "%s",
                               game_object->GetName().c_str());
-                object_update.position = game_object->GetPosition();
+                object_update.position = game_object->GetComponent<Transform>()->GetPosition();
                 std::snprintf(object_update.player_address, sizeof(object_update.player_address),
-                              "%s", game_object->GetPlayerAddress().c_str());
+                              "%s",
+                              game_object->GetComponent<Network>()->GetPlayerAddress().c_str());
 
                 zmq::message_t broadcast_update(sizeof(ObjectUpdate));
                 std::memcpy(broadcast_update.data(), &object_update, sizeof(ObjectUpdate));
@@ -483,28 +490,40 @@ GameObject *GameEngine::CreateNewPlayer(int player_id, std::string player_addres
 
     if (is_p2p && is_host) {
         if (player_id == 1) {
-            controllable->SetOwner(NetworkRole::Host);
+            controllable->GetComponent<Network>()->SetOwner(NetworkRole::Host);
         }
     }
     if ((is_cs && is_server && player_id == 1) || (player_id == this->network_info.id)) {
         controllable->SetName(player_name);
         SetPlayerTexture(controllable, player_id, this->player_textures);
         if (this->show_player_border) {
-            controllable->SetBorder(Border{true, Color{0, 0, 0, 255}});
+            controllable->GetComponent<Render>()->SetBorder(Border{true, Color{0, 0, 0, 255}});
         }
         return controllable;
     }
     if ((is_cs && is_server && player_id > 1) || (player_id != this->network_info.id)) {
         GameObject *player = new GameObject(player_name, controllable->GetCategory());
-        player->SetColor(controllable->GetColor());
-        player->SetSize(controllable->GetSize());
-        player->SetTextureTemplate(controllable->GetTextureTemplate());
-        player->SetCallback(controllable->GetCallback());
-        player->SetOwner(controllable->GetOwner());
+        player->AddComponent<Render>();
+        player->AddComponent<Transform>();
+        player->AddComponent<Handler>();
+        player->AddComponent<Physics>();
+        player->AddComponent<Network>();
+        player->AddComponent<Collision>();
+
+        player->GetComponent<Render>()->SetColor(controllable->GetComponent<Render>()->GetColor());
+        player->GetComponent<Transform>()->SetSize(
+            controllable->GetComponent<Transform>()->GetSize());
+        player->GetComponent<Render>()->SetTextureTemplate(
+            controllable->GetComponent<Render>()->GetTextureTemplate());
+        player->GetComponent<Handler>()->SetCallback(
+            controllable->GetComponent<Handler>()->GetCallback());
+        player->GetComponent<Network>()->SetOwner(
+            controllable->GetComponent<Network>()->GetOwner());
+
         if (is_p2p) {
-            player->SetOwner(NetworkRole::Peer);
+            player->GetComponent<Network>()->SetOwner(NetworkRole::Peer);
             if (!player_address.empty()) {
-                player->SetPlayerAddress(player_address);
+                player->GetComponent<Network>()->SetPlayerAddress(player_address);
             }
         }
         SetPlayerTexture(player, player_id, this->player_textures);
@@ -537,7 +556,7 @@ void GameEngine::CSClientReceiveBroadcastThread() {
                 GameObject *player = GetClientPlayer(this->network_info.id, this->GetGameObjects());
 
                 if (game_object->GetName() != player->GetName()) {
-                    game_object->SetPosition(object_update.position);
+                    game_object->GetComponent<Transform>()->SetPosition(object_update.position);
                 }
             }
         } catch (const zmq::error_t &e) {
@@ -554,7 +573,7 @@ void GameEngine::CSClientSendUpdate() {
         ObjectUpdate object_update;
         std::snprintf(object_update.name, sizeof(object_update.name), "%s",
                       player->GetName().c_str());
-        object_update.position = player->GetPosition();
+        object_update.position = player->GetComponent<Transform>()->GetPosition();
 
         zmq::message_t update(sizeof(ObjectUpdate));
         std::memcpy(update.data(), &object_update, sizeof(ObjectUpdate));
@@ -614,7 +633,7 @@ void GameEngine::P2PBroadcastUpdates() {
             ObjectUpdate object_update;
             std::snprintf(object_update.name, sizeof(object_update.name), "%s",
                           game_object->GetName().c_str());
-            object_update.position = game_object->GetPosition();
+            object_update.position = game_object->GetComponent<Transform>()->GetPosition();
 
             zmq::message_t broadcast_update(sizeof(ObjectUpdate));
             std::memcpy(broadcast_update.data(), &object_update, sizeof(ObjectUpdate));
@@ -660,7 +679,7 @@ void GameEngine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string pl
                 std::memcpy(&object_update, message.data(), sizeof(ObjectUpdate));
                 GameObject *game_object =
                     GetObjectByName(object_update.name, this->GetGameObjects());
-                game_object->SetPosition(object_update.position);
+                game_object->GetComponent<Transform>()->SetPosition(object_update.position);
             }
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the peer receive broadcast thread: %s", e.what());
@@ -712,7 +731,7 @@ void GameEngine::P2PReceiveBroadcastFromHostThread() {
                 GameObject *player = GetClientPlayer(this->network_info.id, this->GetGameObjects());
 
                 if (game_object->GetName() != player->GetName()) {
-                    game_object->SetPosition(object_update.position);
+                    game_object->GetComponent<Transform>()->SetPosition(object_update.position);
                 }
             }
         } catch (const zmq::error_t &e) {
@@ -829,6 +848,8 @@ void GameEngine::BaseTimelineTogglePause() {
     this->engine_timeline->TogglePause(this->engine_timeline->GetFrameTime().current);
 }
 
+std::shared_ptr<Timeline> GameEngine::GetBaseTimeline() { return this->engine_timeline; }
+
 void GameEngine::SetBackgroundColor(Color color) {
     if (this->network_info.role == NetworkRole::Client ||
         this->network_info.role == NetworkRole::Host ||
@@ -939,8 +960,12 @@ void GameEngine::ApplyObjectPhysicsAndUpdates() {
         GetObjectsByRole(this->network_info, this->GetGameObjects());
 
     for (GameObject *game_object : game_objects) {
-        game_object->Move(this->engine_timeline->GetFrameTime().delta);
-        game_object->Update();
+        if (game_object->GetComponent<Physics>() != nullptr) {
+            game_object->GetComponent<Physics>()->Update();
+        }
+        if (game_object->GetComponent<Handler>() != nullptr) {
+            game_object->GetComponent<Handler>()->Update();
+        }
     }
 }
 
@@ -949,94 +974,34 @@ void GameEngine::TestCollision() {
 
     for (int i = 0; i < game_objects.size() - 1; i++) {
         for (int j = i + 1; j < game_objects.size(); j++) {
-            SDL_Rect object_1 = {static_cast<int>(std::round(game_objects[i]->GetPosition().x)),
-                                 static_cast<int>(std::round(game_objects[i]->GetPosition().y)),
-                                 game_objects[i]->GetSize().width,
-                                 game_objects[i]->GetSize().height};
-            SDL_Rect object_2 = {static_cast<int>(std::round(game_objects[j]->GetPosition().x)),
-                                 static_cast<int>(std::round(game_objects[j]->GetPosition().y)),
-                                 game_objects[j]->GetSize().width,
-                                 game_objects[j]->GetSize().height};
+            SDL_Rect object_1 = {static_cast<int>(std::round(
+                                     game_objects[i]->GetComponent<Transform>()->GetPosition().x)),
+                                 static_cast<int>(std::round(
+                                     game_objects[i]->GetComponent<Transform>()->GetPosition().y)),
+                                 game_objects[i]->GetComponent<Transform>()->GetSize().width,
+                                 game_objects[i]->GetComponent<Transform>()->GetSize().height};
+            SDL_Rect object_2 = {static_cast<int>(std::round(
+                                     game_objects[j]->GetComponent<Transform>()->GetPosition().x)),
+                                 static_cast<int>(std::round(
+                                     game_objects[j]->GetComponent<Transform>()->GetPosition().y)),
+                                 game_objects[j]->GetComponent<Transform>()->GetSize().width,
+                                 game_objects[j]->GetComponent<Transform>()->GetSize().height};
 
             if (SDL_HasIntersection(&object_1, &object_2)) {
-                game_objects[i]->AddCollider(game_objects[j]);
-                game_objects[j]->AddCollider(game_objects[i]);
+                game_objects[i]->GetComponent<Collision>()->AddCollider(game_objects[j]);
+                game_objects[j]->GetComponent<Collision>()->AddCollider(game_objects[i]);
             } else {
-                game_objects[i]->RemoveCollider(game_objects[j]);
-                game_objects[j]->RemoveCollider(game_objects[i]);
+                game_objects[i]->GetComponent<Collision>()->RemoveCollider(game_objects[j]);
+                game_objects[j]->GetComponent<Collision>()->RemoveCollider(game_objects[i]);
             }
         }
     }
 }
 
 void GameEngine::HandleCollisions() {
-    std::vector<std::thread> threads;
-
-    auto handle_collision_thread = [](GameObject *game_object) {
-        if (game_object->GetColliders().size() > 0) {
-            for (GameObject *collider : game_object->GetColliders()) {
-                int obj_x = static_cast<int>(std::round(game_object->GetPosition().x));
-                int obj_y = static_cast<int>(std::round(game_object->GetPosition().y));
-
-                int col_x = static_cast<int>(std::round(collider->GetPosition().x));
-                int col_y = static_cast<int>(std::round(collider->GetPosition().y));
-
-                int obj_width = game_object->GetSize().width;
-                int obj_height = game_object->GetSize().height;
-                int col_width = collider->GetSize().width;
-                int col_height = collider->GetSize().height;
-
-                int left_overlap = (obj_x + obj_width) - col_x;
-                int right_overlap = (col_x + col_width) - obj_x;
-                int top_overlap = (obj_y + obj_height) - col_y;
-                int bottom_overlap = (col_y + col_height) - obj_y;
-
-                int min_overlap = std::min(std::min(left_overlap, right_overlap),
-                                           std::min(top_overlap, bottom_overlap));
-
-                int pos_x = 0, pos_y = 0;
-                if (min_overlap == left_overlap) {
-                    pos_x = col_x - obj_width;
-                    pos_y = obj_y;
-                } else if (min_overlap == right_overlap) {
-                    pos_x = col_x + col_width;
-                    pos_y = obj_y;
-                } else if (min_overlap == top_overlap) {
-                    pos_x = obj_x;
-                    pos_y = col_y - obj_height;
-                } else if (min_overlap == bottom_overlap) {
-                    pos_x = obj_x;
-                    pos_y = col_y + col_height;
-                }
-
-                game_object->SetPosition(Position{float(pos_x), float(pos_y)});
-
-                float vel_x = game_object->GetVelocity().x;
-                float vel_y = game_object->GetVelocity().y;
-                if (min_overlap == left_overlap || min_overlap == right_overlap) {
-                    vel_x *= -game_object->GetRestitution();
-                }
-                if (min_overlap == top_overlap || min_overlap == bottom_overlap) {
-                    vel_y *= -game_object->GetRestitution();
-                }
-                game_object->SetVelocity(Velocity{vel_x, vel_y});
-            }
-        }
-    };
-
-    // Iterate over each game object
+    // TODO: Look into multithreading this later
     for (GameObject *game_object : GetObjectsByRole(this->network_info, this->GetGameObjects())) {
-        if (game_object->GetAffectedByCollision()) {
-            // Spawn a new thread for each game object
-            threads.emplace_back(handle_collision_thread, game_object);
-        }
-    }
-
-    // Join all threads
-    for (auto &thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
-        }
+        game_object->GetComponent<Collision>()->Update();
     }
 }
 
@@ -1056,7 +1021,7 @@ void GameEngine::RenderScene() {
 
     this->RenderBackground();
     for (GameObject *game_object : this->GetGameObjects()) {
-        game_object->Render();
+        game_object->GetComponent<Render>()->Update();
     }
     SDL_RenderPresent(app->renderer);
 }

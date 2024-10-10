@@ -11,21 +11,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add SANITIZER support if it is provided
 if(SANITIZER)
-    if(SANITIZER STREQUAL "thread")
-        set(SANITIZER_FLAGS "-fsanitize=thread")
-    elseif(SANITIZER STREQUAL "address")
-        set(SANITIZER_FLAGS "-fsanitize=address")
-    else()
-        set(SANITIZER_FLAGS "")
-    endif()
+    set(SANITIZER_FLAGS "-fsanitize=${SANITIZER}")
 
     # Apply the sanitizer flags on supported compilers
     if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        if(SANITIZER_FLAGS)
-            message(STATUS "Adding sanitizer flags: ${SANITIZER_FLAGS}")
-            add_compile_options(${SANITIZER_FLAGS} -g -O1 -fno-omit-frame-pointer)
-            add_link_options(${SANITIZER_FLAGS})
-        endif()
+        message(STATUS "Adding sanitizer flags: ${SANITIZER_FLAGS}")
+        add_compile_options(${SANITIZER_FLAGS} -g -O1 -fno-omit-frame-pointer)
+        add_link_options(${SANITIZER_FLAGS})
     endif()
 endif()
 
@@ -50,6 +42,9 @@ file(GLOB_RECURSE ENGINE_SRC "src/engine/*.cpp")
 
 # Get all game directories
 file(GLOB GAMES "src/games/*")
+
+# Filter out incompatible games due to breaking API changes
+list(FILTER GAMES EXCLUDE REGEX ".*/hw[12].*")
 
 foreach(GAME_DIR ${GAMES})
     # Get the name of the game (the folder name)

@@ -5,6 +5,7 @@
 #include "Timeline.hpp"
 #include "Types.hpp"
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -15,7 +16,7 @@ extern App *app;
 class GameEngine {
   private:
     std::string game_title;
-    std::unique_ptr<Timeline> engine_timeline;
+    std::shared_ptr<Timeline> engine_timeline;
     NetworkInfo network_info;
     std::atomic<int> players_connected;
     Color background_color;
@@ -104,6 +105,7 @@ class GameEngine {
     void BaseTimelineChangeTic(double tic);
     double BaseTimelineGetTic();
     void BaseTimelineTogglePause();
+    std::shared_ptr<Timeline> GetBaseTimeline();
     std::vector<GameObject *> GetGameObjects();
     void SetGameObjects(std::vector<GameObject *> game_objects);
     void AddGameObject(GameObject *game_object);

@@ -30,6 +30,6 @@ check-format:
 	find src -name '*.[ch]pp' | xargs clang-format --dry-run --Werror
 
 check-tidy:
-	find src -name '*.[ch]pp' | xargs clang-tidy
+	find src \( -path 'src/games/hw1*' -o -path 'src/games/hw2*' \) -prune -o -name '*.[ch]pp' -print | xargs clang-tidy
 
 .PHONY: all build clean play format check-format check-tidy

@@ -1,5 +1,7 @@
 #include "Utils.hpp"
 #include "GameEngine.hpp"
+#include "Network.hpp"
+#include "Render.hpp"
 #include "SDL_image.h"
 #include "SDL_log.h"
 #include "Types.hpp"
@@ -101,7 +103,7 @@ std::vector<GameObject *> GetObjectsByRole(NetworkInfo network_info,
 
     if (network_info.role == NetworkRole::Server || network_info.role == NetworkRole::Host) {
         for (auto *game_object : game_objects) {
-            if (game_object->GetOwner() == network_info.role) {
+            if (game_object->GetComponent<Network>()->GetOwner() == network_info.role) {
                 objects.push_back(game_object);
             }
         }
@@ -115,7 +117,7 @@ std::vector<GameObject *> GetObjectsByRole(NetworkInfo network_info,
 }
 
 void SetPlayerTexture(GameObject *controllable, int player_id, int player_textures) {
-    std::string texture_template = controllable->GetTextureTemplate();
+    std::string texture_template = controllable->GetComponent<Render>()->GetTextureTemplate();
     size_t pos = texture_template.find("{}");
     player_id = (player_id - 1) % player_textures + 1;
 
@@ -123,7 +125,7 @@ void SetPlayerTexture(GameObject *controllable, int player_id, int player_textur
         texture_template.replace(pos, 2, std::to_string(player_id));
     }
 
-    controllable->SetTexture(texture_template);
+    controllable->GetComponent<Render>()->SetTexture(texture_template);
 }
 
 GameObject *GetClientPlayer(int player_id, std::vector<GameObject *> game_objects) {

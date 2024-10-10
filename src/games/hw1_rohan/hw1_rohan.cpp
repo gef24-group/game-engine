@@ -1,3 +1,7 @@
+// This game will not be compiled or analyzed due to breaking API changes
+// Please revert to the following commit to compile this game
+// 6bd6a670fdbe6e451136c37604f63567b582e833
+
 #include "GameEngine.hpp"
 #include "GameObject.hpp"
 #include "Types.hpp"
