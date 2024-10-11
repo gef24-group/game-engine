@@ -20,6 +20,7 @@ class Physics : public Component {
 
     Velocity GetVelocity();
     Acceleration GetAcceleration();
+    int64_t GetDelta();
 
     void SetVelocity(Velocity velocity);
     void SetAcceleration(Acceleration acceleration);

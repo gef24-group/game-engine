@@ -21,8 +21,11 @@ class Engine {
     std::atomic<int> players_connected;
     Color background_color;
     bool show_player_border;
+    bool show_zone_borders;
     int player_textures;
     int max_players;
+    std::shared_ptr<Entity> camera;
+
     std::mutex entities_mutex;
     std::vector<Entity *> entities;
     std::function<void(std::vector<Entity *> *)> callback;
@@ -85,6 +88,10 @@ class Engine {
     void ApplyEntityPhysicsAndUpdates();
     void TestCollision();
     void HandleCollisions();
+    void HandleSideBoundaries();
+    bool HandleDeathZones();
+    void ResetSideBoundaries();
+    void SetSideBoundaryVelocities(Velocity velocity);
     void Update();
     void HandleScaling();
     void RenderScene();
@@ -100,14 +107,18 @@ class Engine {
     NetworkInfo GetNetworkInfo();
     void SetBackgroundColor(Color color);
     void SetShowPlayerBorder(bool show_player_border);
+    void SetShowZoneBorders(bool show_zone_borders);
     void SetPlayerTextures(int player_textures);
     void SetMaxPlayers(int max_players);
     void BaseTimelineChangeTic(double tic);
     double BaseTimelineGetTic();
     void BaseTimelineTogglePause();
-    std::shared_ptr<Timeline> GetBaseTimeline();
     std::vector<Entity *> GetEntities();
-    void SetEntities(std::vector<Entity *> entities);
+    std::vector<Entity *> GetNetworkedEntities();
     void AddEntity(Entity *entity);
+    void AddSideBoundary(Position position, Size size);
+    Entity *GetSpawnPoint(int index);
+    void AddSpawnPoint(Position position, Size size);
+    void AddDeathZone(Position position, Size size);
     void SetCallback(std::function<void(std::vector<Entity *> *)> callback);
 };

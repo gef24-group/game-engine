@@ -1,11 +1,14 @@
 #include "Utils.hpp"
 #include "Engine.hpp"
+#include "Entity.hpp"
 #include "Network.hpp"
 #include "Render.hpp"
 #include "SDL_image.h"
 #include "SDL_log.h"
 #include "Types.hpp"
 #include <algorithm>
+#include <random>
+#include <vector>
 
 SDL_Texture *LoadTexture(std::string path) {
     if (app->renderer == nullptr) {
@@ -75,6 +78,31 @@ void Log(LogLevel log_level, const char *fmt, ...) {
 
 Size GetWindowSize() { return Size{app->window.width, app->window.height}; }
 
+Overlap GetOverlap(SDL_Rect rect_1, SDL_Rect rect_2) {
+    Overlap overlap;
+
+    int left_overlap = (rect_1.x + rect_1.w) - rect_2.x;
+    int right_overlap = (rect_2.x + rect_2.w) - rect_1.x;
+    int top_overlap = (rect_1.y + rect_1.h) - rect_2.y;
+    int bottom_overlap = (rect_2.y + rect_2.h) - rect_1.y;
+
+    int min_overlap =
+        std::min(std::min(left_overlap, right_overlap), std::min(top_overlap, bottom_overlap));
+
+    if (min_overlap == left_overlap) {
+        overlap = Overlap::Left;
+    } else if (min_overlap == right_overlap) {
+        overlap = Overlap::Right;
+
+    } else if (min_overlap == top_overlap) {
+        overlap = Overlap::Top;
+
+    } else if (min_overlap == bottom_overlap) {
+        overlap = Overlap::Bottom;
+    }
+    return overlap;
+}
+
 Entity *GetEntityByName(std::string name, std::vector<Entity *> entities) {
     for (Entity *entity : entities) {
         if (entity->GetName() == name) {
@@ -102,7 +130,8 @@ std::vector<Entity *> GetEntitiesByRole(NetworkInfo network_info, std::vector<En
 
     if (network_info.role == NetworkRole::Server || network_info.role == NetworkRole::Host) {
         for (auto *entity : entities) {
-            if (entity->GetComponent<Network>()->GetOwner() == network_info.role) {
+            if (entity->GetComponent<Network>() != nullptr &&
+                entity->GetComponent<Network>()->GetOwner() == network_info.role) {
                 entity_list.push_back(entity);
             }
         }
@@ -311,4 +340,28 @@ std::vector<std::string> Split(std::string str, char delimiter) {
     }
 
     return result;
+}
+
+std::vector<Entity *> GetEntitiesByCategory(std::vector<Entity *> entities,
+                                            EntityCategory category) {
+    std::vector<Entity *> filtered_entities;
+    for (Entity *entity : entities) {
+        if (entity->GetCategory() == category) {
+            filtered_entities.push_back(entity);
+        }
+    }
+
+    return filtered_entities;
+}
+
+// Returns an integer between and including 0 and n
+int GetRandomInt(int n) {
+    if (n == 0) {
+        return n;
+    }
+    std::random_device rand_dev;
+    std::mt19937 gen(rand_dev());
+    std::uniform_int_distribution<> distr(0, n - 1);
+
+    return distr(gen);
 }

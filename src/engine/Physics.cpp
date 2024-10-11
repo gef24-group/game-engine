@@ -2,6 +2,8 @@
 #include "Entity.hpp"
 #include "Timeline.hpp"
 #include "Transform.hpp"
+#include "Types.hpp"
+#include "Utils.hpp"
 #include <cmath>
 #include <cstdint>
 
@@ -33,7 +35,7 @@ void Physics::SetAcceleration(Acceleration acceleration) {
 }
 
 void Physics::Move() {
-    int64_t delta = this->engine_timeline->GetFrameTime().delta;
+    int64_t delta = this->GetDelta();
 
     const float HALF = 0.5;
     float time = static_cast<float>(delta) / 100'000'000.0f;
@@ -44,10 +46,15 @@ void Physics::Move() {
                       (HALF * this->acceleration.y * float(pow(time, 2)));
 
     this->entity->GetComponent<Transform>()->SetPosition(Position{new_pos_x, new_pos_y});
+    if (this->entity->GetName() == "side_boundary_2") {
+        Log(LogLevel::Info, "sb: [pos_x: %f, pos_y: %f]", new_pos_x, new_pos_y);
+    }
 
     this->velocity.x += (this->acceleration.x * time);
     this->velocity.y += (this->acceleration.y * time);
 }
+
+int64_t Physics::GetDelta() { return this->engine_timeline->GetFrameTime().delta; }
 
 void Physics::Update() {
     // Run the Move function only if engine_timeline is not null

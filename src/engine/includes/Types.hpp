@@ -6,10 +6,20 @@
 #include <string>
 
 enum Shape { Circle, Square, Rectangle, Triangle };
-enum EntityCategory { Controllable, Moving, Stationary };
+enum EntityCategory {
+    Controllable,
+    Moving,
+    Stationary,
+    SpawnPoint,
+    DeathZone,
+    SideBoundary,
+    Camera
+};
 enum LogLevel { Verbose = 1, Debug, Info, Warn, Error, Critical, Priorities };
 enum NetworkMode { Single, ClientServer, PeerToPeer };
 enum NetworkRole { Server, Client, Host, Peer };
+enum Direction { Horizontal, Vertical };
+enum Overlap { Left, Right, Top, Bottom };
 
 struct Color {
     int red;

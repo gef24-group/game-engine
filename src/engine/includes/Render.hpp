@@ -13,6 +13,7 @@ class Render : public Component {
     Shape shape;
     Color color;
     Border border;
+    std::shared_ptr<Entity> camera;
 
   public:
     Render(Entity *entity);
@@ -22,7 +23,9 @@ class Render : public Component {
     Shape GetShape();
     Color GetColor();
     Border GetBorder();
+    Position GetScreenPosition();
 
+    void SetCamera(std::shared_ptr<Entity> camera);
     void SetTexture(std::string path);
     void SetTextureTemplate(std::string texture_template);
     void SetShape(Shape shape);
