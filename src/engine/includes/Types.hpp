@@ -104,4 +104,5 @@ struct EntityUpdate {
     char name[100];
     Position position;
     char player_address[100];
+    bool active = true;
 };
