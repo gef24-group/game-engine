@@ -122,6 +122,7 @@ class Engine {
     std::vector<Entity *> GetEntities();
     std::vector<Entity *> GetNetworkedEntities();
     void AddEntity(Entity *entity);
+    void RemoveEntity(Entity *entity);
     void AddSideBoundary(Position position, Size size);
     Entity *GetSpawnPoint(int index);
     void AddSpawnPoint(Position position, Size size);
