@@ -665,7 +665,7 @@ void Engine::P2PBroadcastUpdates() {
             std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                           entity->GetName().c_str());
             entity_update.position = entity->GetComponent<Transform>()->GetPosition();
-            if (app->quit.load()) {
+            if (app->quit.load() && entity->GetCategory() == EntityCategory::Controllable) {
                 entity_update.active = false;
             }
 
