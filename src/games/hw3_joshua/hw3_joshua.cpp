@@ -118,8 +118,8 @@ Entity *CreatePlatform() {
 
 std::vector<Entity *> CreateGround() {
     std::vector<Entity *> ground;
-    for (int i = 0; i < (window_size.width / TILE_SIZE) * 3; i++) {
-        Entity *ground_tile = new Entity("ground_" + std::to_string(i), EntityCategory::Moving);
+    for (int i = 0; i < (window_size.width / TILE_SIZE) * 2; i++) {
+        Entity *ground_tile = new Entity("ground_" + std::to_string(i), EntityCategory::Stationary);
         ground_tile->AddComponent<Render>();
         ground_tile->AddComponent<Transform>();
         ground_tile->AddComponent<Network>();
@@ -130,7 +130,7 @@ std::vector<Entity *> CreateGround() {
             Position{float(i * TILE_SIZE), float(window_size.height - TILE_SIZE)});
         ground_tile->GetComponent<Transform>()->SetSize(Size{TILE_SIZE, TILE_SIZE});
         ground_tile->GetComponent<Render>()->SetTexture("assets/ground.png");
-        ground_tile->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+        ground_tile->GetComponent<Network>()->SetOwner(NetworkRole::Client);
         ground.push_back(ground_tile);
     }
     return ground;
@@ -147,7 +147,7 @@ std::vector<Entity *> CreateClouds() {
     cloud_1->GetComponent<Transform>()->SetPosition(
         Position{float(window_size.width) / 2 - 500, (TILE_SIZE * 1.5)});
     cloud_1->GetComponent<Transform>()->SetSize(Size{203, 121});
-    cloud_1->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+    cloud_1->GetComponent<Network>()->SetOwner(NetworkRole::Client);
 
     Entity *cloud_2 = new Entity("cloud_2", EntityCategory::Stationary);
     cloud_2->AddComponent<Render>();
@@ -159,7 +159,7 @@ std::vector<Entity *> CreateClouds() {
     cloud_2->GetComponent<Transform>()->SetPosition(
         Position{float(window_size.width) / 2 + 300, (TILE_SIZE * 1.5)});
     cloud_2->GetComponent<Transform>()->SetSize(Size{216, 139});
-    cloud_2->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+    cloud_2->GetComponent<Network>()->SetOwner(NetworkRole::Client);
 
     return std::vector({cloud_1, cloud_2});
 }
@@ -167,8 +167,9 @@ std::vector<Entity *> CreateClouds() {
 std::vector<Entity *> CreateEnemies() {
     std::vector<Entity *> enemies;
     int enemy_index = 0;
-    while (enemy_index < (window_size.width / TILE_SIZE) * 3) {
-        Entity *enemy = new Entity("enemy_" + std::to_string(enemy_index), EntityCategory::Moving);
+    while (enemy_index < (window_size.width / TILE_SIZE) * 2) {
+        Entity *enemy =
+            new Entity("enemy_" + std::to_string(enemy_index), EntityCategory::Stationary);
         enemy->AddComponent<Transform>();
         enemy->AddComponent<Render>();
         enemy->AddComponent<Network>();
@@ -179,13 +180,12 @@ std::vector<Entity *> CreateEnemies() {
         enemy->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
         enemy->GetComponent<Render>()->SetTexture(
             enemy_textures[enemy_index % enemy_textures.size()]);
-        enemy->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+        enemy->GetComponent<Network>()->SetOwner(NetworkRole::Client);
         enemies.push_back(enemy);
 
         enemy_index += 5;
     }
-    return std::vector<Entity *>();
-    // return enemies;
+    return enemies;
 }
 
 std::vector<Entity *> CreateEntities() {
@@ -225,17 +225,23 @@ std::vector<Entity *> CreateEntities() {
 }
 
 void CreateSideBoundaries(Engine *engine) {
+    engine->AddSideBoundary(Position{200, 0}, Size{10, window_size.height - TILE_SIZE});
     engine->AddSideBoundary(Position{float(window_size.width) - 300, 0},
                             Size{10, window_size.height - TILE_SIZE});
-    engine->AddSideBoundary(Position{200, 0}, Size{10, window_size.height - TILE_SIZE});
 }
 
 void CreateSpawnPoints(Engine *engine) {
-    engine->AddSpawnPoint(Position{320, float(window_size.height - (TILE_SIZE * 5))}, Size{0, 0});
+    engine->AddSpawnPoint(Position{320, float(window_size.height - (TILE_SIZE * 5))},
+                          Size{TILE_SIZE, TILE_SIZE});
+    engine->AddSpawnPoint(
+        Position{float(window_size.width - 600), float(window_size.height - (TILE_SIZE * 7))},
+        Size{TILE_SIZE, TILE_SIZE});
 }
 
 void CreateDeathZones(Engine *engine) {
-    engine->AddDeathZone(Position{-TILE_SIZE, 0}, Size{TILE_SIZE, window_size.height});
+    engine->AddDeathZone(Position{-10, 0}, Size{10, window_size.height - TILE_SIZE});
+    engine->AddDeathZone(Position{float(window_size.width) * 2, 0},
+                         Size{10, window_size.height - TILE_SIZE});
 }
 
 void DestroyEntities(std::vector<Entity *> entities) {
@@ -244,7 +250,7 @@ void DestroyEntities(std::vector<Entity *> entities) {
     }
 }
 
-void SetupTimelineInputs(Engine *engine) {
+void SetupInputs(Engine *engine) {
     // toggle constant and proportional scaling
     app->key_map->key_X.OnPress = []() {
         app->window.proportional_scaling = !app->window.proportional_scaling;
@@ -259,6 +265,8 @@ void SetupTimelineInputs(Engine *engine) {
     app->key_map->key_period.OnPress = [engine]() {
         engine->BaseTimelineChangeTic(std::max(engine->BaseTimelineGetTic() / 2.0, 0.5));
     };
+    // toggle the visibility of hidden zones
+    app->key_map->key_Z.OnPress = [engine]() { engine->ToggleShowZoneBorders(); };
 }
 
 int main(int argc, char *args[]) {
@@ -274,14 +282,13 @@ int main(int argc, char *args[]) {
     engine.SetBackgroundColor(background_color);
     engine.SetTitle(title);
     engine.SetShowPlayerBorder(true);
-    engine.SetShowZoneBorders(true);
 
     if (!engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }
 
-    SetupTimelineInputs(&engine);
+    SetupInputs(&engine);
     network_info = engine.GetNetworkInfo();
     window_size = GetWindowSize();
 

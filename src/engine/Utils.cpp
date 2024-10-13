@@ -307,6 +307,15 @@ void HandleSIGINT(int signum) {
     Log(LogLevel::Info, "SIGINT received!");
 }
 
+Position GetScreenPosition(Position world_position, Position camera_position) {
+    float screen_pos_x, screen_pos_y;
+
+    screen_pos_x = world_position.x - camera_position.x;
+    screen_pos_y = world_position.y - camera_position.y;
+
+    return Position{screen_pos_x, screen_pos_y};
+}
+
 int GetPlayerIdFromName(std::string player_name) {
     std::vector<std::string> player = Split(player_name, '_');
 

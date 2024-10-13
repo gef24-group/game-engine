@@ -66,6 +66,7 @@ struct KeyMap {
     Key key_D;
     Key key_X;
     Key key_P;
+    Key key_Z;
     Key key_up;
     Key key_left;
     Key key_down;

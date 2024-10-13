@@ -21,10 +21,15 @@ class Engine {
     std::atomic<int> players_connected;
     Color background_color;
     bool show_player_border;
-    bool show_zone_borders;
     int player_textures;
     int max_players;
+
     std::shared_ptr<Entity> camera;
+    bool death_zone_collision;
+    bool show_zone_borders;
+    Color side_boundary_color;
+    Color spawn_point_color;
+    Color death_zone_color;
 
     std::mutex entities_mutex;
     std::vector<Entity *> entities;
@@ -89,7 +94,7 @@ class Engine {
     void TestCollision();
     void HandleCollisions();
     void HandleSideBoundaries();
-    bool HandleDeathZones();
+    void HandleDeathZones();
     void ResetSideBoundaries();
     void SetSideBoundaryVelocities(Velocity velocity);
     void Update();
@@ -108,6 +113,7 @@ class Engine {
     void SetBackgroundColor(Color color);
     void SetShowPlayerBorder(bool show_player_border);
     void SetShowZoneBorders(bool show_zone_borders);
+    void ToggleShowZoneBorders();
     void SetPlayerTextures(int player_textures);
     void SetMaxPlayers(int max_players);
     void BaseTimelineChangeTic(double tic);

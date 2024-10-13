@@ -40,7 +40,6 @@ Engine::Engine() {
     this->players_connected.store(0);
     this->background_color = Color{0, 0, 0, 255};
     this->show_player_border = false;
-    this->show_zone_borders = false;
     this->player_textures = INT_MAX;
     this->max_players = INT_MAX;
 
@@ -48,6 +47,12 @@ Engine::Engine() {
     this->camera->AddComponent<Transform>();
     this->camera->AddComponent<Physics>();
     this->camera->GetComponent<Physics>()->SetEngineTimeline(this->engine_timeline);
+
+    this->death_zone_collision = false;
+    this->show_zone_borders = false;
+    this->side_boundary_color = Color{0, 0, 255, 128};
+    this->spawn_point_color = Color{0, 255, 0, 128};
+    this->death_zone_color = Color{255, 0, 0, 128};
 
     this->callback = [](std::vector<Entity *> *) {};
 
@@ -869,6 +874,37 @@ void Engine::SetShowZoneBorders(bool show_zone_borders) {
     this->show_zone_borders = show_zone_borders;
 }
 
+void Engine::ToggleShowZoneBorders() {
+    this->show_zone_borders = !this->show_zone_borders;
+
+    std::vector<Entity *> entities = this->GetEntities();
+
+    for (Entity *entity : entities) {
+        if (entity->GetCategory() == EntityCategory::SideBoundary ||
+            entity->GetCategory() == EntityCategory::SpawnPoint ||
+            entity->GetCategory() == EntityCategory::DeathZone) {
+            Color border_color;
+            if (entity->GetCategory() == EntityCategory::SideBoundary) {
+                border_color = this->side_boundary_color;
+            }
+            if (entity->GetCategory() == EntityCategory::SpawnPoint) {
+                border_color = this->spawn_point_color;
+            }
+            if (entity->GetCategory() == EntityCategory::DeathZone) {
+                border_color = this->death_zone_color;
+            }
+
+            if (this->show_zone_borders) {
+                entity->AddComponent<Render>();
+                entity->GetComponent<Render>()->SetBorder(Border{true, border_color});
+                entity->GetComponent<Render>()->SetCamera(this->camera);
+            } else {
+                entity->RemoveComponent<Render>();
+            }
+        }
+    }
+}
+
 void Engine::SetPlayerTextures(int player_textures) { this->player_textures = player_textures; }
 
 void Engine::SetMaxPlayers(int max_players) { this->max_players = max_players; }
@@ -925,7 +961,7 @@ void Engine::AddSideBoundary(Position position, Size size) {
 
     if (this->show_zone_borders) {
         side_boundary->AddComponent<Render>();
-        side_boundary->GetComponent<Render>()->SetBorder(Border{true, Color{0, 0, 255, 255}});
+        side_boundary->GetComponent<Render>()->SetBorder(Border{true, this->side_boundary_color});
     }
 
     this->AddEntity(side_boundary);
@@ -958,7 +994,7 @@ void Engine::AddSpawnPoint(Position position, Size size) {
 
     if (this->show_zone_borders) {
         spawn_point->AddComponent<Render>();
-        spawn_point->GetComponent<Render>()->SetBorder(Border{true, Color{0, 255, 0, 255}});
+        spawn_point->GetComponent<Render>()->SetBorder(Border{true, this->spawn_point_color});
     }
 
     this->AddEntity(spawn_point);
@@ -975,7 +1011,7 @@ void Engine::AddDeathZone(Position position, Size size) {
 
     if (this->show_zone_borders) {
         death_zone->AddComponent<Render>();
-        death_zone->GetComponent<Render>()->SetBorder(Border{true, Color{255, 0, 0, 255}});
+        death_zone->GetComponent<Render>()->SetBorder(Border{true, this->death_zone_color});
     }
 
     this->AddEntity(death_zone);
@@ -1031,6 +1067,7 @@ void Engine::ReadInputsThread() {
         debounce_key(SDL_SCANCODE_P, app->key_map->key_P, true);
         debounce_key(SDL_SCANCODE_COMMA, app->key_map->key_comma, true);
         debounce_key(SDL_SCANCODE_PERIOD, app->key_map->key_period, true);
+        debounce_key(SDL_SCANCODE_Z, app->key_map->key_Z, true);
 
         debounce_key(SDL_SCANCODE_W, app->key_map->key_W, false);
         debounce_key(SDL_SCANCODE_A, app->key_map->key_A, false);
@@ -1097,51 +1134,53 @@ void Engine::TestCollision() {
 }
 
 void Engine::HandleCollisions() {
+    this->HandleDeathZones();
+    this->HandleSideBoundaries();
+
     // TODO: Look into multithreading this later
-    bool collided_with_death_zone = this->HandleDeathZones();
-    if (!collided_with_death_zone) {
-        this->HandleSideBoundaries();
-    }
     for (Entity *entity : GetEntitiesByRole(this->network_info, this->GetEntities())) {
         if (entity->GetComponent<Collision>() != nullptr) {
-            entity->GetComponent<Collision>()->Update();
+            if (entity->GetCategory() == EntityCategory::Controllable &&
+                !this->death_zone_collision) {
+                entity->GetComponent<Collision>()->Update();
+            }
         }
     }
 }
 
-bool Engine::HandleDeathZones() {
-    Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
-    if (player == nullptr) {
-        return false;
-    }
-
-    for (Entity *collider : player->GetComponent<Collision>()->GetColliders()) {
-        if (collider->GetCategory() == EntityCategory::DeathZone) {
-            Log(LogLevel::Info, "Collided with a death zone");
-            Entity *respawn_point = this->GetSpawnPoint(this->network_info.id - 1);
-            this->camera->GetComponent<Transform>()->SetPosition(Position{0, 0});
-            player->GetComponent<Transform>()->SetPosition(
-                respawn_point->GetComponent<Transform>()->GetPosition());
-            this->ResetSideBoundaries();
-            return true;
-        }
-    }
-    return false;
-}
-
-void Engine::HandleSideBoundaries() {
-    this->SetSideBoundaryVelocities(Velocity{0, 0});
-    this->camera->GetComponent<Physics>()->SetVelocity({0, 0});
-
+void Engine::HandleDeathZones() {
     Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
     if (player == nullptr) {
         return;
     }
 
+    this->death_zone_collision = false;
     for (Entity *collider : player->GetComponent<Collision>()->GetColliders()) {
+        if (collider->GetCategory() == EntityCategory::DeathZone) {
+            this->death_zone_collision = true;
 
+            Position respawn_point = this->GetSpawnPoint(this->network_info.id - 1)
+                                         ->GetComponent<Transform>()
+                                         ->GetPosition();
+
+            this->ResetSideBoundaries();
+            player->GetComponent<Transform>()->SetPosition(respawn_point);
+            this->camera->GetComponent<Transform>()->SetPosition(Position{0, 0});
+        }
+    }
+}
+
+void Engine::HandleSideBoundaries() {
+    Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
+    if (player == nullptr) {
+        return;
+    }
+
+    this->SetSideBoundaryVelocities(Velocity{0, 0});
+    this->camera->GetComponent<Physics>()->SetVelocity({0, 0});
+
+    for (Entity *collider : player->GetComponent<Collision>()->GetColliders()) {
         if (collider->GetCategory() == EntityCategory::SideBoundary) {
-            Log(LogLevel::Info, "collision with a side boundary");
             int obj_x =
                 static_cast<int>(std::round(player->GetComponent<Transform>()->GetPosition().x));
             int obj_y =
@@ -1164,7 +1203,6 @@ void Engine::HandleSideBoundaries() {
 
             if (overlap == Overlap::Left || overlap == Overlap::Right) {
                 this->camera->GetComponent<Physics>()->SetVelocity({vel_x, 0});
-                Log(LogLevel::Info, "Setting side-boundary vel %f", vel_x);
                 this->SetSideBoundaryVelocities({vel_x, 0});
             }
             if (overlap == Overlap::Top || overlap == Overlap::Bottom) {
@@ -1175,7 +1213,6 @@ void Engine::HandleSideBoundaries() {
     }
 
     this->camera->GetComponent<Physics>()->Update();
-
     for (Entity *entity : this->GetEntities()) {
         if (entity->GetCategory() == EntityCategory::SideBoundary) {
             entity->GetComponent<Physics>()->Update();
@@ -1188,7 +1225,9 @@ void Engine::ResetSideBoundaries() {
         GetEntitiesByCategory(this->GetEntities(), EntityCategory::SideBoundary);
     for (Entity *side_boundary : side_boundaries) {
         // The screen position of the side boundary will always be equal to its original position
-        Position original_position = side_boundary->GetComponent<Render>()->GetScreenPosition();
+        Position original_position =
+            GetScreenPosition(side_boundary->GetComponent<Transform>()->GetPosition(),
+                              this->camera->GetComponent<Transform>()->GetPosition());
         side_boundary->GetComponent<Physics>()->SetVelocity(Velocity{0, 0});
         side_boundary->GetComponent<Transform>()->SetPosition(original_position);
     }

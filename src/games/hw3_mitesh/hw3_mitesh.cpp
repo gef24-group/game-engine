@@ -334,7 +334,7 @@ void DestroyEntities(std::vector<Entity *> entities) {
     }
 }
 
-void SetupTimelineInputs(Engine *engine) {
+void SetupInputs(Engine *engine) {
     // toggle constant and proportional scaling
     app->key_map->key_X.OnPress = []() {
         app->window.proportional_scaling = !app->window.proportional_scaling;
@@ -371,7 +371,7 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    SetupTimelineInputs(engine_ptr);
+    SetupInputs(engine_ptr);
     network_info = engine.GetNetworkInfo();
     window_size = GetWindowSize();
 

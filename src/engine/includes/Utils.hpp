@@ -21,6 +21,7 @@ Entity *GetClientPlayer(int player_id, std::vector<Entity *> entities);
 bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]);
 std::string GetConnectionAddress(std::string address, int port);
 void HandleSIGINT(int signum);
+Position GetScreenPosition(Position world_position, Position camera_position);
 int GetPlayerIdFromName(std::string player_name);
 std::vector<std::string> Split(std::string str, char delimiter);
 std::vector<Entity *> GetEntitiesByCategory(std::vector<Entity *> entities,
