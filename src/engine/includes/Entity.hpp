@@ -15,6 +15,7 @@ class Entity {
   private:
     std::string name;
     EntityCategory category;
+    std::atomic<bool> active;
     std::unordered_map<std::type_index, std::unique_ptr<Component>> components;
     std::mutex components_mutex;
 
@@ -23,8 +24,10 @@ class Entity {
 
     std::string GetName();
     EntityCategory GetCategory();
+    bool GetActive();
 
     void SetName(std::string name);
+    void SetActive(bool active);
 
     template <typename T> void AddComponent();
     template <typename T> T *GetComponent();

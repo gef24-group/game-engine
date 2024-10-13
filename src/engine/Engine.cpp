@@ -116,7 +116,14 @@ void Engine::CSServerClientThread(int player_id) {
             client_socket.send(reply, zmq::send_flags::none);
 
             Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
-            entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+            if (entity) {
+                if (!entity_update.active) {
+                    entity->SetActive(false);
+                } else {
+                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                }
+            }
+
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the server client thread: %s", e.what());
             client_socket.close();
@@ -132,6 +139,11 @@ void Engine::CSServerBroadcastUpdates() {
             std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                           entity->GetName().c_str());
             entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+            if (!entity->GetActive()) {
+                entity_update.active = false;
+                Log(LogLevel::Info, "Client %s exiting", Split(entity_update.name, '_')[1].c_str());
+                this->RemoveEntity(entity);
+            }
 
             zmq::message_t broadcast_update(sizeof(EntityUpdate));
             std::memcpy(broadcast_update.data(), &entity_update, sizeof(EntityUpdate));
@@ -568,7 +580,11 @@ void Engine::CSClientReceiveBroadcastThread() {
                 Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
 
                 if (entity->GetName() != player->GetName()) {
-                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                    if (entity_update.active) {
+                        entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                    } else {
+                        this->RemoveEntity(entity);
+                    }
                 }
             }
         } catch (const zmq::error_t &e) {
@@ -586,6 +602,9 @@ void Engine::CSClientSendUpdate() {
         std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                       player->GetName().c_str());
         entity_update.position = player->GetComponent<Transform>()->GetPosition();
+        if (app->quit.load()) {
+            entity_update.active = false;
+        }
 
         zmq::message_t update(sizeof(EntityUpdate));
         std::memcpy(update.data(), &entity_update, sizeof(EntityUpdate));
@@ -646,6 +665,9 @@ void Engine::P2PBroadcastUpdates() {
             std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                           entity->GetName().c_str());
             entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+            if (app->quit.load() && entity->GetCategory() == EntityCategory::Controllable) {
+                entity_update.active = false;
+            }
 
             zmq::message_t broadcast_update(sizeof(EntityUpdate));
             std::memcpy(broadcast_update.data(), &entity_update, sizeof(EntityUpdate));
@@ -690,7 +712,11 @@ void Engine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string player
                 EntityUpdate entity_update;
                 std::memcpy(&entity_update, message.data(), sizeof(EntityUpdate));
                 Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
-                entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                if (entity_update.active) {
+                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                } else {
+                    this->RemoveEntity(entity);
+                }
             }
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the peer receive broadcast thread: %s", e.what());
@@ -741,7 +767,11 @@ void Engine::P2PReceiveBroadcastFromHostThread() {
                 Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
 
                 if (entity->GetName() != player->GetName()) {
-                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                    if (entity_update.active) {
+                        entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                    } else {
+                        this->RemoveEntity(entity);
+                    }
                 }
             }
         } catch (const zmq::error_t &e) {
@@ -965,6 +995,16 @@ void Engine::AddSideBoundary(Position position, Size size) {
     }
 
     this->AddEntity(side_boundary);
+}
+
+void Engine::RemoveEntity(Entity *entity) {
+    std::lock_guard<std::mutex> lock(this->entities_mutex);
+    auto iterator = std::find(entities.begin(), entities.end(), entity);
+
+    if (iterator != entities.end()) {
+        entities.erase(iterator);
+        ;
+    }
 }
 
 Entity *Engine::GetSpawnPoint(int index) {
