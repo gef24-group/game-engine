@@ -114,7 +114,6 @@ void Engine::CSServerClientThread(int player_id) {
             if (entity) {
                 if (!entity_update.active) {
                     entity->SetActive(false);
-                    // this->RemoveEntity(entity);
                 } else {
                     entity->GetComponent<Transform>()->SetPosition(entity_update.position);
                 }
@@ -661,6 +660,9 @@ void Engine::P2PBroadcastUpdates() {
             std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                           entity->GetName().c_str());
             entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+            if (app->quit.load()) {
+                entity_update.active = false;
+            }
 
             zmq::message_t broadcast_update(sizeof(EntityUpdate));
             std::memcpy(broadcast_update.data(), &entity_update, sizeof(EntityUpdate));
@@ -705,7 +707,11 @@ void Engine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string player
                 EntityUpdate entity_update;
                 std::memcpy(&entity_update, message.data(), sizeof(EntityUpdate));
                 Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
-                entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                if (entity_update.active) {
+                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                } else {
+                    this->RemoveEntity(entity);
+                }
             }
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the peer receive broadcast thread: %s", e.what());
@@ -756,7 +762,11 @@ void Engine::P2PReceiveBroadcastFromHostThread() {
                 Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
 
                 if (entity->GetName() != player->GetName()) {
-                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                    if (entity_update.active) {
+                        entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                    } else {
+                        this->RemoveEntity(entity);
+                    }
                 }
             }
         } catch (const zmq::error_t &e) {
