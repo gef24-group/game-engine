@@ -971,8 +971,11 @@ void Engine::AddEntity(Entity *entity) {
         entity->GetComponent<Render>()->SetCamera(this->camera);
     }
     if (entity->GetCategory() == EntityCategory::Controllable) {
-        entity->GetComponent<Transform>()->SetPosition(
-            GetSpawnPoint(this->network_info.id - 1)->GetComponent<Transform>()->GetPosition());
+        Entity *spawn_point = GetSpawnPoint(this->network_info.id - 1);
+        if (spawn_point) {
+            entity->GetComponent<Transform>()->SetPosition(
+                spawn_point->GetComponent<Transform>()->GetPosition());
+        }
     }
 
     std::lock_guard<std::mutex> lock(this->entities_mutex);
