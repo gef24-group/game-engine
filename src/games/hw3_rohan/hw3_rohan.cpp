@@ -69,72 +69,88 @@ std::vector<Entity *> CreateGround() {
     ground_block1->AddComponent<Transform>();
     ground_block1->AddComponent<Collision>();
     ground_block1->AddComponent<Render>();
+    ground_block1->AddComponent<Network>();
     ground_block1->GetComponent<Transform>()->SetPosition({-500, float(window_size.height) - 200});
     ground_block1->GetComponent<Transform>()->SetSize({1300, 200});
     ground_block1->GetComponent<Render>()->SetColor(ground_color);
+    ground_block1->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block1);
 
     Entity *ground_block2 = new Entity("ground_2", EntityCategory::Stationary);
     ground_block2->AddComponent<Transform>();
     ground_block2->AddComponent<Collision>();
     ground_block2->AddComponent<Render>();
+    ground_block2->AddComponent<Network>();
     ground_block2->GetComponent<Transform>()->SetPosition({800, float(window_size.height) - 400});
     ground_block2->GetComponent<Transform>()->SetSize({200, 400});
     ground_block2->GetComponent<Render>()->SetColor(ground_color);
+    ground_block2->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block2);
 
     Entity *ground_block3 = new Entity("ground_3", EntityCategory::Stationary);
     ground_block3->AddComponent<Transform>();
     ground_block3->AddComponent<Collision>();
     ground_block3->AddComponent<Render>();
+    ground_block3->AddComponent<Network>();
     ground_block3->GetComponent<Transform>()->SetPosition({1000, float(window_size.height) - 600});
     ground_block3->GetComponent<Transform>()->SetSize({200, 600});
     ground_block3->GetComponent<Render>()->SetColor(ground_color);
+    ground_block3->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block3);
 
     Entity *ground_block4 = new Entity("ground_4", EntityCategory::Stationary);
     ground_block4->AddComponent<Transform>();
     ground_block4->AddComponent<Collision>();
     ground_block4->AddComponent<Render>();
+    ground_block4->AddComponent<Network>();
     ground_block4->GetComponent<Transform>()->SetPosition({1200, float(window_size.height) - 800});
     ground_block4->GetComponent<Transform>()->SetSize({200, 800});
     ground_block4->GetComponent<Render>()->SetColor(ground_color);
+    ground_block4->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block4);
 
     Entity *ground_block5 = new Entity("ground_5", EntityCategory::Stationary);
     ground_block5->AddComponent<Transform>();
     ground_block5->AddComponent<Collision>();
     ground_block5->AddComponent<Render>();
+    ground_block5->AddComponent<Network>();
     ground_block5->GetComponent<Transform>()->SetPosition({1800, float(window_size.height) - 800});
     ground_block5->GetComponent<Transform>()->SetSize({200, 800});
     ground_block5->GetComponent<Render>()->SetColor(ground_color);
+    ground_block5->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block5);
 
     Entity *ground_block6 = new Entity("ground_6", EntityCategory::Stationary);
     ground_block6->AddComponent<Transform>();
     ground_block6->AddComponent<Collision>();
     ground_block6->AddComponent<Render>();
+    ground_block6->AddComponent<Network>();
     ground_block6->GetComponent<Transform>()->SetPosition({2000, float(window_size.height) - 600});
     ground_block6->GetComponent<Transform>()->SetSize({200, 600});
     ground_block6->GetComponent<Render>()->SetColor(ground_color);
+    ground_block6->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block6);
 
     Entity *ground_block7 = new Entity("ground_7", EntityCategory::Stationary);
     ground_block7->AddComponent<Transform>();
     ground_block7->AddComponent<Collision>();
     ground_block7->AddComponent<Render>();
+    ground_block7->AddComponent<Network>();
     ground_block7->GetComponent<Transform>()->SetPosition({2200, float(window_size.height) - 400});
     ground_block7->GetComponent<Transform>()->SetSize({200, 400});
     ground_block7->GetComponent<Render>()->SetColor(ground_color);
+    ground_block7->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block7);
 
     Entity *ground_block8 = new Entity("ground_8", EntityCategory::Stationary);
     ground_block8->AddComponent<Transform>();
     ground_block8->AddComponent<Collision>();
     ground_block8->AddComponent<Render>();
+    ground_block8->AddComponent<Network>();
     ground_block8->GetComponent<Transform>()->SetPosition({2400, float(window_size.height) - 200});
     ground_block8->GetComponent<Transform>()->SetSize({1300, 200});
     ground_block8->GetComponent<Render>()->SetColor(ground_color);
+    ground_block8->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block8);
 
     return ground_blocks;
@@ -155,7 +171,7 @@ Entity *CreatePlayer() {
     player->AddComponent<Network>();
     player->AddComponent<Handler>();
 
-    player->GetComponent<Transform>()->SetPosition({300, 300});
+    // player->GetComponent<Transform>()->SetPosition({300, 300});
     player->GetComponent<Transform>()->SetSize({50, 100});
 
     player->GetComponent<Physics>()->SetAcceleration({0, 10});
@@ -167,27 +183,52 @@ Entity *CreatePlayer() {
 }
 
 void CreateSideBoundaries(Engine *game_engine) {
+    // left side boundary
     game_engine->AddSideBoundary(Position{100, -1000}, Size{20, 3000});
+    // right side boundary
     game_engine->AddSideBoundary(Position{float(window_size.width - 400), -1000}, Size{20, 3000});
-    game_engine->AddSideBoundary(Position{-600, float(window_size.height - 1000)}, Size{4000, 20});
-    game_engine->AddSideBoundary(Position{-600, float(window_size.height - 100)}, Size{4000, 20});
+    // game_engine->AddSideBoundary(Position{-600, float(window_size.height - 1000)}, Size{4000,
+    // 20}); game_engine->AddSideBoundary(Position{-600, float(window_size.height - 100)},
+    // Size{4000, 20});
 }
 
-void CreateDeathZones(Engine *game_engine) {}
+void CreateDeathZones(Engine *game_engine) {
+    game_engine->AddDeathZone(Position{-500, -1000}, Size{20, 3000});
+    game_engine->AddDeathZone(Position{3700, -1000}, Size{20, 3000});
+    game_engine->AddDeathZone(Position{-500, float(window_size.height)}, Size{4000, 20});
+}
 
-void CreateSpawnPoints(Engine *game_engine) {}
+void CreateSpawnPoints(Engine *game_engine) {
+    game_engine->AddSpawnPoint(Position{300, 300}, Size{10, 10});
+    game_engine->AddSpawnPoint(Position{400, 100}, Size{10, 10});
+}
 
 // std::vector<Entity *> CreateFire() {}
 
 std::vector<Entity *> CreateEntities(Engine *game_engine) {
     std::vector<Entity *> entities;
 
-    Entity *player = CreatePlayer();
     std::vector<Entity *> ground = CreateGround();
     CreateSideBoundaries(game_engine);
+    CreateSpawnPoints(game_engine);
+    CreateDeathZones(game_engine);
+    Entity *player = CreatePlayer();
 
     entities.push_back(player);
     entities.insert(entities.end(), ground.begin(), ground.end());
+
+    for (Entity *entity : entities) {
+        if (network_info.mode == NetworkMode::PeerToPeer) {
+            if (entity->GetComponent<Network>()) {
+                if (entity->GetComponent<Network>()->GetOwner() == NetworkRole::Server) {
+                    entity->GetComponent<Network>()->SetOwner(NetworkRole::Host);
+                }
+                if (entity->GetComponent<Network>()->GetOwner() == NetworkRole::Client) {
+                    entity->GetComponent<Network>()->SetOwner(NetworkRole::Peer);
+                }
+            }
+        }
+    }
     return entities;
 }
 
