@@ -63,12 +63,15 @@ void Collision::HandleCollisions() {
 
         this->entity->GetComponent<Transform>()->SetPosition(Position{float(pos_x), float(pos_y)});
 
-        if (overlap == Overlap::Left || overlap == Overlap::Right) {
-            vel_x *= -this->GetRestitution();
+        if (collider->GetCategory() != EntityCategory::SideBoundary) {
+            if (overlap == Overlap::Left || overlap == Overlap::Right) {
+                vel_x *= -this->GetRestitution();
+            }
+            if (overlap == Overlap::Top || overlap == Overlap::Bottom) {
+                vel_y *= -this->GetRestitution();
+            }
         }
-        if (overlap == Overlap::Top || overlap == Overlap::Bottom) {
-            vel_y *= -this->GetRestitution();
-        }
+
         this->entity->GetComponent<Physics>()->SetVelocity(Velocity{vel_x, vel_y});
     }
 }

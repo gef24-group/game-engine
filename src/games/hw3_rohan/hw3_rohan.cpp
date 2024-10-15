@@ -187,9 +187,10 @@ void CreateSideBoundaries(Engine *game_engine) {
     game_engine->AddSideBoundary(Position{100, -1000}, Size{20, 3000});
     // right side boundary
     game_engine->AddSideBoundary(Position{float(window_size.width - 400), -1000}, Size{20, 3000});
-    // game_engine->AddSideBoundary(Position{-600, float(window_size.height - 1000)}, Size{4000,
-    // 20}); game_engine->AddSideBoundary(Position{-600, float(window_size.height - 100)},
-    // Size{4000, 20});
+    // top boundary
+    game_engine->AddSideBoundary(Position{-600, float(window_size.height - 1000)}, Size{4000, 20});
+    // bottom boundary
+    game_engine->AddSideBoundary(Position{-600, float(window_size.height - 100)}, Size{4000, 20});
 }
 
 void CreateDeathZones(Engine *game_engine) {

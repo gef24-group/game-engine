@@ -3,7 +3,6 @@
 #include "Timeline.hpp"
 #include "Transform.hpp"
 #include "Types.hpp"
-#include "Utils.hpp"
 #include <cmath>
 #include <cstdint>
 
@@ -46,9 +45,6 @@ void Physics::Move() {
                       (HALF * this->acceleration.y * float(pow(time, 2)));
 
     this->entity->GetComponent<Transform>()->SetPosition(Position{new_pos_x, new_pos_y});
-    if (this->entity->GetName() == "side_boundary_2") {
-        Log(LogLevel::Info, "sb: [pos_x: %f, pos_y: %f]", new_pos_x, new_pos_y);
-    }
 
     this->velocity.x += (this->acceleration.x * time);
     this->velocity.y += (this->acceleration.y * time);
