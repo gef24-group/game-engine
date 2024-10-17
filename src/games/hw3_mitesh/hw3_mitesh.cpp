@@ -16,93 +16,25 @@
 NetworkInfo network_info;
 Size window_size;
 
-void Update(std::vector<Entity *> *entities) {
+void Update(std::vector<Entity *> *entities) {}
 
-    // std::cout << "Update called" << std::endl; // Log for debugging
+void UpdatePlatforms(Entity *platform) {
+    Position platform_position = platform->GetComponent<Transform>()->GetPosition();
+    Velocity platform_velocity = platform->GetComponent<Physics>()->GetVelocity();
 
-    // Movement variables for ground_block6
-
-    static Entity *ground_block6 = nullptr;
-    static Entity *ground_block8 = nullptr;
-    static Entity *player = nullptr;
-
-    // Find the entity with the name "ground_6"
-    if (player == nullptr && ground_block6 == nullptr && ground_block8 == nullptr) {
-        for (Entity *entity : *entities) {
-            if (entity->GetName() == "ground_6") { // Ensure the name is correct
-                ground_block6 = entity;
-            }
-
-            if (entity->GetName() == "ground_8") { // Ensure the name is correct
-                ground_block8 = entity;
-                // std::cout << "Found ground_block8!" << std::endl;
-            }
-
-            if (entity->GetName() == "player") {
-                player = entity;
-            }
+    if (platform->GetName() == "platform4") {
+        if (platform_position.y < 500) {
+            platform->GetComponent<Physics>()->SetVelocity({0, 10.0f});
         }
-    }
-
-    if (ground_block6 != nullptr) {
-        // Get the initial Y position of ground_block6
-        // static float initial_y = ground_block6->GetComponent<Transform>()->GetPosition().y;
-        float max_height = 500;  // Max height it can move up
-        float min_height = 1031; // Initial position is the minimum height
-
-        // Get the current position of ground_block6
-        auto current_pos = ground_block6->GetComponent<Transform>()->GetPosition();
-
-        // Log the current position for debugging
-        // std::cout << "Current Position: (" << current_pos.x << ", " << current_pos.y << ")"
-        //          << std::endl;
-
-        // Check the position and update the velocity
-        if (current_pos.y > min_height) {
-            // Reverse movement direction by setting the negative velocity
-            ground_block6->GetComponent<Physics>()->SetVelocity(
-                Velocity{0, -ground_block6->GetComponent<Physics>()->GetVelocity().y});
-            // std::cout << "Reversing direction" << std::endl; // Log direction change
-        } else if (current_pos.y <= max_height) {
-            // Set upward velocity when not at limits
-            ground_block6->GetComponent<Physics>()->SetVelocity(
-                Velocity{0, 20.0f}); // Change 2.0f as needed
+        if (platform_position.y > 1031) {
+            platform->GetComponent<Physics>()->SetVelocity({0, -20.0f});
         }
-    }
-
-    if (ground_block8 != nullptr) {
-        // Get the initial Y position of ground_block6
-        // static float initial_y = ground_block6->GetComponent<Transform>()->GetPosition().y;
-        float left_width = 2430;  // Max height it can move up
-        float right_width = 2850; // Initial position is the minimum height
-
-        // Get the current position of ground_block6
-        auto current_pos = ground_block8->GetComponent<Transform>()->GetPosition();
-
-        // Log the current position for debugging
-        // std::cout << "Current Position: (" << current_pos.x << ", " << current_pos.y << ")"
-        //          << std::endl;
-
-        // Check the position and update the velocity
-        if (current_pos.x >= right_width) {
-            // Reverse movement direction by setting the negative velocity
-            ground_block8->GetComponent<Physics>()->SetVelocity(
-                Velocity{-ground_block8->GetComponent<Physics>()->GetVelocity().x, 0});
-            // std::cout << "Left direction" << std::endl; // Log direction change
-        } else if (current_pos.x < left_width) {
-            // Set upward velocity when not at limits
-            ground_block8->GetComponent<Physics>()->SetVelocity(
-                Velocity{10.0f, 0}); // Change 2.0f as needed
+    } else if (platform->GetName() == "platform5") {
+        if (platform_position.x < 2430) {
+            platform->GetComponent<Physics>()->SetVelocity({30.0f, 0});
         }
-    }
-
-    if (player != nullptr) {
-        for (Entity *entity : player->GetComponent<Collision>()->GetColliders()) {
-
-            // std::cout << entity->GetName();
-            if (entity->GetName() == "miscelleanous_entity4") {
-                std::cout << "Collided";
-            }
+        if (platform_position.x > 2850) {
+            platform->GetComponent<Physics>()->SetVelocity({-30.0f, 0});
         }
     }
 }
@@ -153,7 +85,7 @@ void UpdatePlayer(Entity *player) {
 
 std::vector<Entity *> CreateGround() {
     std::vector<Entity *> ground_blocks;
-    Color ground_color = {50, 200, 100, 255};
+    Color ground_color = {0, 0, 0, 255};
 
     Entity *ground_block1 = new Entity("ground_1", EntityCategory::Stationary);
     ground_block1->AddComponent<Transform>();
@@ -163,7 +95,6 @@ std::vector<Entity *> CreateGround() {
     ground_block1->GetComponent<Transform>()->SetPosition({-500, float(window_size.height) - 200});
     ground_block1->GetComponent<Transform>()->SetSize({600, 300});
     ground_block1->GetComponent<Render>()->SetTexture("assets/ground.png");
-    // ground_block1->GetComponent<Render>()->SetColor(ground_color);
     ground_block1->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block1);
 
@@ -174,7 +105,6 @@ std::vector<Entity *> CreateGround() {
     ground_block2->AddComponent<Network>();
     ground_block2->GetComponent<Transform>()->SetPosition({100, float(window_size.height) - 300});
     ground_block2->GetComponent<Transform>()->SetSize({200, 1200});
-    // ground_block2->GetComponent<Render>()->SetTexture("assets/ground2.png");
     ground_block2->GetComponent<Render>()->SetColor(Color{121, 20, 90, 255});
     ground_block2->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block2);
@@ -195,8 +125,8 @@ std::vector<Entity *> CreateGround() {
     ground_block4->AddComponent<Collision>();
     ground_block4->AddComponent<Render>();
     ground_block4->AddComponent<Network>();
-    ground_block4->GetComponent<Transform>()->SetPosition({800, float(window_size.height) - 300});
-    ground_block4->GetComponent<Transform>()->SetSize({200, 50});
+    ground_block4->GetComponent<Transform>()->SetPosition({1100, float(window_size.height) - 200});
+    ground_block4->GetComponent<Transform>()->SetSize({300, 300});
     ground_block4->GetComponent<Render>()->SetColor(ground_color);
     ground_block4->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block4);
@@ -206,61 +136,23 @@ std::vector<Entity *> CreateGround() {
     ground_block5->AddComponent<Collision>();
     ground_block5->AddComponent<Render>();
     ground_block5->AddComponent<Network>();
-    ground_block5->GetComponent<Transform>()->SetPosition({1100, float(window_size.height) - 200});
-    ground_block5->GetComponent<Transform>()->SetSize({300, 300});
+    ground_block5->GetComponent<Transform>()->SetPosition({1800, float(window_size.height) - 400});
+    ground_block5->GetComponent<Transform>()->SetSize({600, 400});
     ground_block5->GetComponent<Render>()->SetColor(ground_color);
     ground_block5->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block5);
 
-    Entity *ground_block6 = new Entity("ground_6", EntityCategory::Moving);
+    Entity *ground_block6 = new Entity("ground_6", EntityCategory::Stationary);
     ground_block6->AddComponent<Transform>();
     ground_block6->AddComponent<Collision>();
     ground_block6->AddComponent<Render>();
     ground_block6->AddComponent<Network>();
     ground_block6->AddComponent<Physics>();
-    ground_block6->GetComponent<Physics>()->SetVelocity(Velocity{0, -20.0f});
-    ground_block6->GetComponent<Transform>()->SetPosition({1450, float(window_size.height) - 50});
-    ground_block6->GetComponent<Transform>()->SetSize({300, 50});
+    ground_block6->GetComponent<Transform>()->SetPosition({3100, float(window_size.height) - 200});
+    ground_block6->GetComponent<Transform>()->SetSize({600, 300});
     ground_block6->GetComponent<Render>()->SetColor(ground_color);
     ground_block6->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block6);
-
-    Entity *ground_block7 = new Entity("ground_7", EntityCategory::Stationary);
-    ground_block7->AddComponent<Transform>();
-    ground_block7->AddComponent<Collision>();
-    ground_block7->AddComponent<Render>();
-    ground_block7->AddComponent<Network>();
-    ground_block7->GetComponent<Transform>()->SetPosition({1800, float(window_size.height) - 400});
-    ground_block7->GetComponent<Transform>()->SetSize({600, 400});
-    ground_block7->GetComponent<Render>()->SetColor(ground_color);
-    ground_block7->GetComponent<Network>()->SetOwner(NetworkRole::Server);
-    ground_blocks.push_back(ground_block7);
-
-    Entity *ground_block8 = new Entity("ground_8", EntityCategory::Moving);
-    ground_block8->AddComponent<Transform>();
-    ground_block8->AddComponent<Collision>();
-    ground_block8->AddComponent<Render>();
-    ground_block8->AddComponent<Network>();
-    ground_block8->AddComponent<Physics>();
-    ground_block8->GetComponent<Physics>()->SetVelocity(Velocity{10.0f, 0});
-    ground_block8->GetComponent<Transform>()->SetPosition({2500, float(window_size.height) - 100});
-    ground_block8->GetComponent<Transform>()->SetSize({200, 50});
-    ground_block8->GetComponent<Render>()->SetColor(ground_color);
-    ground_block8->GetComponent<Network>()->SetOwner(NetworkRole::Server);
-    ground_blocks.push_back(ground_block8);
-
-    Entity *ground_block9 = new Entity("ground_9", EntityCategory::Stationary);
-    ground_block9->AddComponent<Transform>();
-    ground_block9->AddComponent<Collision>();
-    ground_block9->AddComponent<Render>();
-    ground_block9->AddComponent<Network>();
-    ground_block9->AddComponent<Physics>();
-    // ground_block9->GetComponent<Physics>()->SetVelocity(Velocity{10.0f, 0});
-    ground_block9->GetComponent<Transform>()->SetPosition({3100, float(window_size.height) - 200});
-    ground_block9->GetComponent<Transform>()->SetSize({600, 300});
-    ground_block9->GetComponent<Render>()->SetColor(ground_color);
-    ground_block9->GetComponent<Network>()->SetOwner(NetworkRole::Server);
-    ground_blocks.push_back(ground_block9);
 
     return ground_blocks;
 }
@@ -274,11 +166,9 @@ std::vector<Entity *> CreateMiscelleanousEntities() {
     miscelleanous_entity1->AddComponent<Render>();
     miscelleanous_entity1->AddComponent<Network>();
     miscelleanous_entity1->GetComponent<Transform>()->SetPosition(
-        {1000, float(window_size.height) - 1105});
+        {1000, float(window_size.height) - 1080});
     miscelleanous_entity1->GetComponent<Transform>()->SetSize({150, 150});
     miscelleanous_entity1->GetComponent<Render>()->SetTexture("assets/bird.png");
-
-    // miscelleanous_entity1->GetComponent<Render>()->SetColor(ground_color);
     miscelleanous_entity1->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     miscelleanous_entities.push_back(miscelleanous_entity1);
 
@@ -288,7 +178,7 @@ std::vector<Entity *> CreateMiscelleanousEntities() {
     miscelleanous_entity2->AddComponent<Render>();
     miscelleanous_entity2->AddComponent<Network>();
     miscelleanous_entity2->GetComponent<Transform>()->SetPosition(
-        {2200, float(window_size.height) - 1105});
+        {2200, float(window_size.height) - 1080});
     miscelleanous_entity2->GetComponent<Transform>()->SetSize({150, 150});
     miscelleanous_entity2->GetComponent<Render>()->SetTexture("assets/bird.png");
 
@@ -302,7 +192,7 @@ std::vector<Entity *> CreateMiscelleanousEntities() {
     miscelleanous_entity3->AddComponent<Render>();
     miscelleanous_entity3->AddComponent<Network>();
     miscelleanous_entity3->GetComponent<Transform>()->SetPosition(
-        {1800, float(window_size.height) - 1050});
+        {1800, float(window_size.height) - 1020});
     miscelleanous_entity3->GetComponent<Transform>()->SetSize({150, 150});
     miscelleanous_entity3->GetComponent<Render>()->SetTexture("assets/sun.png");
 
@@ -330,6 +220,65 @@ std::vector<Entity *> CreateMiscelleanousEntities() {
 std::vector<Entity *> CreatePlatforms() {
     std::vector<Entity *> platforms;
     // ADD CODE HERE
+
+    Entity *platform1 = new Entity("platform1", EntityCategory::Stationary);
+    platform1->AddComponent<Transform>();
+    platform1->AddComponent<Render>();
+    platform1->AddComponent<Network>();
+    platform1->GetComponent<Transform>()->SetPosition({800, float(window_size.height) - 300});
+    platform1->GetComponent<Transform>()->SetSize({200, 50});
+    platform1->GetComponent<Render>()->SetColor(Color{2, 55, 12, 255});
+    platform1->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+    platforms.push_back(platform1);
+
+    Entity *platform2 = new Entity("platform2", EntityCategory::Stationary);
+    platform2->AddComponent<Transform>();
+    platform2->AddComponent<Render>();
+    platform2->AddComponent<Network>();
+    platform2->GetComponent<Transform>()->SetPosition({1100, float(window_size.height) - 700});
+    platform2->GetComponent<Transform>()->SetSize({175, 150});
+    platform2->GetComponent<Render>()->SetColor(Color{198, 169, 122, 255});
+    platform2->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+    platforms.push_back(platform2);
+
+    Entity *platform3 = new Entity("platform3", EntityCategory::Stationary);
+    platform3->AddComponent<Transform>();
+    platform3->AddComponent<Render>();
+    platform3->AddComponent<Network>();
+    platform3->GetComponent<Transform>()->SetPosition({2600, float(window_size.height) - 900});
+    platform3->GetComponent<Transform>()->SetSize({300, 100});
+    platform3->GetComponent<Render>()->SetColor(Color{161, 164, 70, 255});
+    platform3->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+    platforms.push_back(platform3);
+
+    Entity *platform4 = new Entity("platform4", EntityCategory::Moving);
+    platform4->AddComponent<Transform>();
+    platform4->AddComponent<Render>();
+    platform4->AddComponent<Network>();
+    platform4->AddComponent<Physics>();
+    platform4->AddComponent<Handler>();
+    platform4->GetComponent<Physics>()->SetVelocity(Velocity{0, -20.0f});
+    platform4->GetComponent<Transform>()->SetPosition({1450, float(window_size.height) - 50});
+    platform4->GetComponent<Transform>()->SetSize({300, 50});
+    platform4->GetComponent<Render>()->SetColor(Color{153, 0, 76, 255});
+    platform4->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+    platform4->GetComponent<Handler>()->SetCallback(UpdatePlatforms);
+    platforms.push_back(platform4);
+
+    Entity *platform5 = new Entity("platform5", EntityCategory::Moving);
+    platform5->AddComponent<Transform>();
+    platform5->AddComponent<Render>();
+    platform5->AddComponent<Network>();
+    platform5->AddComponent<Physics>();
+    platform5->AddComponent<Handler>();
+    platform5->GetComponent<Physics>()->SetVelocity(Velocity{10.0f, 0});
+    platform5->GetComponent<Transform>()->SetPosition({2500, float(window_size.height) - 100});
+    platform5->GetComponent<Transform>()->SetSize({200, 50});
+    platform5->GetComponent<Render>()->SetColor(Color{30, 35, 156, 255});
+    platform5->GetComponent<Network>()->SetOwner(NetworkRole::Server);
+    platform5->GetComponent<Handler>()->SetCallback(UpdatePlatforms);
+    platforms.push_back(platform5);
+
     return platforms;
 }
 
@@ -382,6 +331,8 @@ std::vector<Entity *> CreateEntities(Engine *game_engine) {
 
     std::vector<Entity *> ground = CreateGround();
     std::vector<Entity *> miscelleanous = CreateMiscelleanousEntities();
+    std::vector<Entity *> platforms = CreatePlatforms();
+
     CreateSideBoundaries(game_engine);
     CreateSpawnPoints(game_engine);
     CreateDeathZones(game_engine);
@@ -390,6 +341,7 @@ std::vector<Entity *> CreateEntities(Engine *game_engine) {
     entities.push_back(player);
     entities.insert(entities.end(), ground.begin(), ground.end());
     entities.insert(entities.end(), miscelleanous.begin(), miscelleanous.end());
+    entities.insert(entities.end(), platforms.begin(), platforms.end());
 
     for (Entity *entity : entities) {
         if (network_info.mode == NetworkMode::PeerToPeer) {
