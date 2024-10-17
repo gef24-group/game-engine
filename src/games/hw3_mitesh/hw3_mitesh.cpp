@@ -334,7 +334,7 @@ std::vector<Entity *> CreatePlatforms() {
 }
 
 Entity *CreatePlayer() {
-    Entity *player = new Entity("player", Controllable);
+    Entity *player = new Entity("player", EntityCategory::Controllable);
     player->AddComponent<Transform>();
     player->AddComponent<Physics>();
     player->AddComponent<Render>();

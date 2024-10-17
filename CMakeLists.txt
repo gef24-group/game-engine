@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.11)
 
 # Set project name
 project(game-engine)
@@ -8,6 +8,17 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Generate compile_commands.json
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Some libraries are downloaded using FetchContent
+include(FetchContent)
+
+# Download the "nlohmann/json" library
+FetchContent_Declare(
+    json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(json)
 
 # Add SANITIZER support if it is provided
 if(SANITIZER)
@@ -76,7 +87,14 @@ foreach(GAME_DIR ${GAMES})
     )
 
     # Link required libraries to the game
-    target_link_libraries(${GAME_NAME} ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} Threads::Threads cppzmq)
+    target_link_libraries(
+        ${GAME_NAME}
+        ${SDL2_LIBRARIES}
+        ${SDL2_IMAGE_LIBRARIES}
+        Threads::Threads
+        cppzmq
+        nlohmann_json::nlohmann_json
+    )
 
     foreach(ASSET ${GAME_ASSETS})
         # Ensure the output assets directory exists

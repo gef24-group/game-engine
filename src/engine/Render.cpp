@@ -8,7 +8,7 @@ Render::Render(Entity *entity) {
     this->entity = entity;
     this->texture = nullptr;
     this->texture_template = "";
-    this->shape = Rectangle;
+    this->shape = Shape::Rectangle;
     this->color = Color{0, 0, 0, 255};
     this->border = Border{false, Color{0, 0, 0, 255}};
     this->camera = std::make_shared<Entity>("camera", EntityCategory::Camera);
@@ -48,7 +48,7 @@ void Render::RenderEntity() {
     int border_a = this->border.color.alpha;
 
     SDL_Rect rectangle = {pos_x, pos_y, width, height};
-    if (this->shape == Rectangle && this->texture == nullptr) {
+    if (this->shape == Shape::Rectangle && this->texture == nullptr) {
         if (this->border.show) {
             SDL_SetRenderDrawBlendMode(app->renderer, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(app->renderer, border_r, border_g, border_b, border_a);

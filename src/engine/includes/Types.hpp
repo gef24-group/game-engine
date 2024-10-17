@@ -5,8 +5,8 @@
 #include <functional>
 #include <string>
 
-enum Shape { Circle, Square, Rectangle, Triangle };
-enum EntityCategory {
+enum class Shape { Circle, Square, Rectangle, Triangle };
+enum class EntityCategory {
     Controllable,
     Moving,
     Stationary,
@@ -15,11 +15,12 @@ enum EntityCategory {
     SideBoundary,
     Camera
 };
-enum LogLevel { Verbose = 1, Debug, Info, Warn, Error, Critical, Priorities };
-enum NetworkMode { Single, ClientServer, PeerToPeer };
-enum NetworkRole { Server, Client, Host, Peer };
-enum Direction { Horizontal, Vertical };
-enum Overlap { Left, Right, Top, Bottom };
+enum class LogLevel { Verbose = 1, Debug, Info, Warn, Error, Critical, Priorities };
+enum class NetworkMode { Single, ClientServer, PeerToPeer };
+enum class NetworkRole { Server, Client, Host, Peer };
+enum class Direction { Horizontal, Vertical };
+enum class Overlap { Left, Right, Top, Bottom };
+enum class Encoding { Struct, JSON };
 
 struct Color {
     int red;
@@ -102,8 +103,8 @@ struct JoinReply {
 };
 
 struct EntityUpdate {
-    char name[100];
+    char name[100] = "";
     Position position;
-    char player_address[100];
+    char player_address[100] = "";
     bool active = true;
 };

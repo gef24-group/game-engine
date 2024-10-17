@@ -18,6 +18,7 @@ class Engine {
     std::string title;
     std::shared_ptr<Timeline> engine_timeline;
     NetworkInfo network_info;
+    Encoding encoding;
     std::atomic<int> players_connected;
     Color background_color;
     bool show_player_border;
@@ -57,8 +58,10 @@ class Engine {
     bool InitSingleClient();
     bool InitCSServer();
     bool InitCSClient();
+    bool InitCSClientConnection();
     bool InitP2PHost();
     bool InitP2PPeer();
+    bool InitP2PPeerConnection();
 
     void StartSingleClient();
     void StartCSServer();
@@ -66,25 +69,27 @@ class Engine {
     void StartP2P();
 
     bool InitializeDisplay();
-    bool InitCSClientConnection();
     void ShowWelcomeScreen();
 
     void CSServerClientThread(int player_id);
     void CSServerBroadcastUpdates();
     void CSServerListenerThread();
-    void CSClientAddExistingPlayers();
+    void CSServerBroadcastPlayers();
     void CSClientReceiveBroadcastThread();
     void CSClientSendUpdate();
 
     Entity *CreateNewPlayer(int player_id, std::string player_address = "");
-
-    bool InitP2PPeerConnection();
 
     void P2PHostListenerThread();
     void P2PHostBroadcastPlayers();
     void P2PReceiveBroadcastFromPeerThread(int player_id, std::string player_address);
     void P2PReceiveBroadcastFromHostThread();
     void P2PBroadcastUpdates();
+
+    void SendInactiveUpdate();
+
+    void EncodeMessage(const EntityUpdate &entity_update, zmq::message_t &message);
+    void DecodeMessage(const zmq::message_t &message, EntityUpdate &entity_update);
 
     void SetupDefaultInputs();
     void ReadInputsThread();
@@ -108,6 +113,7 @@ class Engine {
     bool Init();
     void Start();
     void SetTitle(std::string title);
+    void SetEncoding(Encoding encoding);
     void SetNetworkInfo(NetworkInfo network_info);
     NetworkInfo GetNetworkInfo();
     void SetBackgroundColor(Color color);

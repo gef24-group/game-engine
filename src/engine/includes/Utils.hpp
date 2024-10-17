@@ -15,6 +15,7 @@ Size GetWindowSize();
 Overlap GetOverlap(SDL_Rect rect_1, SDL_Rect rect_2);
 Entity *GetEntityByName(std::string name, std::vector<Entity *> entities);
 Entity *GetControllable(std::vector<Entity *> entities);
+int GetControllableCount(std::vector<Entity *> entities);
 std::vector<Entity *> GetEntitiesByRole(NetworkInfo network_info, std::vector<Entity *> entities);
 void SetPlayerTexture(Entity *controllable, int player_id, int player_textures);
 Entity *GetClientPlayer(int player_id, std::vector<Entity *> entities);

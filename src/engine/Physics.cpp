@@ -22,13 +22,13 @@ Acceleration Physics::GetAcceleration() { return this->acceleration; }
 
 void Physics::SetVelocity(Velocity velocity) {
     // maybe add a reference to the entity to deal with this
-    if (this->entity->GetCategory() != Stationary) {
+    if (this->entity->GetCategory() != EntityCategory::Stationary) {
         this->velocity = velocity;
     }
 }
 void Physics::SetAcceleration(Acceleration acceleration) {
     // maybe add a reference to the entity to deal with this
-    if (this->entity->GetCategory() != Stationary) {
+    if (this->entity->GetCategory() != EntityCategory::Stationary) {
         this->acceleration = acceleration;
     }
 }

@@ -121,6 +121,18 @@ Entity *GetControllable(std::vector<Entity *> entities) {
     return nullptr;
 }
 
+int GetControllableCount(std::vector<Entity *> entities) {
+    int controllable_count = 0;
+
+    for (Entity *entity : entities) {
+        if (entity->GetCategory() == EntityCategory::Controllable) {
+            controllable_count += 1;
+        }
+    }
+
+    return controllable_count;
+}
+
 std::vector<Entity *> GetEntitiesByRole(NetworkInfo network_info, std::vector<Entity *> entities) {
     std::vector<Entity *> entity_list;
 
@@ -184,6 +196,7 @@ bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
     std::string server_ip;
     std::string host_ip;
     std::string peer_ip;
+    std::string encoding;
     std::vector<std::string> valid_modes = {"single", "cs", "p2p"};
     std::vector<std::string> valid_roles = {"server", "client", "host", "peer"};
 
@@ -204,6 +217,9 @@ bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
             i++;
         } else if (arg == "--peer_ip" && i + 1 < argc) {
             peer_ip = args[i + 1];
+            i++;
+        } else if (arg == "--encoding" && i + 1 < argc) {
+            encoding = args[i + 1];
             i++;
         }
     }
@@ -266,8 +282,17 @@ bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
         }
     }
 
+    if (!encoding.empty() && mode == "single") {
+        Log(LogLevel::Error, "--encoding is not supported in the [single] mode!");
+        return false;
+    }
+    if (encoding.empty()) {
+        encoding = "struct";
+    }
+
     NetworkMode network_mode;
     NetworkRole network_role;
+    Encoding engine_encoding;
 
     if (mode == "single") {
         network_mode = NetworkMode::Single;
@@ -292,7 +317,15 @@ bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
         network_role = NetworkRole::Peer;
     }
 
+    if (encoding == "struct") {
+        engine_encoding = Encoding::Struct;
+    }
+    if (encoding == "json") {
+        engine_encoding = Encoding::JSON;
+    }
+
     engine->SetNetworkInfo(NetworkInfo{network_mode, network_role, 0, server_ip, host_ip, peer_ip});
+    engine->SetEncoding(engine_encoding);
 
     return true;
 }
@@ -365,12 +398,9 @@ std::vector<Entity *> GetEntitiesByCategory(std::vector<Entity *> entities,
 
 // Returns an integer between and including 0 and n
 int GetRandomInt(int n) {
-    if (n == 0) {
-        return n;
-    }
     std::random_device rand_dev;
     std::mt19937 gen(rand_dev());
-    std::uniform_int_distribution<> distr(0, n - 1);
+    std::uniform_int_distribution<> distr(0, n);
 
     return distr(gen);
 }

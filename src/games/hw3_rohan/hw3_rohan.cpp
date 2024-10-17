@@ -252,7 +252,7 @@ std::vector<Entity *> CreatePlatforms() {
 }
 
 Entity *CreatePlayer() {
-    Entity *player = new Entity("player", Controllable);
+    Entity *player = new Entity("player", EntityCategory::Controllable);
     player->AddComponent<Transform>();
     player->AddComponent<Physics>();
     player->AddComponent<Render>();
@@ -357,7 +357,7 @@ int main(int argc, char *args[]) {
     game_engine.SetShowPlayerBorder(true);
 
     network_info = game_engine.GetNetworkInfo();
-    if (network_info.id > 4) {
+    if (network_info.id > max_player_count) {
         Log(LogLevel::Error, "More than 4 players spotted: EXITING THE GAME. Player ID: %d",
             network_info.id);
         exit(0);
