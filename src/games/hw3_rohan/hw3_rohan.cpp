@@ -42,17 +42,17 @@ void UpdatePlayer(Entity *player) {
     if (app->key_map->key_right.pressed.load()) {
         player_moved = true;
         player->GetComponent<Physics>()->SetVelocity(
-            {20, player->GetComponent<Physics>()->GetVelocity().y}); // Move left
+            {30, player->GetComponent<Physics>()->GetVelocity().y}); // Move left
     } else if (app->key_map->key_left.pressed.load()) {
         player_moved = true;
         player->GetComponent<Physics>()->SetVelocity(
-            {-20, player->GetComponent<Physics>()->GetVelocity().y}); // Move right
+            {-30, player->GetComponent<Physics>()->GetVelocity().y}); // Move right
     }
 
     if (app->key_map->key_up.pressed.load()) {
         player_moved = true;
         player->GetComponent<Physics>()->SetVelocity(
-            {player->GetComponent<Physics>()->GetVelocity().x, -20});
+            {player->GetComponent<Physics>()->GetVelocity().x, -30});
     }
 
     if (!player_moved) {
@@ -64,14 +64,20 @@ void UpdatePlayer(Entity *player) {
 void UpdatePlatforms(Entity *platform) {
     Position platform_position = platform->GetComponent<Transform>()->GetPosition();
     Velocity platform_velocity = platform->GetComponent<Physics>()->GetVelocity();
+    float platform_velocity_val = 20;
 
     if (platform->GetName() == "moving_platform_1") {
-        if (platform_position.y < 100 || platform_position.y > 900) {
-            platform->GetComponent<Physics>()->SetVelocity({0, -platform_velocity.y});
+        if (platform_position.y < 100) {
+            platform->GetComponent<Physics>()->SetVelocity({0, platform_velocity_val});
+        } else if (platform_position.y > 900) {
+            platform->GetComponent<Physics>()->SetVelocity({0, -platform_velocity_val});
         }
+
     } else if (platform->GetName() == "moving_platform_2") {
-        if (platform_position.x < 2100 || platform_position.x > 2650) {
-            platform->GetComponent<Physics>()->SetVelocity({-platform_velocity.x, 0});
+        if (platform_position.x < 2100) {
+            platform->GetComponent<Physics>()->SetVelocity({platform_velocity_val, 0});
+        } else if (platform_position.x > 2650) {
+            platform->GetComponent<Physics>()->SetVelocity({-platform_velocity_val, 0});
         }
     }
 }
@@ -290,7 +296,9 @@ void CreateDeathZones(Engine *game_engine) {
 
 void CreateSpawnPoints(Engine *game_engine) {
     game_engine->AddSpawnPoint(Position{300, 300}, Size{10, 10});
-    game_engine->AddSpawnPoint(Position{400, 100}, Size{10, 10});
+    game_engine->AddSpawnPoint(Position{400, 250}, Size{10, 10});
+    game_engine->AddSpawnPoint(Position{500, 200}, Size{10, 10});
+    game_engine->AddSpawnPoint(Position{600, 150}, Size{10, 10});
 }
 
 // std::vector<Entity *> CreateFire() {}
@@ -338,7 +346,7 @@ void DestroyEntities(std::vector<Entity *> entities) {
 
 int main(int argc, char *args[]) {
     std::string game_title = "Rohan's CSC581 HW3 Game: Platformer";
-    int max_player_count = 100, texture_count = 1;
+    int max_player_count = 100, texture_count = 4;
 
     // Initializing the Game Engine
     Engine game_engine;
