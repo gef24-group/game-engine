@@ -31,8 +31,11 @@
 #include "tracy/Tracy.hpp"
 #define TracySetThreadName(name) tracy::SetThreadName(name)
 #else
+// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
 #define ZoneScoped
+// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
 #define FrameMark
+// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
 #define TracySetThreadName(name)
 #endif
 
