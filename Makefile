@@ -46,7 +46,7 @@ play:
 play-profile:
 	@if [ "$(GAME)" = "all" ]; then \
 		echo "Usage:"; \
-		echo "make play-profile GAME=<game> ARGS=<game_args> TRACY_PORT=<port> TRACY_OUTPUT=<file>.tracy TRACY_CAPTURE_TIME=<seconds>"; \
+		echo "make play-profile GAME=<game> ARGS=<game_args> TRACY_PORT=<port> TRACY_OUTPUT=<file>.tracy [ TRACY_CAPTURE_TIME=<seconds> ]"; \
 		echo; \
 		echo "Where:"; \
 		echo "<game> is one of:"; \

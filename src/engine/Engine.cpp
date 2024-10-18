@@ -118,9 +118,10 @@ void Engine::CSServerClientThread(int player_id) {
     std::string thread_name = "CSServerClientThread_" + std::to_string(player_id);
     TracySetThreadName(thread_name.c_str());
 
+    int client_socket_port = 6000;
     zmq::socket_t client_socket(this->zmq_context, zmq::socket_type::rep);
     client_socket.set(zmq::sockopt::linger, 0);
-    client_socket.bind("tcp://*:600" + std::to_string(player_id));
+    client_socket.bind(GetConnectionAddress("*", client_socket_port + player_id));
 
     Log(LogLevel::Info, "Client thread for client [%d] started", player_id);
 
@@ -246,14 +247,16 @@ bool Engine::InitCSServer() {
 
     this->zmq_context = zmq::context_t(1);
 
+    int join_socket_port = 5555;
     this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::rep);
     this->join_socket.set(zmq::sockopt::linger, 0);
-    this->join_socket.bind("tcp://*:5555");
+    this->join_socket.bind(GetConnectionAddress("*", join_socket_port));
     this->listener_thread = std::thread([this]() { this->CSServerListenerThread(); });
 
+    int server_broadcast_socket_port = 5556;
     this->server_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::pub);
     this->server_broadcast_socket.set(zmq::sockopt::linger, 0);
-    this->server_broadcast_socket.bind("tcp://*:5556");
+    this->server_broadcast_socket.bind(GetConnectionAddress("*", server_broadcast_socket_port));
 
     return true;
 }
@@ -345,9 +348,11 @@ bool Engine::InitP2PPeerConnection() {
         this->network_info.id = join_reply.player_id;
 
         // The peer acts as a server here that broadcasts its own position to all the peers
+        int peer_broadcast_socket_port = 6000;
         this->peer_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::pub);
         this->peer_broadcast_socket.set(zmq::sockopt::linger, 0);
-        this->peer_broadcast_socket.bind("tcp://*:600" + std::to_string(this->network_info.id));
+        this->peer_broadcast_socket.bind(
+            GetConnectionAddress("*", peer_broadcast_socket_port + this->network_info.id));
 
         return true;
     } catch (const zmq::error_t &e) {
@@ -470,7 +475,6 @@ void Engine::P2PHostListenerThread() {
             }
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the host listener thread: %s", e.what());
-            // app->quit.store(true);
             this->join_socket.close();
         }
     }
@@ -490,17 +494,19 @@ bool Engine::InitP2PHost() {
 
     this->zmq_context = zmq::context_t(1);
 
+    int join_socket_port = 5555;
     this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::rep);
     this->join_socket.set(zmq::sockopt::linger, 0);
-    this->join_socket.bind("tcp://*:5555");
+    this->join_socket.bind(GetConnectionAddress("*", join_socket_port));
     this->listener_thread = std::thread([this]() { this->P2PHostListenerThread(); });
 
+    int host_broadcast_socket_port = 6000;
     this->host_broadcast_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::pub);
     this->host_broadcast_socket.set(zmq::sockopt::linger, 0);
     this->network_info.id = 1;
     this->players_connected.store(1);
-    this->host_broadcast_socket.bind("tcp://*:600" +
-                                     std::to_string(this->players_connected.load()));
+    this->host_broadcast_socket.bind(
+        GetConnectionAddress("*", host_broadcast_socket_port + this->players_connected.load()));
 
     this->ShowWelcomeScreen();
 
