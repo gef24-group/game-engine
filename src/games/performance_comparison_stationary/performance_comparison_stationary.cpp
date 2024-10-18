@@ -64,6 +64,20 @@ void DestroyEntities(std::vector<Entity *> entities) {
     }
 }
 
+int GetStationaryCountFromCLI(int argc, char *args[]) {
+    int count = -1;
+
+    for (int i = 1; i < argc; i++) {
+        std::string arg = args[i];
+
+        if (arg == "--count" && i + 1 < argc) {
+            count = std::atoi(args[i + 1]);
+        }
+    }
+
+    return count;
+}
+
 int main(int argc, char *args[]) {
     std::string game_title = "Comparing performance: Varying stationary objects";
     int max_player_count = 100;
@@ -73,6 +87,8 @@ int main(int argc, char *args[]) {
     if (!SetEngineCLIOptions(&game_engine, argc, args)) {
         return 1;
     }
+
+    int stationary_count = GetStationaryCountFromCLI(argc, args);
 
     if (!game_engine.Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
@@ -90,7 +106,7 @@ int main(int argc, char *args[]) {
 
     window_size = GetWindowSize();
 
-    std::vector<Entity *> entities = CreateEntities(&game_engine, max_player_count);
+    std::vector<Entity *> entities = CreateEntities(&game_engine, stationary_count);
     AddObjectsToEngine(entities, &game_engine);
     game_engine.SetCallback(Update);
 
