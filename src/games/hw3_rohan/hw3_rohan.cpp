@@ -366,8 +366,8 @@ int main(int argc, char *args[]) {
 
     network_info = game_engine.GetNetworkInfo();
     if (network_info.id > max_player_count) {
-        Log(LogLevel::Error, "More than 4 players spotted: EXITING THE GAME. Player ID: %d",
-            network_info.id);
+        Log(LogLevel::Error, "More than %d players spotted: EXITING THE GAME. Player ID: %d",
+            max_player_count, network_info.id);
         exit(0);
     }
 
