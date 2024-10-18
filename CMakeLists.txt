@@ -16,6 +16,7 @@ include(FetchContent)
 FetchContent_Declare(
     json
     URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/vendor/json
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(json)
@@ -30,6 +31,21 @@ if(SANITIZER)
         add_compile_options(${SANITIZER_FLAGS} -g -O1 -fno-omit-frame-pointer)
         add_link_options(${SANITIZER_FLAGS})
     endif()
+endif()
+
+# Add the tracy profiler if PROFILE is ON
+if (PROFILE STREQUAL "ON")
+    FetchContent_Declare(
+        tracy
+        GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+        GIT_TAG master
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+        SOURCE_DIR ${CMAKE_SOURCE_DIR}/vendor/tracy
+    )
+    FetchContent_MakeAvailable(tracy)
+
+    add_definitions(-DPROFILE)
 endif()
 
 # Add CMake modules to find external libraries
@@ -95,6 +111,10 @@ foreach(GAME_DIR ${GAMES})
         cppzmq
         nlohmann_json::nlohmann_json
     )
+
+    if (PROFILE STREQUAL "ON")
+        target_link_libraries(${GAME_NAME} TracyClient)
+    endif()
 
     foreach(ASSET ${GAME_ASSETS})
         # Ensure the output assets directory exists

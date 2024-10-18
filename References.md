@@ -18,3 +18,7 @@
 - [CSC 581 Lecture 6: Networking](https://docs.google.com/presentation/d/1Evo0XNhas0m4s2KTxB0Ft2Rh5uy-gX0N)
 - [CSC 581 Lecture 7: Multithreading and Game Objects](https://docs.google.com/presentation/d/1X-S2WP45oxZ0FfJpdWAMhga0jutI49if)
 - [ZeroMQ - The Guide](https://zguide.zeromq.org/)
+- [Chapter 15: Introduction to Gameplay Systems: Game Engine Architecture, Jason Gregory](https://www.gameenginebook.com/)
+- [Chapter 16: Runtime Gameplay Foundation Systems: Game Engine Architecture, Jason Gregory](https://www.gameenginebook.com/)
+- [How to use the SDL viewport properly?](https://gamedev.stackexchange.com/a/123844)
+- [Tracy documentation](https://github.com/wolfpld/tracy/releases/latest/download/tracy.pdf)

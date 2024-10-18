@@ -27,6 +27,15 @@
 #include <vector>
 #include <zmq.hpp>
 
+#ifdef PROFILE
+#include "tracy/Tracy.hpp"
+#define TracySetThreadName(name) tracy::SetThreadName(name)
+#else
+#define ZoneScoped
+#define FrameMark
+#define TracySetThreadName(name)
+#endif
+
 Engine::Engine() {
     std::signal(SIGINT, HandleSIGINT);
     app->sdl_window = nullptr;
@@ -66,6 +75,8 @@ Engine::Engine() {
 }
 
 bool Engine::Init() {
+    ZoneScoped;
+
     if (this->network_info.mode == NetworkMode::Single &&
         this->network_info.role == NetworkRole::Client) {
         return this->InitSingleClient();
@@ -93,12 +104,17 @@ bool Engine::Init() {
 }
 
 bool Engine::InitSingleClient() {
+    ZoneScoped;
+
     bool display_success = this->InitializeDisplay();
     this->ShowWelcomeScreen();
     return display_success;
 }
 
 void Engine::CSServerClientThread(int player_id) {
+    std::string thread_name = "CSServerClientThread_" + std::to_string(player_id);
+    TracySetThreadName(thread_name.c_str());
+
     zmq::socket_t client_socket(this->zmq_context, zmq::socket_type::rep);
     client_socket.set(zmq::sockopt::linger, 0);
     client_socket.bind("tcp://*:600" + std::to_string(player_id));
@@ -135,6 +151,8 @@ void Engine::CSServerClientThread(int player_id) {
 };
 
 void Engine::CSServerBroadcastUpdates() {
+    ZoneScoped;
+
     for (Entity *entity : this->GetNetworkedEntities()) {
         try {
             // don't broadcast the default player entity, i.e the entity without an id in it
@@ -164,6 +182,8 @@ void Engine::CSServerBroadcastUpdates() {
 }
 
 void Engine::CSServerListenerThread() {
+    TracySetThreadName("CSServerListenerThread");
+
     Log(LogLevel::Info, "Server listening for incoming connections at port 5555");
 
     while (!this->stop_listener_thread.load()) {
@@ -219,6 +239,8 @@ void Engine::CSServerListenerThread() {
 };
 
 bool Engine::InitCSServer() {
+    ZoneScoped;
+
     this->zmq_context = zmq::context_t(1);
 
     this->join_socket = zmq::socket_t(this->zmq_context, zmq::socket_type::rep);
@@ -234,6 +256,8 @@ bool Engine::InitCSServer() {
 }
 
 bool Engine::InitCSClientConnection() {
+    ZoneScoped;
+
     try {
         this->zmq_context = zmq::context_t(1);
         int join_port = 5555;
@@ -281,6 +305,8 @@ bool Engine::InitCSClientConnection() {
 }
 
 bool Engine::InitP2PPeerConnection() {
+    ZoneScoped;
+
     try {
         this->zmq_context = zmq::context_t(1);
         int host_broadcast_port = 6001;
@@ -332,6 +358,8 @@ bool Engine::InitP2PPeerConnection() {
 }
 
 bool Engine::InitCSClient() {
+    ZoneScoped;
+
     bool display_success = this->InitializeDisplay();
     bool client_connection_success = this->InitCSClientConnection();
     this->ShowWelcomeScreen();
@@ -340,6 +368,8 @@ bool Engine::InitCSClient() {
 }
 
 void Engine::P2PHostBroadcastPlayers() {
+    ZoneScoped;
+
     for (Entity *entity : this->GetNetworkedEntities()) {
         try {
             if (entity->GetComponent<Network>()->GetOwner() == NetworkRole::Peer) {
@@ -362,6 +392,8 @@ void Engine::P2PHostBroadcastPlayers() {
 }
 
 void Engine::CSServerBroadcastPlayers() {
+    ZoneScoped;
+
     for (Entity *entity : this->GetNetworkedEntities()) {
         try {
             // don't broadcast the default player entity, i.e the entity without an id in it
@@ -390,6 +422,8 @@ void Engine::CSServerBroadcastPlayers() {
 }
 
 void Engine::P2PHostListenerThread() {
+    TracySetThreadName("P2PHostListenerThread");
+
     Log(LogLevel::Info, "Host listening for incoming connections at port 5555");
 
     while (!this->stop_listener_thread.load()) {
@@ -447,6 +481,8 @@ void Engine::P2PHostListenerThread() {
 };
 
 bool Engine::InitP2PHost() {
+    ZoneScoped;
+
     bool display_success = this->InitializeDisplay();
 
     this->zmq_context = zmq::context_t(1);
@@ -469,6 +505,8 @@ bool Engine::InitP2PHost() {
 }
 
 bool Engine::InitP2PPeer() {
+    ZoneScoped;
+
     bool display_success = this->InitializeDisplay();
     bool connection_success = this->InitP2PPeerConnection();
     this->ShowWelcomeScreen();
@@ -477,6 +515,8 @@ bool Engine::InitP2PPeer() {
 }
 
 void Engine::Start() {
+    ZoneScoped;
+
     if (this->network_info.mode == NetworkMode::Single &&
         this->network_info.role == NetworkRole::Client) {
         this->StartSingleClient();
@@ -497,6 +537,8 @@ void Engine::Start() {
 }
 
 void Engine::StartSingleClient() {
+    ZoneScoped;
+
     this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
 
     this->engine_timeline->SetFrameTime(FrameTime{0, this->engine_timeline->GetTime(), 0});
@@ -521,6 +563,8 @@ void Engine::StartSingleClient() {
 }
 
 void Engine::StartCSServer() {
+    ZoneScoped;
+
     this->engine_timeline->SetFrameTime(FrameTime{0, this->engine_timeline->GetTime(), 0});
 
     while (!app->sigint.load()) {
@@ -541,6 +585,8 @@ void Engine::StartCSServer() {
 }
 
 Entity *Engine::CreateNewPlayer(int player_id, std::string player_address) {
+    ZoneScoped;
+
     bool is_p2p = this->network_info.mode == NetworkMode::PeerToPeer;
     bool is_host = this->network_info.role == NetworkRole::Host;
 
@@ -599,6 +645,8 @@ Entity *Engine::CreateNewPlayer(int player_id, std::string player_address) {
 }
 
 void Engine::CSClientReceiveBroadcastThread() {
+    TracySetThreadName("CSClientReceiveBroadcastThread");
+
     try {
         std::string discover_message = "discover";
         zmq::message_t discover_request(discover_message.size());
@@ -647,6 +695,8 @@ void Engine::CSClientReceiveBroadcastThread() {
 }
 
 void Engine::CSClientSendUpdate() {
+    ZoneScoped;
+
     try {
         Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
         EntityUpdate entity_update;
@@ -670,6 +720,8 @@ void Engine::CSClientSendUpdate() {
 }
 
 void Engine::SendInactiveUpdate() {
+    ZoneScoped;
+
     try {
         Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
         EntityUpdate entity_update;
@@ -718,6 +770,8 @@ void Engine::SendInactiveUpdate() {
 }
 
 void Engine::EncodeMessage(const EntityUpdate &entity_update, zmq::message_t &message) {
+    ZoneScoped;
+
     if (this->encoding == Encoding::Struct) {
         message.rebuild(sizeof(EntityUpdate));
         std::memcpy(message.data(), &entity_update, sizeof(EntityUpdate));
@@ -734,6 +788,8 @@ void Engine::EncodeMessage(const EntityUpdate &entity_update, zmq::message_t &me
 }
 
 void Engine::DecodeMessage(const zmq::message_t &message, EntityUpdate &entity_update) {
+    ZoneScoped;
+
     if (this->encoding == Encoding::Struct) {
         std::memcpy(&entity_update, message.data(), sizeof(EntityUpdate));
     }
@@ -747,6 +803,8 @@ void Engine::DecodeMessage(const zmq::message_t &message, EntityUpdate &entity_u
 }
 
 void Engine::StartCSClient() {
+    ZoneScoped;
+
     this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
     this->receive_broadcast_thread =
         std::thread([this]() { this->CSClientReceiveBroadcastThread(); });
@@ -782,6 +840,8 @@ void Engine::StartCSClient() {
 }
 
 void Engine::P2PBroadcastUpdates() {
+    ZoneScoped;
+
     for (Entity *entity : GetEntitiesByRole(this->network_info, this->GetEntities())) {
         try {
             EntityUpdate entity_update;
@@ -812,6 +872,9 @@ void Engine::P2PBroadcastUpdates() {
 }
 
 void Engine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string player_address) {
+    std::string thread_name = "P2PReceiveBroadcastFromPeerThread_" + std::to_string(player_id);
+    TracySetThreadName(thread_name.c_str());
+
     int peer_receive_port = 6000;
     std::string peer_receive_address =
         GetConnectionAddress(player_address, peer_receive_port + player_id);
@@ -845,6 +908,8 @@ void Engine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string player
 }
 
 void Engine::P2PReceiveBroadcastFromHostThread() {
+    TracySetThreadName("P2PReceiveBroadcastFromHostThread");
+
     Log(LogLevel::Info, "Receiving broadcasts from the host");
 
     try {
@@ -909,6 +974,7 @@ void Engine::P2PReceiveBroadcastFromHostThread() {
 }
 
 void Engine::StartP2P() {
+    ZoneScoped;
 
     this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
 
@@ -959,6 +1025,8 @@ void Engine::StartP2P() {
 }
 
 bool Engine::InitializeDisplay() {
+    ZoneScoped;
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         Log(LogLevel::Error, "SDL_Init Error: %s", SDL_GetError());
         return false;
@@ -1002,11 +1070,17 @@ void Engine::SetNetworkInfo(NetworkInfo network_info) { this->network_info = net
 
 NetworkInfo Engine::GetNetworkInfo() { return this->network_info; }
 
-void Engine::BaseTimelineChangeTic(double tic) { this->engine_timeline->ChangeTic(tic); }
+void Engine::BaseTimelineChangeTic(double tic) {
+    ZoneScoped;
+
+    this->engine_timeline->ChangeTic(tic);
+}
 
 double Engine::BaseTimelineGetTic() { return this->engine_timeline->GetTic(); }
 
 void Engine::BaseTimelineTogglePause() {
+    ZoneScoped;
+
     this->engine_timeline->TogglePause(this->engine_timeline->GetFrameTime().current);
 }
 
@@ -1027,6 +1101,8 @@ void Engine::SetShowZoneBorders(bool show_zone_borders) {
 }
 
 void Engine::ToggleShowZoneBorders() {
+    ZoneScoped;
+
     this->show_zone_borders = !this->show_zone_borders;
 
     std::vector<Entity *> entities = this->GetEntities();
@@ -1062,6 +1138,8 @@ void Engine::SetPlayerTextures(int player_textures) { this->player_textures = pl
 void Engine::SetMaxPlayers(int max_players) { this->max_players = max_players; }
 
 void Engine::ShowWelcomeScreen() {
+    ZoneScoped;
+
     // Sets the background to blue
     SDL_SetRenderDrawColor(app->renderer, this->background_color.red, this->background_color.green,
                            this->background_color.blue, 255);
@@ -1128,11 +1206,12 @@ void Engine::RemoveEntity(Entity *entity) {
 
     if (iterator != entities.end()) {
         entities.erase(iterator);
-        ;
     }
 }
 
 Entity *Engine::GetSpawnPoint(int index) {
+    ZoneScoped;
+
     std::vector<Entity *> spawn_points =
         GetEntitiesByCategory(this->GetEntities(), EntityCategory::SpawnPoint);
 
@@ -1187,11 +1266,15 @@ void Engine::SetCallback(std::function<void(std::vector<Entity *> *)> callback) 
 }
 
 void Engine::Update() {
+    ZoneScoped;
+
     std::vector<Entity *> entities = this->GetEntities();
     this->callback(&entities);
 }
 
 void Engine::GetTimeDelta() {
+    ZoneScoped;
+
     int64_t current = this->engine_timeline->GetTime();
     int64_t last = this->engine_timeline->GetFrameTime().last;
     int64_t delta = current - last;
@@ -1203,6 +1286,8 @@ void Engine::GetTimeDelta() {
 }
 
 void Engine::ReadInputsThread() {
+    TracySetThreadName("ReadInputsThread");
+
     while (!this->stop_input_thread.load()) {
         const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
         auto now = std::chrono::high_resolution_clock::now();
@@ -1249,6 +1334,8 @@ void Engine::ReadInputsThread() {
 }
 
 void Engine::ApplyEntityPhysicsAndUpdates() {
+    ZoneScoped;
+
     std::vector<Entity *> entities = GetEntitiesByRole(this->network_info, this->GetEntities());
 
     for (Entity *entity : entities) {
@@ -1262,6 +1349,8 @@ void Engine::ApplyEntityPhysicsAndUpdates() {
 }
 
 void Engine::TestCollision() {
+    ZoneScoped;
+
     std::vector<Entity *> entities = this->GetEntities();
 
     for (int i = 0; i < entities.size() - 1; i++) {
@@ -1299,6 +1388,8 @@ void Engine::TestCollision() {
 }
 
 void Engine::HandleCollisions() {
+    ZoneScoped;
+
     this->HandleDeathZones();
     this->HandleSideBoundaries();
 
@@ -1314,6 +1405,8 @@ void Engine::HandleCollisions() {
 }
 
 void Engine::HandleDeathZones() {
+    ZoneScoped;
+
     Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
     if (player == nullptr) {
         return;
@@ -1336,6 +1429,8 @@ void Engine::HandleDeathZones() {
 }
 
 void Engine::HandleSideBoundaries() {
+    ZoneScoped;
+
     Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
     if (player == nullptr) {
         return;
@@ -1386,6 +1481,8 @@ void Engine::HandleSideBoundaries() {
 }
 
 void Engine::ResetSideBoundaries() {
+    ZoneScoped;
+
     std::vector<Entity *> side_boundaries =
         GetEntitiesByCategory(this->GetEntities(), EntityCategory::SideBoundary);
     for (Entity *side_boundary : side_boundaries) {
@@ -1399,6 +1496,8 @@ void Engine::ResetSideBoundaries() {
 }
 
 void Engine::SetSideBoundaryVelocities(Velocity velocity) {
+    ZoneScoped;
+
     std::vector<Entity *> side_boundaries =
         GetEntitiesByCategory(this->GetEntities(), EntityCategory::SideBoundary);
     for (Entity *side_boundary : side_boundaries) {
@@ -1407,6 +1506,8 @@ void Engine::SetSideBoundaryVelocities(Velocity velocity) {
 }
 
 bool Engine::HandleQuitEvent() {
+    ZoneScoped;
+
     SDL_Event event;
     bool quit = false;
     while (SDL_PollEvent(&event) != 0) {
@@ -1418,6 +1519,8 @@ bool Engine::HandleQuitEvent() {
 }
 
 void Engine::RenderScene() {
+    ZoneScoped;
+
     this->HandleScaling();
 
     this->RenderBackground();
@@ -1427,9 +1530,13 @@ void Engine::RenderScene() {
         }
     }
     SDL_RenderPresent(app->renderer);
+
+    FrameMark;
 }
 
 void Engine::RenderBackground() {
+    ZoneScoped;
+
     // Add conditions to change the background later
     // Add options to render an image as a background later
     SDL_SetRenderDrawColor(app->renderer, this->background_color.red, this->background_color.green,
@@ -1438,6 +1545,8 @@ void Engine::RenderBackground() {
 }
 
 void Engine::HandleScaling() {
+    ZoneScoped;
+
     int set_logical_size_err;
 
     if (app->window.proportional_scaling) {
@@ -1453,6 +1562,8 @@ void Engine::HandleScaling() {
 }
 
 void Engine::Shutdown() {
+    ZoneScoped;
+
     this->join_socket.close();
     this->server_broadcast_socket.close();
     this->client_update_socket.close();

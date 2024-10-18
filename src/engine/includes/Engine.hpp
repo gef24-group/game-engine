@@ -79,6 +79,7 @@ class Engine {
     void CSClientSendUpdate();
 
     Entity *CreateNewPlayer(int player_id, std::string player_address = "");
+    Entity *GetSpawnPoint(int index);
 
     void P2PHostListenerThread();
     void P2PHostBroadcastPlayers();
@@ -91,7 +92,6 @@ class Engine {
     void EncodeMessage(const EntityUpdate &entity_update, zmq::message_t &message);
     void DecodeMessage(const zmq::message_t &message, EntityUpdate &entity_update);
 
-    void SetupDefaultInputs();
     void ReadInputsThread();
     bool HandleQuitEvent();
     void GetTimeDelta();
@@ -130,7 +130,6 @@ class Engine {
     void AddEntity(Entity *entity);
     void RemoveEntity(Entity *entity);
     void AddSideBoundary(Position position, Size size);
-    Entity *GetSpawnPoint(int index);
     void AddSpawnPoint(Position position, Size size);
     void AddDeathZone(Position position, Size size);
     void SetCallback(std::function<void(std::vector<Entity *> *)> callback);
