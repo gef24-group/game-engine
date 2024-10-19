@@ -36,10 +36,13 @@ src/games
 ├── hw2_joshua
 ├── hw2_mitesh
 └── hw2_rohan
+├── hw3_joshua
+├── hw3_mitesh
+└── hw3_rohan
 ```
-And you would like to only build `hw2_joshua`, then you would need to run:
+And you would like to only build `hw3_joshua`, then you would need to run:
 ```bash
-make GAME=hw2_joshua
+make GAME=hw3_joshua
 ```
 
 <!-- ## Play
@@ -64,14 +67,14 @@ And, The following command has to be executed to run a client:
 make play GAME=<game> ARGS="--mode cs --role client"
 ```
 
-Where `<game>` is one of the games from the `src/games` folder. *The HW2 games written by Joshua (jjoseph6), Rohan (rjmathe2), 
-and Mitesh (magarwa3) lie in the `hw2_joshua`, `hw2_rohan` and `hw2_mitesh` folders respectively.*
-For example, if you would like to play `hw2_rohan` from `src/games` in client-server mode, then you would need to run the following 2 commands to run the server and the clients respectively:
+Where `<game>` is one of the games from the `src/games` folder. *The HW3 games written by Joshua (jjoseph6), Rohan (rjmathe2), 
+and Mitesh (magarwa3) lie in the `hw3_joshua`, `hw3_rohan` and `hw3_mitesh` folders respectively.*
+For example, if you would like to play `hw3_rohan` from `src/games` in client-server mode, then you would need to run the following 2 commands to run the server and the clients respectively:
 ```bash
-make play GAME=hw2_rohan ARGS="--mode cs --role server"
+make play GAME=hw3_rohan ARGS="--mode cs --role server"
 ```
 ```bash
-make play GAME=hw2_rohan ARGS="--mode cs --role client"
+make play GAME=hw3_rohan ARGS="--mode cs --role client"
 ```
 
 ## Playing the game in peer-to-peer mode
@@ -83,12 +86,12 @@ And, The following command has to be executed to run a peer:
 ```bash
 make play GAME=<game> ARGS="--mode p2p --role peer"
 ```
-Example: If you would like to play Mitesh's HW2 game in peer-to-peer mode, run the following 2 commands to run the listen-server and the peers respectively:
+Example: If you would like to play Mitesh's HW3 game in peer-to-peer mode, run the following 2 commands to run the listen-server and the peers respectively:
 ```bash
-make play GAME=hw2_mitesh ARGS="--mode p2p --role host"
+make play GAME=hw3_mitesh ARGS="--mode p2p --role host"
 ```
 ```bash
-make play GAME=hw2_mitesh ARGS="--mode p2p --role peer"
+make play GAME=hw3_mitesh ARGS="--mode p2p --role peer"
 ```
 
 ## Cleanup
