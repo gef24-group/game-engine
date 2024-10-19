@@ -199,6 +199,7 @@ bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
     std::string encoding;
     std::vector<std::string> valid_modes = {"single", "cs", "p2p"};
     std::vector<std::string> valid_roles = {"server", "client", "host", "peer"};
+    std::vector<std::string> valid_encodings = {"struct", "json"};
 
     for (int i = 1; i < argc; i++) {
         std::string arg = args[i];
@@ -288,6 +289,11 @@ bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
     }
     if (encoding.empty()) {
         encoding = "struct";
+    }
+    if (std::find(valid_encodings.begin(), valid_encodings.end(), encoding) ==
+        valid_encodings.end()) {
+        Log(LogLevel::Error, "Invalid encoding. Must be one of [struct, json]");
+        return false;
     }
 
     NetworkMode network_mode;

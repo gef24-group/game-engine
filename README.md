@@ -1,5 +1,5 @@
 # game-engine
-This repo houses a game engine developed for CSC 581 (Game Engine Foundations), Group 15, Fall 2024 @ NC State
+This repo houses the game engine developed for CSC 581 (Game Engine Foundations), Group 15, Fall 2024 @ NC State
 
 ## Build
 ### Prerequisites
@@ -11,7 +11,7 @@ sudo apt update
 sudo apt install build-essential x11-apps libsdl2-2.0-0 libsdl2-dev libsdl2-image-2.0-0 libsdl2-image-dev libzmq3-dev cmake
 ```
 
-#### macOS Sonoma 14.6.1
+#### macOS Sequoia 15.0.1
 Install Homebrew from [brew.sh](https://brew.sh/)
 ```bash
 xcode-select --install
@@ -19,89 +19,87 @@ brew install sdl2 sdl2_image zeromq cppzmq cmake
 ```
 
 ### Build all games
-Every folder in `src/games` maps to a game.  
-To build all games, run:
+Every folder in `src/games` maps to a game  
+The [`.targetgames`](.targetgames) file defines all the games that are supported in the current build  
+To build all games defined in [`.targetgames`](.targetgames), run
 ```bash
 make
 ```
 
 ### Build a specific game
-To build a specific game, pass the `GAME` variable to `make`.  
-For example, if these are the folders inside `src/games`:
+To build a specific game, pass the `GAME` variable to `make`  
+For example, if these are the games defined in [`.targetgames`](.targetgames)
 ```bash
-src/games
-├── hw1_joshua
-├── hw1_mitesh
-└── hw1_rohan
-├── hw2_joshua
-├── hw2_mitesh
-└── hw2_rohan
-├── hw3_joshua
-├── hw3_mitesh
-└── hw3_rohan
+hw3_joshua
+hw3_rohan
+hw3_mitesh
 ```
-And you would like to only build `hw3_joshua`, then you would need to run:
+And you would like to only build `hw3_joshua`, then you would need to run
 ```bash
 make GAME=hw3_joshua
 ```
 
-<!-- ## Play
-After a game has been built, you may play it using this command:
+## Play
+After a game has been built, you may play it using this command
 ```bash
-make play GAME=<game>
-```
-Where `<game>` is one of the games from the `src/games` folder.  
-For example, if you would like to play `hw1_rohan` from `src/games`, then you would need to run:
-```bash
-make play GAME=hw1_rohan
-``` -->
-
-## Playing the game in client-server mode
-The following command has to be executed to run the server:
-```bash
-make play GAME=<game> ARGS="--mode cs --role server"
+make play GAME=<game> ARGS="<args>"
 ```
 
-And, The following command has to be executed to run a client:
+## Engine flags
+Most games include multi-player support, but require certain flags to be passed to the engine. This is facilitated by the `ARGS` variable  
+
+The flags supported by the engine are
 ```bash
-make play GAME=<game> ARGS="--mode cs --role client"
+--mode      [single, cs, p2p]             (default: single)
+--role      [server, client, host, peer]  (default: client)
+--encoding  [struct, json]                (default: struct)
+--server_ip <ip_address>                  (default: localhost)
+--host_ip   <ip_address>                  (default: localhost)
+--peer_ip   <ip_address>                  (default: localhost)
 ```
 
-Where `<game>` is one of the games from the `src/games` folder. *The HW3 games written by Joshua (jjoseph6), Rohan (rjmathe2), 
-and Mitesh (magarwa3) lie in the `hw3_joshua`, `hw3_rohan` and `hw3_mitesh` folders respectively.*
-For example, if you would like to play `hw3_rohan` from `src/games` in client-server mode, then you would need to run the following 2 commands to run the server and the clients respectively:
+## Examples
+### Client-server mode
+To run `hw3_mitesh` in the client-server mode, run these commands in different shells  
+
+**Server**
 ```bash
-make play GAME=hw3_rohan ARGS="--mode cs --role server"
+make play GAME=hw3_mitesh ARGS="--mode cs --role server"
 ```
+**Client**
 ```bash
-make play GAME=hw3_rohan ARGS="--mode cs --role client"
+make play GAME=hw3_mitesh ARGS="--mode cs --role client"
 ```
 
-## Playing the game in peer-to-peer mode
-The following command has to be executed to run the listen-server/host:
+### Peer-to-peer mode
+To run `hw3_rohan` in the peer-to-peer mode, run these commands in different shells  
+
+**Host**
 ```bash
-make play GAME=<game> ARGS="--mode p2p --role host"
+make play GAME=hw3_rohan ARGS="--mode p2p --role host"
 ```
-And, The following command has to be executed to run a peer:
+**Peer**
 ```bash
-make play GAME=<game> ARGS="--mode p2p --role peer"
+make play GAME=hw3_rohan ARGS="--mode p2p --role peer"
 ```
-Example: If you would like to play Mitesh's HW3 game in peer-to-peer mode, run the following 2 commands to run the listen-server and the peers respectively:
-```bash
-make play GAME=hw3_mitesh ARGS="--mode p2p --role host"
-```
-```bash
-make play GAME=hw3_mitesh ARGS="--mode p2p --role peer"
-```
+
+> The HW3 games written by Joshua (jjoseph6), Rohan (rjmathe2), and Mitesh (magarwa3) lie in the `hw3_joshua`, `hw3_rohan` and `hw3_mitesh` folders respectively
 
 ## Cleanup
-If you would like to clear all build artifacts, please run:
+If you would like to clear all build artifacts, please run
 ```bash
 make clean
 ```
 
-## Display scaling
-To switch between constant and proportional scaling, please use the `x` key.
+## Common Inputs
+Here is a map of inputs common to every game  
+| Input        | Action                        |
+|--------------|-------------------------------|
+| <kbd>p</kbd> | Pause / un-pause the timeline |
+| <kbd>,</kbd> | Slow down the timeline        |
+| <kbd>.</kbd> | Speed up the timeline         |
+| <kbd>x</kbd> | Toggle display scaling        |
+| <kbd>z</kbd> | View hidden zones             |
 
 ## References
 Please find all references in [References.md](References.md)
