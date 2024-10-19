@@ -91,15 +91,15 @@ If you would like to clear all build artifacts, please run
 make clean
 ```
 
-## Common Inputs
+## Common inputs
 Here is a map of inputs common to every game  
 | Input        | Action                        |
 |--------------|-------------------------------|
-| <kbd>p</kbd> | Pause / un-pause the timeline |
+| <kbd>p</kbd> | Toggle timeline pause         |
 | <kbd>,</kbd> | Slow down the timeline        |
 | <kbd>.</kbd> | Speed up the timeline         |
 | <kbd>x</kbd> | Toggle display scaling        |
-| <kbd>z</kbd> | View hidden zones             |
+| <kbd>z</kbd> | Toggle hidden zone visibility |
 
 ## References
 Please find all references in [References.md](References.md)
