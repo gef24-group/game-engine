@@ -34,6 +34,8 @@
 // NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
 #define ZoneScoped
 // NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
+#define ZoneScopedNC(name, color)
+// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
 #define FrameMark
 // NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
 #define TracySetThreadName(name)
@@ -554,6 +556,8 @@ void Engine::StartSingleClient() {
 
     // Engine loop
     while (!app->quit.load() && !app->sigint.load()) {
+        ZoneScopedNC("EngineLoop", 0xff4500);
+
         app->quit.store(this->HandleQuitEvent());
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
@@ -576,7 +580,10 @@ void Engine::StartCSServer() {
 
     this->engine_timeline->SetFrameTime(FrameTime{0, this->engine_timeline->GetTime(), 0});
 
+    // Engine loop
     while (!app->sigint.load()) {
+        ZoneScopedNC("EngineLoop", 0xff4500);
+
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
         this->CSServerBroadcastUpdates();
@@ -822,6 +829,8 @@ void Engine::StartCSClient() {
 
     // Engine loop
     while (!app->quit.load() && !app->sigint.load()) {
+        ZoneScopedNC("EngineLoop", 0xff4500);
+
         app->quit.store(this->HandleQuitEvent());
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
@@ -998,6 +1007,8 @@ void Engine::StartP2P() {
 
     // Engine loop
     while (!app->quit.load() && !app->sigint.load()) {
+        ZoneScopedNC("EngineLoop", 0xff4500);
+
         app->quit.store(this->HandleQuitEvent());
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
