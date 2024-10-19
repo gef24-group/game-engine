@@ -94,7 +94,7 @@ std::vector<Entity *> CreateGround() {
     ground_block1->AddComponent<Network>();
     ground_block1->GetComponent<Transform>()->SetPosition({-500, float(window_size.height) - 200});
     ground_block1->GetComponent<Transform>()->SetSize({600, 300});
-    ground_block1->GetComponent<Render>()->SetTexture("assets/ground.png");
+    ground_block1->GetComponent<Render>()->SetColor(ground_color);
     ground_block1->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block1);
 
@@ -105,7 +105,7 @@ std::vector<Entity *> CreateGround() {
     ground_block2->AddComponent<Network>();
     ground_block2->GetComponent<Transform>()->SetPosition({100, float(window_size.height) - 300});
     ground_block2->GetComponent<Transform>()->SetSize({200, 1200});
-    ground_block2->GetComponent<Render>()->SetColor(Color{121, 20, 90, 255});
+    ground_block2->GetComponent<Render>()->SetColor(ground_color);
     ground_block2->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     ground_blocks.push_back(ground_block2);
 
@@ -199,20 +199,6 @@ std::vector<Entity *> CreateMiscelleanousEntities() {
     // miscelleanous_entity1->GetComponent<Render>()->SetColor(ground_color);
     miscelleanous_entity3->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     miscelleanous_entities.push_back(miscelleanous_entity3);
-
-    Entity *miscelleanous_entity4 = new Entity("miscelleanous_entity4", EntityCategory::Stationary);
-    miscelleanous_entity4->AddComponent<Transform>();
-    miscelleanous_entity4->AddComponent<Collision>();
-    miscelleanous_entity4->AddComponent<Render>();
-    miscelleanous_entity4->AddComponent<Network>();
-    miscelleanous_entity4->GetComponent<Transform>()->SetPosition(
-        {3550, float(window_size.height) - 326});
-    miscelleanous_entity4->GetComponent<Transform>()->SetSize({100, 150});
-    miscelleanous_entity4->GetComponent<Render>()->SetTexture("assets/flag.png");
-
-    // miscelleanous_entity1->GetComponent<Render>()->SetColor(ground_color);
-    miscelleanous_entity4->GetComponent<Network>()->SetOwner(NetworkRole::Server);
-    miscelleanous_entities.push_back(miscelleanous_entity4);
 
     return miscelleanous_entities;
 }
@@ -314,17 +300,16 @@ void CreateSideBoundaries(Engine *game_engine) {
 }
 
 void CreateDeathZones(Engine *game_engine) {
-    game_engine->AddDeathZone(Position{-500, -1000}, Size{20, 3000});
-    game_engine->AddDeathZone(Position{3700, -1000}, Size{20, 3000});
-    game_engine->AddDeathZone(Position{-500, float(window_size.height)}, Size{4000, 20});
+    game_engine->AddDeathZone(Position{-505, -1005}, Size{20, 3000});
+    game_engine->AddDeathZone(Position{3705, -1005}, Size{20, 3000});
+    game_engine->AddDeathZone(Position{-505, float(window_size.height)}, Size{4000, 20});
 }
 
 void CreateSpawnPoints(Engine *game_engine) {
     game_engine->AddSpawnPoint(Position{75, 300}, Size{10, 10});
     game_engine->AddSpawnPoint(Position{400, 100}, Size{10, 10});
+    game_engine->AddSpawnPoint(Position{520, 300}, Size{10, 10});
 }
-
-// std::vector<Entity *> CreateFire() {}
 
 std::vector<Entity *> CreateEntities(Engine *game_engine) {
     std::vector<Entity *> entities;
@@ -372,7 +357,7 @@ void DestroyEntities(std::vector<Entity *> entities) {
 
 int main(int argc, char *args[]) {
     std::string game_title = "Mitesh's CSC581 HW3 Game: Platformer";
-    int max_player_count = 100, texture_count = 1;
+    int max_player_count = 100, texture_count = 4;
 
     // Initializing the Game Engine
     Engine game_engine;
@@ -391,11 +376,6 @@ int main(int argc, char *args[]) {
     game_engine.SetShowPlayerBorder(true);
 
     network_info = game_engine.GetNetworkInfo();
-    if (network_info.id > 4) {
-        Log(LogLevel::Error, "More than 4 players spotted: EXITING THE GAME. Player ID: %d",
-            network_info.id);
-        exit(0);
-    }
 
     Color background_color = Color{135, 206, 235, 255};
     game_engine.SetBackgroundColor(background_color);
