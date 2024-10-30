@@ -27,7 +27,7 @@ open-tracy-gui:
 	nohup ./vendor/tracy/profiler/build/tracy-profiler </dev/null >/dev/null 2>&1 &
 
 clean:
-	rm -rf build compile_commands.json .cache
+	rm -rf build compile_commands*.json .cache
 
 play:
 	@if [ "$(GAME)" = "all" ]; then \

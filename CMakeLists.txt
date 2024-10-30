@@ -35,6 +35,8 @@ endif()
 
 # Add the tracy profiler if PROFILE is ON
 if (PROFILE STREQUAL "ON")
+    set(TRACY_ENABLE ON)
+
     FetchContent_Declare(
         tracy
         GIT_REPOSITORY https://github.com/wolfpld/tracy.git

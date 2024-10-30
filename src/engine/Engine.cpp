@@ -13,6 +13,7 @@
 #include "SDL_rect.h"
 #include "SDL_render.h"
 #include "SDL_scancode.h"
+#include "SDL_stdinc.h"
 #include "SDL_video.h"
 #include "Timeline.hpp"
 #include "Transform.hpp"
@@ -39,6 +40,8 @@
 #define FrameMark
 // NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
 #define TracySetThreadName(name)
+// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
+#define FrameImage(image, width, height, offset, flip)
 #endif
 
 Engine::Engine() {
@@ -1549,6 +1552,11 @@ void Engine::RenderScene() {
             entity->GetComponent<Render>()->Update();
         }
     }
+
+#ifdef PROFILE
+    this->CaptureTracyFrameImage();
+#endif
+
     SDL_RenderPresent(app->renderer);
 
     FrameMark;
@@ -1562,6 +1570,38 @@ void Engine::RenderBackground() {
     SDL_SetRenderDrawColor(app->renderer, this->background_color.red, this->background_color.green,
                            this->background_color.blue, 255);
     SDL_RenderClear(app->renderer);
+}
+
+void Engine::CaptureTracyFrameImage() {
+    ZoneScoped;
+
+    int surface_width;
+    int surface_height;
+    SDL_GetWindowSize(app->sdl_window, &surface_width, &surface_height);
+    int scaled_surface_width = (surface_width / 2) - ((surface_width / 2) % 4);
+    int scaled_surface_height = (surface_height / 2) - ((surface_height / 2) % 4);
+
+    Uint32 red_mask, green_mask, blue_mask, alpha_mask;
+    int bpp;
+    SDL_PixelFormatEnumToMasks(SDL_PIXELFORMAT_RGBA32, &bpp, &red_mask, &green_mask, &blue_mask,
+                               &alpha_mask);
+    SDL_Surface *surface = SDL_CreateRGBSurface(0, surface_width, surface_height, 32, red_mask,
+                                                green_mask, blue_mask, alpha_mask);
+    SDL_Surface *scaled_surface =
+        SDL_CreateRGBSurface(0, scaled_surface_width, scaled_surface_height, 32, red_mask,
+                             green_mask, blue_mask, alpha_mask);
+
+    SDL_Rect src_rect = {0, 0, surface_width, surface_height};
+    SDL_Rect dest_rect = {0, 0, scaled_surface_width, scaled_surface_height};
+
+    SDL_RenderReadPixels(app->renderer, NULL, SDL_PIXELFORMAT_RGBA32, surface->pixels,
+                         surface->pitch);
+    SDL_BlitScaled(surface, &src_rect, scaled_surface, &dest_rect);
+
+    FrameImage(scaled_surface->pixels, scaled_surface_width, scaled_surface_height, 0, false);
+
+    SDL_FreeSurface(surface);
+    SDL_FreeSurface(scaled_surface);
 }
 
 void Engine::HandleScaling() {

@@ -106,6 +106,7 @@ class Engine {
     void HandleScaling();
     void RenderScene();
     void RenderBackground();
+    void CaptureTracyFrameImage();
     void Shutdown();
 
   public:

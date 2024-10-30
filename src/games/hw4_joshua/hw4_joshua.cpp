@@ -1,7 +1,3 @@
-// This game will not be compiled or analyzed due to breaking API changes
-// Please revert to the following commit to compile this game
-// dbb2658bd097921c7fd53c994fdd3806b5d81c47
-
 #include "Collision.hpp"
 #include "Engine.hpp"
 #include "Entity.hpp"
@@ -369,7 +365,7 @@ void SetupInputs(Engine *engine) {
 }
 
 int main(int argc, char *args[]) {
-    std::string title = "CSC581 HW3 Joshua's Game";
+    std::string title = "CSC581 HW4 Joshua's Game";
 
     Engine engine;
     if (!SetEngineCLIOptions(&engine, argc, args)) {
