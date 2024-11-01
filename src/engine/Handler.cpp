@@ -14,3 +14,5 @@ void Handler::Update() {
     // the callback contains the reaction to keyboard inputs
     this->callback(this->entity);
 }
+
+void Handler::OnEvent(Event event) {}

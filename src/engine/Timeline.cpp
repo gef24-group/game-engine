@@ -55,14 +55,14 @@ void Timeline::SetFrameTime(FrameTime frame_time) {
     this->frame_time = frame_time;
 }
 
-void Timeline::TogglePause(int64_t pause_time) {
+void Timeline::TogglePause() {
     int64_t time = this->GetTime();
 
     std::lock_guard<std::mutex> lock(this->timeline_mutex);
 
     this->paused = !this->paused;
     if (this->paused) {
-        this->last_paused_time = pause_time;
+        this->last_paused_time = this->frame_time.current;
     } else {
         this->elapsed_paused_time += time - this->last_paused_time;
     }

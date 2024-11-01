@@ -1,7 +1,6 @@
 #pragma once
 
 #include "App.hpp"
-#include "Engine.hpp"
 #include "Entity.hpp"
 #include "SDL_render.h"
 #include "Types.hpp"
@@ -19,7 +18,7 @@ int GetControllableCount(std::vector<Entity *> entities);
 std::vector<Entity *> GetEntitiesByRole(NetworkInfo network_info, std::vector<Entity *> entities);
 void SetPlayerTexture(Entity *controllable, int player_id, int player_textures);
 Entity *GetClientPlayer(int player_id, std::vector<Entity *> entities);
-bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]);
+bool SetEngineCLIOptions(int argc, char *args[]);
 std::string GetConnectionAddress(std::string address, int port);
 void HandleSIGINT(int signum);
 Position GetScreenPosition(Position world_position, Position camera_position);

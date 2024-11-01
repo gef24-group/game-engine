@@ -4,6 +4,7 @@
 #include <chrono>
 #include <functional>
 #include <string>
+#include <variant>
 
 enum class Shape { Circle, Square, Rectangle, Triangle };
 enum class EntityCategory {
@@ -108,3 +109,21 @@ struct EntityUpdate {
     char player_address[100] = "";
     bool active = true;
 };
+
+enum class EventType { Input, Move, Collision, Spawn, Death };
+
+enum class InputEventType { Single, Chord, Sequence };
+struct InputEvent {
+    int keys[10];
+    InputEventType type;
+    bool pressed;
+};
+
+struct CollisionEvent {};
+struct DeathEvent {};
+struct SpawnEvent {};
+struct MoveEvent {};
+
+typedef std::variant<InputEvent, CollisionEvent, DeathEvent, SpawnEvent, MoveEvent> EventData;
+
+enum class Priority { High, Medium, Low };

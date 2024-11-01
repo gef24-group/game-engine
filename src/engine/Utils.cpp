@@ -190,7 +190,7 @@ Entity *GetClientPlayer(int player_id, std::vector<Entity *> entities) {
     return nullptr;
 }
 
-bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
+bool SetEngineCLIOptions(int argc, char *args[]) {
     std::string mode;
     std::string role;
     std::string server_ip;
@@ -330,8 +330,9 @@ bool SetEngineCLIOptions(Engine *engine, int argc, char *args[]) {
         engine_encoding = Encoding::JSON;
     }
 
-    engine->SetNetworkInfo(NetworkInfo{network_mode, network_role, 0, server_ip, host_ip, peer_ip});
-    engine->SetEncoding(engine_encoding);
+    Engine::GetInstance().SetNetworkInfo(
+        NetworkInfo{network_mode, network_role, 0, server_ip, host_ip, peer_ip});
+    Engine::GetInstance().SetEncoding(engine_encoding);
 
     return true;
 }

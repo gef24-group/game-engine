@@ -313,30 +313,32 @@ std::vector<Entity *> CreateEntities() {
     return entities;
 }
 
-void CreateSideBoundaries(Engine *engine) {
-    engine->AddSideBoundary(Position{500, -float(window_size.height)},
-                            Size{10, window_size.height * 3});
-    engine->AddSideBoundary(Position{1410, -float(window_size.height)},
-                            Size{10, window_size.height * 3});
+void CreateSideBoundaries() {
+    Engine::GetInstance().AddSideBoundary(Position{500, -float(window_size.height)},
+                                          Size{10, window_size.height * 3});
+    Engine::GetInstance().AddSideBoundary(Position{1410, -float(window_size.height)},
+                                          Size{10, window_size.height * 3});
 }
 
-void CreateSpawnPoints(Engine *engine) {
-    engine->AddSpawnPoint(Position{530, float(window_size.height - (TILE_SIZE * 3))}, Size{10, 10});
-    engine->AddSpawnPoint(Position{530, 40}, Size{10, 10});
-    engine->AddSpawnPoint(Position{1290, 40}, Size{10, 10});
-    engine->AddSpawnPoint(Position{1290, float(window_size.height - (TILE_SIZE * 3))},
-                          Size{10, 10});
+void CreateSpawnPoints() {
+    Engine::GetInstance().AddSpawnPoint(Position{530, float(window_size.height - (TILE_SIZE * 3))},
+                                        Size{10, 10});
+    Engine::GetInstance().AddSpawnPoint(Position{530, 40}, Size{10, 10});
+    Engine::GetInstance().AddSpawnPoint(Position{1290, 40}, Size{10, 10});
+    Engine::GetInstance().AddSpawnPoint(Position{1290, float(window_size.height - (TILE_SIZE * 3))},
+                                        Size{10, 10});
 }
 
-void CreateDeathZones(Engine *engine) {
-    engine->AddDeathZone(Position{-10, -float(window_size.height)},
-                         Size{10, window_size.height * 3});
-    engine->AddDeathZone(Position{3800, -float(window_size.height)},
-                         Size{10, window_size.height * 3});
-    engine->AddDeathZone(Position{-float(window_size.width), -float(TILE_SIZE * 3)},
-                         Size{window_size.width * 4, 10});
-    engine->AddDeathZone(Position{-float(window_size.width), float(window_size.height - 10)},
-                         Size{window_size.width * 4, 10});
+void CreateDeathZones() {
+    Engine::GetInstance().AddDeathZone(Position{-10, -float(window_size.height)},
+                                       Size{10, window_size.height * 3});
+    Engine::GetInstance().AddDeathZone(Position{3800, -float(window_size.height)},
+                                       Size{10, window_size.height * 3});
+    Engine::GetInstance().AddDeathZone(Position{-float(window_size.width), -float(TILE_SIZE * 3)},
+                                       Size{window_size.width * 4, 10});
+    Engine::GetInstance().AddDeathZone(
+        Position{-float(window_size.width), float(window_size.height - 10)},
+        Size{window_size.width * 4, 10});
 }
 
 void DestroyEntities(std::vector<Entity *> entities) {
@@ -345,61 +347,62 @@ void DestroyEntities(std::vector<Entity *> entities) {
     }
 }
 
-void SetupInputs(Engine *engine) {
+void SetupInputs() {
     // toggle constant and proportional scaling
     app->key_map->key_X.OnPress = []() {
         app->window.proportional_scaling = !app->window.proportional_scaling;
     };
     // toggle pause or unpause
-    app->key_map->key_P.OnPress = [engine]() { engine->BaseTimelineTogglePause(); };
+    app->key_map->key_P.OnPress = []() { Engine::GetInstance().EngineTimelineTogglePause(); };
     // slow down the timeline
-    app->key_map->key_comma.OnPress = [engine]() {
-        engine->BaseTimelineChangeTic(std::min(engine->BaseTimelineGetTic() * 2.0, 2.0));
+    app->key_map->key_comma.OnPress = []() {
+        Engine::GetInstance().EngineTimelineChangeTic(
+            std::min(Engine::GetInstance().EngineTimelineGetTic() * 2.0, 2.0));
     };
     // speed up the timeline
-    app->key_map->key_period.OnPress = [engine]() {
-        engine->BaseTimelineChangeTic(std::max(engine->BaseTimelineGetTic() / 2.0, 0.5));
+    app->key_map->key_period.OnPress = []() {
+        Engine::GetInstance().EngineTimelineChangeTic(
+            std::max(Engine::GetInstance().EngineTimelineGetTic() / 2.0, 0.5));
     };
     // toggle the visibility of hidden zones
-    app->key_map->key_Z.OnPress = [engine]() { engine->ToggleShowZoneBorders(); };
+    app->key_map->key_Z.OnPress = []() { Engine::GetInstance().ToggleShowZoneBorders(); };
 }
 
 int main(int argc, char *args[]) {
     std::string title = "CSC581 HW4 Joshua's Game";
 
-    Engine engine;
-    if (!SetEngineCLIOptions(&engine, argc, args)) {
+    if (!SetEngineCLIOptions(argc, args)) {
         return 1;
     }
-    network_info = engine.GetNetworkInfo();
+    network_info = Engine::GetInstance().GetNetworkInfo();
 
     Color background_color = Color{52, 153, 219, 255};
-    engine.SetBackgroundColor(background_color);
-    engine.SetTitle(title);
-    engine.SetShowPlayerBorder(true);
+    Engine::GetInstance().SetBackgroundColor(background_color);
+    Engine::GetInstance().SetTitle(title);
+    Engine::GetInstance().SetShowPlayerBorder(true);
 
-    if (!engine.Init()) {
+    if (!Engine::GetInstance().Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
     }
 
-    SetupInputs(&engine);
-    network_info = engine.GetNetworkInfo();
+    SetupInputs();
+    network_info = Engine::GetInstance().GetNetworkInfo();
     window_size = GetWindowSize();
 
-    CreateSideBoundaries(&engine);
-    CreateSpawnPoints(&engine);
-    CreateDeathZones(&engine);
+    CreateSideBoundaries();
+    CreateSpawnPoints();
+    CreateDeathZones();
 
     std::vector<Entity *> entities = CreateEntities();
     for (Entity *entity : entities) {
-        engine.AddEntity(entity);
+        Engine::GetInstance().AddEntity(entity);
     }
 
-    engine.SetPlayerTextures(5);
-    engine.SetCallback(Update);
+    Engine::GetInstance().SetPlayerTextures(5);
+    Engine::GetInstance().SetCallback(Update);
 
-    engine.Start();
+    Engine::GetInstance().Start();
     Log(LogLevel::Info, "The game engine has closed the game cleanly");
     DestroyEntities(entities);
     return 0;

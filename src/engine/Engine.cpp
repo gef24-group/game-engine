@@ -1,7 +1,9 @@
 #include "Engine.hpp"
 #include "Collision.hpp"
 #include "Entity.hpp"
+#include "EventManager.hpp"
 #include "Handler.hpp"
+#include "Input.hpp"
 #include "Json.hpp"
 #include "Network.hpp"
 #include "Physics.hpp"
@@ -9,10 +11,8 @@
 #include "SDL.h"
 #include "SDL_error.h"
 #include "SDL_events.h"
-#include "SDL_keyboard.h"
 #include "SDL_rect.h"
 #include "SDL_render.h"
-#include "SDL_scancode.h"
 #include "SDL_stdinc.h"
 #include "SDL_video.h"
 #include "Timeline.hpp"
@@ -20,7 +20,6 @@
 #include "Types.hpp"
 #include "Utils.hpp"
 #include <algorithm>
-#include <chrono>
 #include <climits>
 #include <csignal>
 #include <string>
@@ -829,12 +828,17 @@ void Engine::StartCSClient() {
         std::thread([this]() { this->CSClientReceiveBroadcastThread(); });
     this->CreateNewPlayer(this->network_info.id);
     this->engine_timeline->SetFrameTime(FrameTime{0, this->engine_timeline->GetTime(), 0});
+    // Input *input = new Input();
+    // EventManager::GetInstance().Register({EventType::Input}, input);
 
     // Engine loop
     while (!app->quit.load() && !app->sigint.load()) {
         ZoneScopedNC("EngineLoop", 0xff4500);
 
+        EventManager::GetInstance().ProcessEvents();
         app->quit.store(this->HandleQuitEvent());
+
+        // input->CheckKeyboardState();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
         this->CSClientSendUpdate();
@@ -1093,18 +1097,22 @@ void Engine::SetNetworkInfo(NetworkInfo network_info) { this->network_info = net
 
 NetworkInfo Engine::GetNetworkInfo() { return this->network_info; }
 
-void Engine::BaseTimelineChangeTic(double tic) {
+void Engine::EngineTimelineChangeTic(double tic) {
     ZoneScoped;
 
     this->engine_timeline->ChangeTic(tic);
 }
 
-double Engine::BaseTimelineGetTic() { return this->engine_timeline->GetTic(); }
+double Engine::EngineTimelineGetTic() { return this->engine_timeline->GetTic(); }
 
-void Engine::BaseTimelineTogglePause() {
+int64_t Engine::EngineTimelineGetTime() { return this->engine_timeline->GetTime(); }
+
+FrameTime Engine::EngineTimelineGetFrameTime() { return this->engine_timeline->GetFrameTime(); }
+
+void Engine::EngineTimelineTogglePause() {
     ZoneScoped;
 
-    this->engine_timeline->TogglePause(this->engine_timeline->GetFrameTime().current);
+    this->engine_timeline->TogglePause();
 }
 
 void Engine::SetBackgroundColor(Color color) {
@@ -1311,49 +1319,57 @@ void Engine::GetTimeDelta() {
 void Engine::ReadInputsThread() {
     TracySetThreadName("ReadInputsThread");
 
+    Input *input = new Input();
+
+    EventManager::GetInstance().Register({EventType::Input}, input);
+
     while (!this->stop_input_thread.load()) {
-        const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
-        auto now = std::chrono::high_resolution_clock::now();
+        input->CheckKeyboardState();
 
-        auto debounce_key = [keyboard_state, now](int scancode, Key &key, bool delay) {
-            if (!delay) {
-                key.pressed.store(keyboard_state[scancode] != 0);
-                return;
-            }
+        // const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
+        // auto now = std::chrono::high_resolution_clock::now();
 
-            if (keyboard_state[scancode] != 0) {
-                auto press_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    now - key.last_pressed_time);
-                if (press_duration.count() > 50 && !key.pressed.load()) {
-                    key.pressed.store(true);
-                    key.OnPress();
-                } else {
-                    key.pressed.store(false);
-                    key.last_pressed_time = now;
-                }
-            } else {
-                key.pressed.store(false);
-            }
-        };
+        // auto debounce_key = [keyboard_state, now](int scancode, Key &key, bool delay) {
+        //     if (!delay) {
+        //         key.pressed.store(keyboard_state[scancode] != 0);
+        //         return;
+        //     }
 
-        debounce_key(SDL_SCANCODE_X, app->key_map->key_X, true);
-        debounce_key(SDL_SCANCODE_P, app->key_map->key_P, true);
-        debounce_key(SDL_SCANCODE_COMMA, app->key_map->key_comma, true);
-        debounce_key(SDL_SCANCODE_PERIOD, app->key_map->key_period, true);
-        debounce_key(SDL_SCANCODE_Z, app->key_map->key_Z, true);
+        //     if (keyboard_state[scancode] != 0) {
+        //         auto press_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        //             now - key.last_pressed_time);
+        //         if (press_duration.count() > 50 && !key.pressed.load()) {
+        //             key.pressed.store(true);
+        //             key.OnPress();
+        //         } else {
+        //             key.pressed.store(false);
+        //             key.last_pressed_time = now;
+        //         }
+        //     } else {
+        //         key.pressed.store(false);
+        //     }
+        // };
 
-        debounce_key(SDL_SCANCODE_W, app->key_map->key_W, false);
-        debounce_key(SDL_SCANCODE_A, app->key_map->key_A, false);
-        debounce_key(SDL_SCANCODE_S, app->key_map->key_S, false);
-        debounce_key(SDL_SCANCODE_D, app->key_map->key_D, false);
+        // debounce_key(SDL_SCANCODE_X, app->key_map->key_X, true);
+        // debounce_key(SDL_SCANCODE_P, app->key_map->key_P, true);
+        // debounce_key(SDL_SCANCODE_COMMA, app->key_map->key_comma, true);
+        // debounce_key(SDL_SCANCODE_PERIOD, app->key_map->key_period, true);
+        // debounce_key(SDL_SCANCODE_Z, app->key_map->key_Z, true);
 
-        debounce_key(SDL_SCANCODE_UP, app->key_map->key_up, false);
-        debounce_key(SDL_SCANCODE_LEFT, app->key_map->key_left, false);
-        debounce_key(SDL_SCANCODE_DOWN, app->key_map->key_down, false);
-        debounce_key(SDL_SCANCODE_RIGHT, app->key_map->key_right, false);
+        // debounce_key(SDL_SCANCODE_W, app->key_map->key_W, false);
+        // debounce_key(SDL_SCANCODE_A, app->key_map->key_A, false);
+        // debounce_key(SDL_SCANCODE_S, app->key_map->key_S, false);
+        // debounce_key(SDL_SCANCODE_D, app->key_map->key_D, false);
 
-        debounce_key(SDL_SCANCODE_SPACE, app->key_map->key_space, false);
+        // debounce_key(SDL_SCANCODE_UP, app->key_map->key_up, false);
+        // debounce_key(SDL_SCANCODE_LEFT, app->key_map->key_left, false);
+        // debounce_key(SDL_SCANCODE_DOWN, app->key_map->key_down, false);
+        // debounce_key(SDL_SCANCODE_RIGHT, app->key_map->key_right, false);
+
+        // debounce_key(SDL_SCANCODE_SPACE, app->key_map->key_space, false);
     }
+
+    delete input;
 }
 
 void Engine::ApplyEntityPhysicsAndUpdates() {

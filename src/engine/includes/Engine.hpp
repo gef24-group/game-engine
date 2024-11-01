@@ -14,6 +14,19 @@
 extern App *app;
 
 class Engine {
+  public:
+    static Engine &GetInstance() {
+        static Engine instance;
+        return instance;
+    }
+
+  private:
+    Engine();
+
+  public:
+    Engine(Engine const &) = delete;
+    void operator=(Engine const &) = delete;
+
   private:
     std::string title;
     std::shared_ptr<Timeline> engine_timeline;
@@ -110,7 +123,6 @@ class Engine {
     void Shutdown();
 
   public:
-    Engine();
     bool Init();
     void Start();
     void SetTitle(std::string title);
@@ -123,9 +135,11 @@ class Engine {
     void ToggleShowZoneBorders();
     void SetPlayerTextures(int player_textures);
     void SetMaxPlayers(int max_players);
-    void BaseTimelineChangeTic(double tic);
-    double BaseTimelineGetTic();
-    void BaseTimelineTogglePause();
+    void EngineTimelineChangeTic(double tic);
+    double EngineTimelineGetTic();
+    int64_t EngineTimelineGetTime();
+    FrameTime EngineTimelineGetFrameTime();
+    void EngineTimelineTogglePause();
     std::vector<Entity *> GetEntities();
     std::vector<Entity *> GetNetworkedEntities();
     void AddEntity(Entity *entity);

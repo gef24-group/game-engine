@@ -21,7 +21,7 @@ class Timeline {
     int64_t GetTime();
     FrameTime GetFrameTime();
     void SetFrameTime(FrameTime frame_time);
-    void TogglePause(int64_t pause_time);
+    void TogglePause();
     void ChangeTic(double tic);
     double GetTic();
     bool IsPaused();

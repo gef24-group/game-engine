@@ -22,3 +22,4 @@
 - [Chapter 16: Runtime Gameplay Foundation Systems: Game Engine Architecture, Jason Gregory](https://www.gameenginebook.com/)
 - [How to use the SDL viewport properly?](https://gamedev.stackexchange.com/a/123844)
 - [Tracy documentation](https://github.com/wolfpld/tracy/releases/latest/download/tracy.pdf)
+- [How do you implement the Singleton design pattern?](https://stackoverflow.com/a/1008289)
