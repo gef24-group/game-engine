@@ -6,6 +6,7 @@
 
 Render::Render(Entity *entity) {
     this->entity = entity;
+    this->visible = true;
     this->texture = nullptr;
     this->texture_template = "";
     this->shape = Shape::Rectangle;
@@ -22,6 +23,7 @@ Border Render::GetBorder() { return this->border; }
 
 void Render::SetCamera(std::shared_ptr<Entity> camera) { this->camera = camera; }
 
+void Render::SetVisible(bool visible) { this->visible = visible; }
 void Render::SetTexture(std::string path) { this->texture = LoadTexture(path); }
 void Render::SetTextureTemplate(std::string texture_template) {
     this->texture_template = texture_template;
@@ -31,6 +33,10 @@ void Render::SetColor(Color color) { this->color = color; }
 void Render::SetBorder(Border border) { this->border = border; }
 
 void Render::RenderEntity() {
+    if (!this->visible) {
+        return;
+    }
+
     Position position = GetScreenPosition(this->entity->GetComponent<Transform>()->GetPosition(),
                                           this->camera->GetComponent<Transform>()->GetPosition());
 

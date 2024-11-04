@@ -8,6 +8,7 @@
 class Render : public Component {
   private:
     Entity *entity;
+    bool visible;
     SDL_Texture *texture;
     std::string texture_template;
     Shape shape;
@@ -25,6 +26,7 @@ class Render : public Component {
     Border GetBorder();
 
     void SetCamera(std::shared_ptr<Entity> camera);
+    void SetVisible(bool visible);
     void SetTexture(std::string path);
     void SetTextureTemplate(std::string texture_template);
     void SetShape(Shape shape);

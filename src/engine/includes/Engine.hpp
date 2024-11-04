@@ -1,7 +1,9 @@
 #pragma once
 
 #include "App.hpp"
+#include "EngineHandler.hpp"
 #include "Entity.hpp"
+#include "Input.hpp"
 #include "Timeline.hpp"
 #include "Types.hpp"
 #include <functional>
@@ -30,6 +32,8 @@ class Engine {
   private:
     std::string title;
     std::shared_ptr<Timeline> engine_timeline;
+    std::unique_ptr<Input> input;
+    std::unique_ptr<EngineHandler> engine_handler;
     NetworkInfo network_info;
     Encoding encoding;
     std::atomic<int> players_connected;
@@ -39,7 +43,6 @@ class Engine {
     int max_players;
 
     std::shared_ptr<Entity> camera;
-    bool death_zone_collision;
     bool show_zone_borders;
     Color side_boundary_color;
     Color spawn_point_color;
@@ -47,15 +50,13 @@ class Engine {
 
     std::mutex entities_mutex;
     std::vector<Entity *> entities;
-    std::function<void(std::vector<Entity *> *)> callback;
+    std::function<void(std::vector<Entity *> &)> callback;
 
-    std::thread input_thread;
     std::thread listener_thread;
     std::thread receive_broadcast_thread;
     std::vector<std::thread> client_threads;
     std::vector<std::thread> peer_threads;
 
-    std::atomic<bool> stop_input_thread;
     std::atomic<bool> stop_listener_thread;
     std::atomic<bool> stop_receive_broadcast_thread;
     std::atomic<bool> stop_client_thread;
@@ -105,14 +106,10 @@ class Engine {
     void EncodeMessage(const EntityUpdate &entity_update, zmq::message_t &message);
     void DecodeMessage(const zmq::message_t &message, EntityUpdate &entity_update);
 
-    void ReadInputsThread();
     bool HandleQuitEvent();
     void GetTimeDelta();
     void ApplyEntityPhysicsAndUpdates();
     void TestCollision();
-    void HandleCollisions();
-    void HandleSideBoundaries();
-    void HandleDeathZones();
     void ResetSideBoundaries();
     void SetSideBoundaryVelocities(Velocity velocity);
     void Update();
@@ -147,5 +144,13 @@ class Engine {
     void AddSideBoundary(Position position, Size size);
     void AddSpawnPoint(Position position, Size size);
     void AddDeathZone(Position position, Size size);
-    void SetCallback(std::function<void(std::vector<Entity *> *)> callback);
+    void RespawnPlayer();
+    void HandleSideBoundaries();
+    void SetCallback(std::function<void(std::vector<Entity *> &)> callback);
+
+    void BindPauseKey(SDL_Scancode key);
+    void BindSpeedDownKey(SDL_Scancode key);
+    void BindSpeedUpKey(SDL_Scancode key);
+    void BindDisplayScalingKey(SDL_Scancode key);
+    void BindHiddenZoneKey(SDL_Scancode key);
 };

@@ -2,13 +2,16 @@
 
 #include "Component.hpp"
 #include "Entity.hpp"
+#include "EventHandler.hpp"
 #include <unordered_set>
 
-class Collision : public Component {
+class Collision : public Component, public EventHandler {
   private:
     Entity *entity;
     float restitution;
     std::unordered_set<Entity *> colliders;
+
+    void HandlePairwiseCollision(Entity *collider);
 
   public:
     Collision(Entity *entity);
@@ -20,7 +23,6 @@ class Collision : public Component {
     void AddCollider(Entity *entity);
     void RemoveCollider(Entity *entity);
 
-    void HandleCollisions();
-
     void Update() override;
+    void OnEvent(Event event) override;
 };

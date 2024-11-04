@@ -1,5 +1,6 @@
 #include "Engine.hpp"
 #include "Collision.hpp"
+#include "EngineHandler.hpp"
 #include "Entity.hpp"
 #include "EventManager.hpp"
 #include "Handler.hpp"
@@ -22,26 +23,15 @@
 #include <algorithm>
 #include <climits>
 #include <csignal>
+#include <cstring>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
 #include <zmq.hpp>
 
-#ifdef PROFILE
-#include "tracy/Tracy.hpp"
-#define TracySetThreadName(name) tracy::SetThreadName(name)
-#else
-// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
-#define ZoneScoped
-// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
-#define ZoneScopedNC(name, color)
-// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
-#define FrameMark
-// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
-#define TracySetThreadName(name)
-// NOLINTNEXTLINE(clang-tidy, readability-identifier-naming)
-#define FrameImage(image, width, height, offset, flip)
-#endif
+#include "Profile.hpp"
+PROFILED;
 
 Engine::Engine() {
     std::signal(SIGINT, HandleSIGINT);
@@ -49,11 +39,12 @@ Engine::Engine() {
     app->renderer = nullptr;
     app->quit.store(false);
     app->sigint.store(false);
-    app->key_map = new KeyMap();
     app->window = Window({1920, 1080, true});
 
     this->title = "";
     this->engine_timeline = std::make_shared<Timeline>();
+    this->input = std::make_unique<Input>();
+    this->engine_handler = std::make_unique<EngineHandler>();
     this->encoding = Encoding::Struct;
     this->players_connected.store(0);
     this->background_color = Color{0, 0, 0, 255};
@@ -66,15 +57,13 @@ Engine::Engine() {
     this->camera->AddComponent<Physics>();
     this->camera->GetComponent<Physics>()->SetEngineTimeline(this->engine_timeline);
 
-    this->death_zone_collision = false;
     this->show_zone_borders = false;
     this->side_boundary_color = Color{0, 0, 255, 128};
     this->spawn_point_color = Color{0, 255, 0, 128};
     this->death_zone_color = Color{255, 0, 0, 128};
 
-    this->callback = [](std::vector<Entity *> *) {};
+    this->callback = [](std::vector<Entity *> &) {};
 
-    this->stop_input_thread.store(false);
     this->stop_listener_thread.store(false);
     this->stop_receive_broadcast_thread.store(false);
     this->stop_client_thread.store(false);
@@ -552,26 +541,20 @@ void Engine::Start() {
 void Engine::StartSingleClient() {
     ZoneScoped;
 
-    this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
-
     this->engine_timeline->SetFrameTime(FrameTime{0, this->engine_timeline->GetTime(), 0});
 
     // Engine loop
     while (!app->quit.load() && !app->sigint.load()) {
         ZoneScopedNC("EngineLoop", 0xff4500);
 
+        EventManager::GetInstance().ProcessEvents();
         app->quit.store(this->HandleQuitEvent());
+        this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
         this->TestCollision();
-        this->HandleCollisions();
         this->Update();
         this->RenderScene();
-    }
-
-    this->stop_input_thread.store(true);
-    if (this->input_thread.joinable()) {
-        this->input_thread.join();
     }
 
     this->Shutdown();
@@ -586,11 +569,11 @@ void Engine::StartCSServer() {
     while (!app->sigint.load()) {
         ZoneScopedNC("EngineLoop", 0xff4500);
 
+        EventManager::GetInstance().ProcessEvents();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
         this->CSServerBroadcastUpdates();
         this->TestCollision();
-        this->HandleCollisions();
         this->Update();
     }
 
@@ -639,8 +622,8 @@ Entity *Engine::CreateNewPlayer(int player_id, std::string player_address) {
             controllable->GetComponent<Transform>()->GetSize());
         player->GetComponent<Render>()->SetTextureTemplate(
             controllable->GetComponent<Render>()->GetTextureTemplate());
-        player->GetComponent<Handler>()->SetCallback(
-            controllable->GetComponent<Handler>()->GetCallback());
+        player->GetComponent<Handler>()->SetUpdateCallback(
+            controllable->GetComponent<Handler>()->GetUpdateCallback());
         player->GetComponent<Network>()->SetOwner(
             controllable->GetComponent<Network>()->GetOwner());
 
@@ -823,13 +806,10 @@ void Engine::DecodeMessage(const zmq::message_t &message, EntityUpdate &entity_u
 void Engine::StartCSClient() {
     ZoneScoped;
 
-    this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
     this->receive_broadcast_thread =
         std::thread([this]() { this->CSClientReceiveBroadcastThread(); });
     this->CreateNewPlayer(this->network_info.id);
     this->engine_timeline->SetFrameTime(FrameTime{0, this->engine_timeline->GetTime(), 0});
-    // Input *input = new Input();
-    // EventManager::GetInstance().Register({EventType::Input}, input);
 
     // Engine loop
     while (!app->quit.load() && !app->sigint.load()) {
@@ -837,24 +817,17 @@ void Engine::StartCSClient() {
 
         EventManager::GetInstance().ProcessEvents();
         app->quit.store(this->HandleQuitEvent());
-
-        // input->CheckKeyboardState();
+        this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
         this->CSClientSendUpdate();
         this->TestCollision();
-        this->HandleCollisions();
         this->Update();
         this->RenderScene();
     }
     this->SendInactiveUpdate();
 
     this->zmq_context.shutdown();
-
-    this->stop_input_thread.store(true);
-    if (this->input_thread.joinable()) {
-        this->input_thread.join();
-    }
 
     this->stop_receive_broadcast_thread.store(true);
     if (this->receive_broadcast_thread.joinable()) {
@@ -1001,8 +974,6 @@ void Engine::P2PReceiveBroadcastFromHostThread() {
 void Engine::StartP2P() {
     ZoneScoped;
 
-    this->input_thread = std::thread([this]() { this->ReadInputsThread(); });
-
     this->CreateNewPlayer(this->network_info.id);
 
     if (this->network_info.role == NetworkRole::Peer) {
@@ -1016,12 +987,13 @@ void Engine::StartP2P() {
     while (!app->quit.load() && !app->sigint.load()) {
         ZoneScopedNC("EngineLoop", 0xff4500);
 
+        EventManager::GetInstance().ProcessEvents();
         app->quit.store(this->HandleQuitEvent());
+        this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
         this->P2PBroadcastUpdates();
         this->TestCollision();
-        this->HandleCollisions();
         this->Update();
         this->RenderScene();
     }
@@ -1034,11 +1006,6 @@ void Engine::StartP2P() {
         if (this->listener_thread.joinable()) {
             this->listener_thread.join();
         }
-    }
-
-    this->stop_input_thread.store(true);
-    if (this->input_thread.joinable()) {
-        this->input_thread.join();
     }
 
     if (this->network_info.role == NetworkRole::Peer) {
@@ -1142,24 +1109,7 @@ void Engine::ToggleShowZoneBorders() {
         if (entity->GetCategory() == EntityCategory::SideBoundary ||
             entity->GetCategory() == EntityCategory::SpawnPoint ||
             entity->GetCategory() == EntityCategory::DeathZone) {
-            Color border_color;
-            if (entity->GetCategory() == EntityCategory::SideBoundary) {
-                border_color = this->side_boundary_color;
-            }
-            if (entity->GetCategory() == EntityCategory::SpawnPoint) {
-                border_color = this->spawn_point_color;
-            }
-            if (entity->GetCategory() == EntityCategory::DeathZone) {
-                border_color = this->death_zone_color;
-            }
-
-            if (this->show_zone_borders) {
-                entity->AddComponent<Render>();
-                entity->GetComponent<Render>()->SetBorder(Border{true, border_color});
-                entity->GetComponent<Render>()->SetCamera(this->camera);
-            } else {
-                entity->RemoveComponent<Render>();
-            }
+            entity->GetComponent<Render>()->SetVisible(this->show_zone_borders);
         }
     }
 }
@@ -1220,13 +1170,12 @@ void Engine::AddSideBoundary(Position position, Size size) {
                                        EntityCategory::SideBoundary);
     side_boundary->AddComponent<Transform>();
     side_boundary->AddComponent<Physics>();
+    side_boundary->AddComponent<Render>();
+
     side_boundary->GetComponent<Transform>()->SetPosition(position);
     side_boundary->GetComponent<Transform>()->SetSize(size);
-
-    if (this->show_zone_borders) {
-        side_boundary->AddComponent<Render>();
-        side_boundary->GetComponent<Render>()->SetBorder(Border{true, this->side_boundary_color});
-    }
+    side_boundary->GetComponent<Render>()->SetBorder(Border{true, this->side_boundary_color});
+    side_boundary->GetComponent<Render>()->SetVisible(this->show_zone_borders);
 
     this->AddEntity(side_boundary);
 }
@@ -1264,13 +1213,12 @@ void Engine::AddSpawnPoint(Position position, Size size) {
     Entity *spawn_point =
         new Entity("spawn_point_" + std::to_string(spawn_point_index), EntityCategory::SpawnPoint);
     spawn_point->AddComponent<Transform>();
+    spawn_point->AddComponent<Render>();
+
     spawn_point->GetComponent<Transform>()->SetPosition(position);
     spawn_point->GetComponent<Transform>()->SetSize(size);
-
-    if (this->show_zone_borders) {
-        spawn_point->AddComponent<Render>();
-        spawn_point->GetComponent<Render>()->SetBorder(Border{true, this->spawn_point_color});
-    }
+    spawn_point->GetComponent<Render>()->SetBorder(Border{true, this->spawn_point_color});
+    spawn_point->GetComponent<Render>()->SetVisible(this->show_zone_borders);
 
     this->AddEntity(spawn_point);
 }
@@ -1281,26 +1229,33 @@ void Engine::AddDeathZone(Position position, Size size) {
     Entity *death_zone =
         new Entity("death_zone_" + std::to_string(death_zone_index), EntityCategory::DeathZone);
     death_zone->AddComponent<Transform>();
+    death_zone->AddComponent<Render>();
+
     death_zone->GetComponent<Transform>()->SetPosition(position);
     death_zone->GetComponent<Transform>()->SetSize(size);
-
-    if (this->show_zone_borders) {
-        death_zone->AddComponent<Render>();
-        death_zone->GetComponent<Render>()->SetBorder(Border{true, this->death_zone_color});
-    }
+    death_zone->GetComponent<Render>()->SetBorder(Border{true, this->death_zone_color});
+    death_zone->GetComponent<Render>()->SetVisible(this->show_zone_borders);
 
     this->AddEntity(death_zone);
 }
 
-void Engine::SetCallback(std::function<void(std::vector<Entity *> *)> callback) {
+void Engine::SetCallback(std::function<void(std::vector<Entity *> &)> callback) {
     this->callback = callback;
 }
+
+void Engine::BindPauseKey(SDL_Scancode key) { this->engine_handler->BindPauseKey(key); }
+void Engine::BindSpeedDownKey(SDL_Scancode key) { this->engine_handler->BindSpeedDownKey(key); }
+void Engine::BindSpeedUpKey(SDL_Scancode key) { this->engine_handler->BindSpeedUpKey(key); }
+void Engine::BindDisplayScalingKey(SDL_Scancode key) {
+    this->engine_handler->BindDisplayScalingKey(key);
+}
+void Engine::BindHiddenZoneKey(SDL_Scancode key) { this->engine_handler->BindHiddenZoneKey(key); }
 
 void Engine::Update() {
     ZoneScoped;
 
     std::vector<Entity *> entities = this->GetEntities();
-    this->callback(&entities);
+    this->callback(entities);
 }
 
 void Engine::GetTimeDelta() {
@@ -1314,62 +1269,6 @@ void Engine::GetTimeDelta() {
                        static_cast<int64_t>(16'000'000 / this->engine_timeline->GetTic()));
 
     this->engine_timeline->SetFrameTime(FrameTime{current, last, delta});
-}
-
-void Engine::ReadInputsThread() {
-    TracySetThreadName("ReadInputsThread");
-
-    Input *input = new Input();
-
-    EventManager::GetInstance().Register({EventType::Input}, input);
-
-    while (!this->stop_input_thread.load()) {
-        input->CheckKeyboardState();
-
-        // const Uint8 *keyboard_state = SDL_GetKeyboardState(NULL);
-        // auto now = std::chrono::high_resolution_clock::now();
-
-        // auto debounce_key = [keyboard_state, now](int scancode, Key &key, bool delay) {
-        //     if (!delay) {
-        //         key.pressed.store(keyboard_state[scancode] != 0);
-        //         return;
-        //     }
-
-        //     if (keyboard_state[scancode] != 0) {
-        //         auto press_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        //             now - key.last_pressed_time);
-        //         if (press_duration.count() > 50 && !key.pressed.load()) {
-        //             key.pressed.store(true);
-        //             key.OnPress();
-        //         } else {
-        //             key.pressed.store(false);
-        //             key.last_pressed_time = now;
-        //         }
-        //     } else {
-        //         key.pressed.store(false);
-        //     }
-        // };
-
-        // debounce_key(SDL_SCANCODE_X, app->key_map->key_X, true);
-        // debounce_key(SDL_SCANCODE_P, app->key_map->key_P, true);
-        // debounce_key(SDL_SCANCODE_COMMA, app->key_map->key_comma, true);
-        // debounce_key(SDL_SCANCODE_PERIOD, app->key_map->key_period, true);
-        // debounce_key(SDL_SCANCODE_Z, app->key_map->key_Z, true);
-
-        // debounce_key(SDL_SCANCODE_W, app->key_map->key_W, false);
-        // debounce_key(SDL_SCANCODE_A, app->key_map->key_A, false);
-        // debounce_key(SDL_SCANCODE_S, app->key_map->key_S, false);
-        // debounce_key(SDL_SCANCODE_D, app->key_map->key_D, false);
-
-        // debounce_key(SDL_SCANCODE_UP, app->key_map->key_up, false);
-        // debounce_key(SDL_SCANCODE_LEFT, app->key_map->key_left, false);
-        // debounce_key(SDL_SCANCODE_DOWN, app->key_map->key_down, false);
-        // debounce_key(SDL_SCANCODE_RIGHT, app->key_map->key_right, false);
-
-        // debounce_key(SDL_SCANCODE_SPACE, app->key_map->key_space, false);
-    }
-
-    delete input;
 }
 
 void Engine::ApplyEntityPhysicsAndUpdates() {
@@ -1407,6 +1306,16 @@ void Engine::TestCollision() {
                                  entities[j]->GetComponent<Transform>()->GetSize().width,
                                  entities[j]->GetComponent<Transform>()->GetSize().height};
 
+            bool entity_1_zone = IsZoneCategory(entities[i]->GetCategory());
+            bool entity_2_zone = IsZoneCategory(entities[j]->GetCategory());
+            bool entity_1_controllable = entities[i]->GetCategory() == EntityCategory::Controllable;
+            bool entity_2_controllable = entities[j]->GetCategory() == EntityCategory::Controllable;
+
+            if ((entity_1_zone && entity_2_zone) || (entity_1_zone && !entity_2_controllable) ||
+                (entity_2_zone && !entity_1_controllable)) {
+                continue;
+            }
+
             if (SDL_HasIntersection(&entity_1, &entity_2)) {
                 if (entities[i]->GetComponent<Collision>() != nullptr) {
                     entities[i]->GetComponent<Collision>()->AddCollider(entities[j]);
@@ -1414,6 +1323,10 @@ void Engine::TestCollision() {
                 if (entities[j]->GetComponent<Collision>() != nullptr) {
                     entities[j]->GetComponent<Collision>()->AddCollider(entities[i]);
                 }
+
+                EventManager::GetInstance().RaiseCollisionEvent(
+                    CollisionEvent{entities[i], entities[j]});
+
             } else {
                 if (entities[i]->GetComponent<Collision>() != nullptr) {
                     entities[i]->GetComponent<Collision>()->RemoveCollider(entities[j]);
@@ -1422,47 +1335,6 @@ void Engine::TestCollision() {
                     entities[j]->GetComponent<Collision>()->RemoveCollider(entities[i]);
                 }
             }
-        }
-    }
-}
-
-void Engine::HandleCollisions() {
-    ZoneScoped;
-
-    this->HandleDeathZones();
-    this->HandleSideBoundaries();
-
-    // TODO: Look into multithreading this later
-    for (Entity *entity : GetEntitiesByRole(this->network_info, this->GetEntities())) {
-        if (entity->GetComponent<Collision>() != nullptr) {
-            if (entity->GetCategory() == EntityCategory::Controllable &&
-                !this->death_zone_collision) {
-                entity->GetComponent<Collision>()->Update();
-            }
-        }
-    }
-}
-
-void Engine::HandleDeathZones() {
-    ZoneScoped;
-
-    Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
-    if (player == nullptr) {
-        return;
-    }
-
-    this->death_zone_collision = false;
-    for (Entity *collider : player->GetComponent<Collision>()->GetColliders()) {
-        if (collider->GetCategory() == EntityCategory::DeathZone) {
-            this->death_zone_collision = true;
-
-            Position respawn_point = this->GetSpawnPoint(this->network_info.id - 1)
-                                         ->GetComponent<Transform>()
-                                         ->GetPosition();
-
-            this->ResetSideBoundaries();
-            player->GetComponent<Transform>()->SetPosition(respawn_point);
-            this->camera->GetComponent<Transform>()->SetPosition(Position{0, 0});
         }
     }
 }
@@ -1517,6 +1389,22 @@ void Engine::HandleSideBoundaries() {
             entity->GetComponent<Physics>()->Update();
         }
     }
+}
+
+void Engine::RespawnPlayer() {
+    ZoneScoped;
+
+    Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
+    if (player == nullptr) {
+        return;
+    }
+
+    this->ResetSideBoundaries();
+    this->camera->GetComponent<Transform>()->SetPosition(Position{0, 0});
+
+    Position respawn_point =
+        this->GetSpawnPoint(this->network_info.id - 1)->GetComponent<Transform>()->GetPosition();
+    player->GetComponent<Transform>()->SetPosition(respawn_point);
 }
 
 void Engine::ResetSideBoundaries() {
@@ -1648,6 +1536,5 @@ void Engine::Shutdown() {
     SDL_DestroyRenderer(app->renderer);
     SDL_DestroyWindow(app->sdl_window);
     SDL_Quit();
-    delete app->key_map;
     delete app;
 }

@@ -1,5 +1,6 @@
 #include "Physics.hpp"
 #include "Entity.hpp"
+#include "EventManager.hpp"
 #include "Timeline.hpp"
 #include "Transform.hpp"
 #include "Types.hpp"
@@ -44,7 +45,13 @@ void Physics::Move() {
     float new_pos_y = curr_position.y + (this->velocity.y * time) +
                       (HALF * this->acceleration.y * float(pow(time, 2)));
 
-    this->entity->GetComponent<Transform>()->SetPosition(Position{new_pos_x, new_pos_y});
+    MoveEvent move_event;
+    std::strncpy(move_event.entity_name, this->entity->GetName().c_str(),
+                 sizeof(move_event.entity_name));
+    move_event.position = Position{new_pos_x, new_pos_y};
+    if (new_pos_x != curr_position.x || new_pos_y != curr_position.y) {
+        EventManager::GetInstance().RaiseMoveEvent(move_event);
+    }
 
     this->velocity.x += (this->acceleration.x * time);
     this->velocity.y += (this->acceleration.y * time);

@@ -8,6 +8,5 @@ typedef struct {
     SDL_Renderer *renderer;
     std::atomic<bool> quit;
     std::atomic<bool> sigint;
-    KeyMap *key_map;
     Window window;
 } App;

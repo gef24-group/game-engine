@@ -2,10 +2,11 @@
 
 #include "Component.hpp"
 #include "Entity.hpp"
+#include "EventHandler.hpp"
 #include "Types.hpp"
 #include <mutex>
 
-class Transform : public Component {
+class Transform : public Component, public EventHandler {
   private:
     Entity *entity;
     std::mutex position_mutex;
@@ -22,4 +23,5 @@ class Transform : public Component {
     void SetSize(Size size);
 
     void Update() override;
+    void OnEvent(Event event) override;
 };

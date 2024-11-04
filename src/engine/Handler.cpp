@@ -1,18 +1,26 @@
 #include "Handler.hpp"
 #include "Entity.hpp"
+#include "EventManager.hpp"
 
 Handler::Handler(Entity *entity) {
+    EventManager::GetInstance().Register({EventType::Input}, this);
+
     this->entity = entity;
-    this->callback = [](Entity *) {};
+    this->update_callback = [](Entity &) {};
+    this->event_callback = [](Entity &, Event &) {};
 }
 
-std::function<void(Entity *)> Handler::GetCallback() { return this->callback; }
+std::function<void(Entity &)> Handler::GetUpdateCallback() { return this->update_callback; }
 
-void Handler::SetCallback(std::function<void(Entity *)> callback) { this->callback = callback; }
+void Handler::SetUpdateCallback(std::function<void(Entity &)> update_callback) {
+    this->update_callback = update_callback;
+}
 
-void Handler::Update() {
+void Handler::SetEventCallback(std::function<void(Entity &, Event &)> event_callback) {
     // the callback contains the reaction to keyboard inputs
-    this->callback(this->entity);
+    this->event_callback = event_callback;
 }
 
-void Handler::OnEvent(Event event) {}
+void Handler::Update() { this->update_callback(*this->entity); }
+
+void Handler::OnEvent(Event event) { this->event_callback(*this->entity, event); }

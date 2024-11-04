@@ -1,10 +1,10 @@
 #pragma once
 
-#include <atomic>
-#include <chrono>
-#include <functional>
+#include "SDL_scancode.h"
 #include <string>
 #include <variant>
+
+class Entity;
 
 enum class Shape { Circle, Square, Rectangle, Triangle };
 enum class EntityCategory {
@@ -55,29 +55,6 @@ struct Acceleration {
     float y;
 };
 
-struct Key {
-    std::atomic<bool> pressed = false;
-    std::chrono::time_point<std::chrono::high_resolution_clock> last_pressed_time;
-    std::function<void()> OnPress = []() {};
-};
-
-struct KeyMap {
-    Key key_W;
-    Key key_A;
-    Key key_S;
-    Key key_D;
-    Key key_X;
-    Key key_P;
-    Key key_Z;
-    Key key_up;
-    Key key_left;
-    Key key_down;
-    Key key_right;
-    Key key_space;
-    Key key_comma;
-    Key key_period;
-};
-
 struct Window {
     int width = 1920;
     int height = 1080;
@@ -110,20 +87,45 @@ struct EntityUpdate {
     bool active = true;
 };
 
-enum class EventType { Input, Move, Collision, Spawn, Death };
+enum class EventType { Input, Move, Collision, Spawn, Death, Join, Leave };
 
 enum class InputEventType { Single, Chord, Sequence };
+
 struct InputEvent {
-    int keys[10];
+    SDL_Scancode keys[10];
     InputEventType type;
     bool pressed;
 };
 
-struct CollisionEvent {};
-struct DeathEvent {};
-struct SpawnEvent {};
-struct MoveEvent {};
+struct CollisionEvent {
+    Entity *collider_1;
+    Entity *collider_2;
+};
 
-typedef std::variant<InputEvent, CollisionEvent, DeathEvent, SpawnEvent, MoveEvent> EventData;
+struct DeathEvent {
+    Entity *entity;
+};
+
+struct SpawnEvent {
+    Entity *entity;
+};
+
+struct MoveEvent {
+    char entity_name[100] = "";
+    Position position;
+};
+
+struct JoinEvent {
+    char entity_name[100] = "";
+    char player_address[100] = "";
+};
+
+struct LeaveEvent {
+    char entity_name[100] = "";
+};
+
+typedef std::variant<InputEvent, CollisionEvent, DeathEvent, SpawnEvent, MoveEvent, JoinEvent,
+                     LeaveEvent>
+    EventData;
 
 enum class Priority { High, Medium, Low };

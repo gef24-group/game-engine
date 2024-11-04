@@ -93,10 +93,8 @@ Overlap GetOverlap(SDL_Rect rect_1, SDL_Rect rect_2) {
         overlap = Overlap::Left;
     } else if (min_overlap == right_overlap) {
         overlap = Overlap::Right;
-
     } else if (min_overlap == top_overlap) {
         overlap = Overlap::Top;
-
     } else if (min_overlap == bottom_overlap) {
         overlap = Overlap::Bottom;
     }
@@ -389,6 +387,13 @@ std::vector<std::string> Split(std::string str, char delimiter) {
     }
 
     return result;
+}
+
+bool IsZoneCategory(EntityCategory category) {
+    std::vector<EntityCategory> zones = {EntityCategory::DeathZone, EntityCategory::SideBoundary,
+                                         EntityCategory::SpawnPoint};
+
+    return std::find(zones.begin(), zones.end(), category) != zones.end();
 }
 
 std::vector<Entity *> GetEntitiesByCategory(std::vector<Entity *> entities,

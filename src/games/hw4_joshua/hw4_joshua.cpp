@@ -5,6 +5,7 @@
 #include "Network.hpp"
 #include "Physics.hpp"
 #include "Render.hpp"
+#include "SDL_scancode.h"
 #include "Transform.hpp"
 #include "Types.hpp"
 #include "Utils.hpp"
@@ -16,33 +17,77 @@ NetworkInfo network_info;
 std::vector<const char *> enemy_textures =
     std::vector({"assets/ladybug.png", "assets/mouse.png", "assets/worm.png", "assets/bee.png"});
 
-void Update(std::vector<Entity *> *entities) {}
+struct KeyState {
+    bool up;
+    bool down;
+    bool left;
+    bool right;
+} key_state;
 
-void UpdateAlien(Entity *alien) {
-    if (app->key_map->key_up.pressed.load() || app->key_map->key_W.pressed.load()) {
-        alien->GetComponent<Physics>()->SetVelocity(
-            {alien->GetComponent<Physics>()->GetVelocity().x, -60});
+void Update(std::vector<Entity *> &entities) {}
+
+void HandleAlienEvent(Entity &alien, Event &event) {
+    if (event.type != EventType::Input) {
+        return;
+    }
+    InputEvent *input_event = std::get_if<InputEvent>(&(event.data));
+    if (input_event == nullptr) {
+        return;
+    }
+    bool pressed = input_event->pressed;
+
+    SDL_Scancode key = input_event->keys[0];
+    switch (key) {
+    case SDL_SCANCODE_W:
+    case SDL_SCANCODE_UP:
+        key_state.up = pressed;
+        break;
+
+    case SDL_SCANCODE_S:
+    case SDL_SCANCODE_DOWN:
+        key_state.down = pressed;
+        break;
+
+    case SDL_SCANCODE_A:
+    case SDL_SCANCODE_LEFT:
+        key_state.left = pressed;
+        break;
+
+    case SDL_SCANCODE_D:
+    case SDL_SCANCODE_RIGHT:
+        key_state.right = pressed;
+        break;
+
+    default:
+        break;
+    }
+}
+
+void UpdateAlien(Entity &alien) {
+    if (key_state.up) {
+        alien.GetComponent<Physics>()->SetVelocity(
+            {alien.GetComponent<Physics>()->GetVelocity().x, -60});
+    }
+    if (key_state.down) {
+        alien.GetComponent<Physics>()->SetVelocity(
+            {alien.GetComponent<Physics>()->GetVelocity().x, 60});
+    }
+    if (key_state.left) {
+        alien.GetComponent<Physics>()->SetVelocity(
+            {-60, alien.GetComponent<Physics>()->GetVelocity().y});
+    }
+    if (key_state.right) {
+        alien.GetComponent<Physics>()->SetVelocity(
+            {60, alien.GetComponent<Physics>()->GetVelocity().y});
+    }
+    if (!key_state.left && !key_state.right) {
+        alien.GetComponent<Physics>()->SetVelocity(
+            {0, alien.GetComponent<Physics>()->GetVelocity().y});
     }
 
-    if (app->key_map->key_down.pressed.load() || app->key_map->key_S.pressed.load()) {
-        alien->GetComponent<Physics>()->SetVelocity(
-            {alien->GetComponent<Physics>()->GetVelocity().x, 60});
-    }
-
-    if (app->key_map->key_left.pressed.load() || app->key_map->key_A.pressed.load()) {
-        alien->GetComponent<Physics>()->SetVelocity(
-            {-60, alien->GetComponent<Physics>()->GetVelocity().y});
-    } else if (app->key_map->key_right.pressed.load() || app->key_map->key_D.pressed.load()) {
-        alien->GetComponent<Physics>()->SetVelocity(
-            {60, alien->GetComponent<Physics>()->GetVelocity().y});
-    } else {
-        alien->GetComponent<Physics>()->SetVelocity(
-            {0, alien->GetComponent<Physics>()->GetVelocity().y});
-    }
-
-    if (alien->GetName() == "alien_" + std::to_string(network_info.id) &&
-        alien->GetComponent<Collision>()->GetColliders().size() > 0) {
-        for (Entity *collider : alien->GetComponent<Collision>()->GetColliders()) {
+    if (alien.GetName() == "alien_" + std::to_string(network_info.id) &&
+        alien.GetComponent<Collision>()->GetColliders().size() > 0) {
+        for (Entity *collider : alien.GetComponent<Collision>()->GetColliders()) {
             if (collider->GetName().find("enemy") == 0) {
                 Log(LogLevel::Info, "");
                 Log(LogLevel::Info, "You lost :(");
@@ -61,40 +106,40 @@ void UpdateAlien(Entity *alien) {
     }
 }
 
-void UpdatePlatform(Entity *platform) {
-    float platform_right_edge = platform->GetComponent<Transform>()->GetPosition().x +
-                                float(platform->GetComponent<Transform>()->GetSize().width);
-    float platform_left_edge = platform->GetComponent<Transform>()->GetPosition().x;
+void UpdatePlatform(Entity &platform) {
+    float platform_right_edge = platform.GetComponent<Transform>()->GetPosition().x +
+                                float(platform.GetComponent<Transform>()->GetSize().width);
+    float platform_left_edge = platform.GetComponent<Transform>()->GetPosition().x;
 
-    if (platform_right_edge >= 2600 && platform->GetComponent<Physics>()->GetVelocity().x > 0) {
-        platform->GetComponent<Physics>()->SetVelocity(
-            {-std::abs(platform->GetComponent<Physics>()->GetVelocity().x),
-             platform->GetComponent<Physics>()->GetVelocity().y});
+    if (platform_right_edge >= 2600 && platform.GetComponent<Physics>()->GetVelocity().x > 0) {
+        platform.GetComponent<Physics>()->SetVelocity(
+            {-std::abs(platform.GetComponent<Physics>()->GetVelocity().x),
+             platform.GetComponent<Physics>()->GetVelocity().y});
     }
-    if (platform_left_edge <= 880 && platform->GetComponent<Physics>()->GetVelocity().x < 0) {
-        platform->GetComponent<Physics>()->SetVelocity(
-            {std::abs(platform->GetComponent<Physics>()->GetVelocity().x),
-             platform->GetComponent<Physics>()->GetVelocity().y});
+    if (platform_left_edge <= 880 && platform.GetComponent<Physics>()->GetVelocity().x < 0) {
+        platform.GetComponent<Physics>()->SetVelocity(
+            {std::abs(platform.GetComponent<Physics>()->GetVelocity().x),
+             platform.GetComponent<Physics>()->GetVelocity().y});
     }
 }
 
-void UpdateEnemy(Entity *enemy) {
-    float enemy_bottom_edge = enemy->GetComponent<Transform>()->GetPosition().y +
-                              float(enemy->GetComponent<Transform>()->GetSize().height);
-    float enemy_top_edge = enemy->GetComponent<Transform>()->GetPosition().y;
+void UpdateEnemy(Entity &enemy) {
+    float enemy_bottom_edge = enemy.GetComponent<Transform>()->GetPosition().y +
+                              float(enemy.GetComponent<Transform>()->GetSize().height);
+    float enemy_top_edge = enemy.GetComponent<Transform>()->GetPosition().y;
 
     if (enemy_bottom_edge >= float(window_size.height - TILE_SIZE) &&
-        enemy->GetComponent<Physics>()->GetVelocity().y > 0) {
-        enemy->GetComponent<Physics>()->SetVelocity({
-            enemy->GetComponent<Physics>()->GetVelocity().x,
-            -std::abs(enemy->GetComponent<Physics>()->GetVelocity().y),
+        enemy.GetComponent<Physics>()->GetVelocity().y > 0) {
+        enemy.GetComponent<Physics>()->SetVelocity({
+            enemy.GetComponent<Physics>()->GetVelocity().x,
+            -std::abs(enemy.GetComponent<Physics>()->GetVelocity().y),
         });
     }
     if (enemy_top_edge <= float(window_size.height - (TILE_SIZE * 5)) &&
-        enemy->GetComponent<Physics>()->GetVelocity().y < 0) {
-        enemy->GetComponent<Physics>()->SetVelocity({
-            enemy->GetComponent<Physics>()->GetVelocity().x,
-            std::abs(enemy->GetComponent<Physics>()->GetVelocity().y),
+        enemy.GetComponent<Physics>()->GetVelocity().y < 0) {
+        enemy.GetComponent<Physics>()->SetVelocity({
+            enemy.GetComponent<Physics>()->GetVelocity().x,
+            std::abs(enemy.GetComponent<Physics>()->GetVelocity().y),
         });
     }
 }
@@ -114,7 +159,8 @@ Entity *CreateAlien() {
     alien->GetComponent<Physics>()->SetAcceleration(Acceleration{0, 15});
     alien->GetComponent<Physics>()->SetVelocity(Velocity{0, 0});
     alien->GetComponent<Collision>()->SetRestitution(0.5);
-    alien->GetComponent<Handler>()->SetCallback(UpdateAlien);
+    alien->GetComponent<Handler>()->SetEventCallback(HandleAlienEvent);
+    alien->GetComponent<Handler>()->SetUpdateCallback(UpdateAlien);
     alien->GetComponent<Network>()->SetOwner(NetworkRole::Client);
     return alien;
 }
@@ -132,7 +178,7 @@ Entity *CreatePlatform() {
     platform->GetComponent<Transform>()->SetPosition(Position{20, TILE_SIZE * 5});
     platform->GetComponent<Transform>()->SetSize(Size{TILE_SIZE * 3, TILE_SIZE / 2});
     platform->GetComponent<Physics>()->SetVelocity(Velocity{40, 0});
-    platform->GetComponent<Handler>()->SetCallback(UpdatePlatform);
+    platform->GetComponent<Handler>()->SetUpdateCallback(UpdatePlatform);
     platform->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     return platform;
 }
@@ -262,7 +308,7 @@ std::vector<Entity *> CreateEnemies() {
         enemy->GetComponent<Transform>()->SetPosition(Position{pos_x, pos_y + pos_y_offset});
         enemy->GetComponent<Transform>()->SetSize(Size{TILE_SIZE, TILE_SIZE});
         enemy->GetComponent<Physics>()->SetVelocity(Velocity{0, vel_y});
-        enemy->GetComponent<Handler>()->SetCallback(UpdateEnemy);
+        enemy->GetComponent<Handler>()->SetUpdateCallback(UpdateEnemy);
         enemy->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
         enemy->GetComponent<Render>()->SetTexture(
             enemy_textures[enemy_index % enemy_textures.size()]);
@@ -347,25 +393,12 @@ void DestroyEntities(std::vector<Entity *> entities) {
     }
 }
 
-void SetupInputs() {
-    // toggle constant and proportional scaling
-    app->key_map->key_X.OnPress = []() {
-        app->window.proportional_scaling = !app->window.proportional_scaling;
-    };
-    // toggle pause or unpause
-    app->key_map->key_P.OnPress = []() { Engine::GetInstance().EngineTimelineTogglePause(); };
-    // slow down the timeline
-    app->key_map->key_comma.OnPress = []() {
-        Engine::GetInstance().EngineTimelineChangeTic(
-            std::min(Engine::GetInstance().EngineTimelineGetTic() * 2.0, 2.0));
-    };
-    // speed up the timeline
-    app->key_map->key_period.OnPress = []() {
-        Engine::GetInstance().EngineTimelineChangeTic(
-            std::max(Engine::GetInstance().EngineTimelineGetTic() / 2.0, 0.5));
-    };
-    // toggle the visibility of hidden zones
-    app->key_map->key_Z.OnPress = []() { Engine::GetInstance().ToggleShowZoneBorders(); };
+void BindEngineInputs() {
+    Engine::GetInstance().BindPauseKey(SDL_SCANCODE_P);
+    Engine::GetInstance().BindSpeedDownKey(SDL_SCANCODE_COMMA);
+    Engine::GetInstance().BindSpeedUpKey(SDL_SCANCODE_PERIOD);
+    Engine::GetInstance().BindDisplayScalingKey(SDL_SCANCODE_X);
+    Engine::GetInstance().BindHiddenZoneKey(SDL_SCANCODE_Z);
 }
 
 int main(int argc, char *args[]) {
@@ -386,7 +419,7 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    SetupInputs();
+    BindEngineInputs();
     network_info = Engine::GetInstance().GetNetworkInfo();
     window_size = GetWindowSize();
 

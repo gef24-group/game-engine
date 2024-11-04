@@ -24,6 +24,7 @@ void HandleSIGINT(int signum);
 Position GetScreenPosition(Position world_position, Position camera_position);
 int GetPlayerIdFromName(std::string player_name);
 std::vector<std::string> Split(std::string str, char delimiter);
+bool IsZoneCategory(EntityCategory category);
 std::vector<Entity *> GetEntitiesByCategory(std::vector<Entity *> entities,
                                             EntityCategory category);
 int GetRandomInt(int n);
