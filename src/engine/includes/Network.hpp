@@ -3,6 +3,7 @@
 #include "Component.hpp"
 #include "Entity.hpp"
 #include "Types.hpp"
+#include <atomic>
 
 class Network : public Component {
     Entity *entity;

@@ -6,6 +6,7 @@
 #include "Types.hpp"
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 
 Physics::Physics(Entity *entity) {
     this->entity = entity;

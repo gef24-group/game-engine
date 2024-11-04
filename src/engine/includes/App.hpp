@@ -2,6 +2,7 @@
 
 #include "SDL_render.h"
 #include "Types.hpp"
+#include <atomic>
 
 typedef struct {
     SDL_Window *sdl_window;

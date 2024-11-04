@@ -6,6 +6,7 @@
 #include "Input.hpp"
 #include "Timeline.hpp"
 #include "Types.hpp"
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <mutex>

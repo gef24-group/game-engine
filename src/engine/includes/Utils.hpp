@@ -5,6 +5,7 @@
 #include "SDL_render.h"
 #include "Types.hpp"
 #include <string>
+#include <vector>
 
 extern App *app;
 
