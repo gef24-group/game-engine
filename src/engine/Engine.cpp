@@ -107,7 +107,6 @@ bool Engine::InitSingleClient() {
     return display_success;
 }
 
-// Construct and raise move events for each entity update received
 void Engine::CSServerClientThread(int player_id) {
     std::string thread_name = "CSServerClientThread_" + std::to_string(player_id);
     TracySetThreadName(thread_name.c_str());
@@ -151,9 +150,6 @@ void Engine::CSServerClientThread(int player_id) {
     }
 };
 
-// Instead of making this function iterate over all networked entities, let this function expect a
-// reference to an entity as an argument. The handler of the move event in the 'Network' component
-// could then call this function which broadcasts the entity update to all the clients.
 void Engine::CSServerBroadcastUpdates(Entity *entity) {
     ZoneScoped;
 
@@ -650,7 +646,6 @@ Entity *Engine::CreateNewPlayer(int player_id, std::string player_address) {
     return nullptr;
 }
 
-// Reconstruct move event objects from the entity updates and raise a move event here.
 void Engine::CSClientReceiveBroadcastThread() {
     TracySetThreadName("CSClientReceiveBroadcastThread");
 
@@ -706,8 +701,6 @@ void Engine::CSClientReceiveBroadcastThread() {
     }
 }
 
-// Call this function in the handler of the move event in the Network component rather than
-// calling it in the engine loop. Call this fn only for move events of client-governed objects
 void Engine::CSClientSendUpdate() {
     ZoneScoped;
 

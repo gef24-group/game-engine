@@ -6,7 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": ["--mode", "cs", "--role", "server"],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${command:cmake.launchTargetDirectory}",
             "environment": [
@@ -16,7 +16,7 @@
                 }
             ],
             "externalConsole": false,
-            "MIMode": "gdb"
+            "MIMode": "lldb"
         }
     ]
 }
