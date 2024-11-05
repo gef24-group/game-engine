@@ -132,11 +132,14 @@ void Engine::CSServerClientThread(int player_id) {
 
             Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
             if (entity != nullptr) {
-                if (entity_update.active) {
-                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
-                } else {
+                if (!entity_update.active) {
                     entity->GetComponent<Network>()->SetActive(false);
                 }
+                MoveEvent move_event;
+                std::strncpy(move_event.entity_name, entity->GetName().c_str(),
+                             sizeof(move_event.entity_name));
+                move_event.position = entity_update.position;
+                EventManager::GetInstance().RaiseMoveEvent(move_event);
             }
 
         } catch (const zmq::error_t &e) {
@@ -147,34 +150,33 @@ void Engine::CSServerClientThread(int player_id) {
     }
 };
 
-void Engine::CSServerBroadcastUpdates() {
+void Engine::CSServerBroadcastUpdates(Entity *entity) {
     ZoneScoped;
 
-    for (Entity *entity : this->GetNetworkedEntities()) {
-        try {
-            // don't broadcast the default player entity, i.e the entity without an id in it
-            if (entity->GetCategory() == EntityCategory::Controllable &&
-                Split(entity->GetName(), '_').size() == 1) {
-                continue;
-            }
-
-            EntityUpdate entity_update;
-            std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
-                          entity->GetName().c_str());
-            entity_update.position = entity->GetComponent<Transform>()->GetPosition();
-            if (!entity->GetComponent<Network>()->GetActive()) {
-                entity_update.active = false;
-                Log(LogLevel::Info, "Client %s exiting", Split(entity_update.name, '_')[1].c_str());
-                this->RemoveEntity(entity);
-            }
-
-            zmq::message_t broadcast_update;
-            this->EncodeMessage(entity_update, broadcast_update);
-            this->server_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
-        } catch (const zmq::error_t &e) {
-            Log(LogLevel::Info, "Caught error while broadcasting server updates: %s", e.what());
-            this->server_broadcast_socket.close();
+    std::lock_guard<std::mutex> lock(this->broadcast_mutex);
+    try {
+        // don't broadcast the default player entity, i.e the entity without an id in it
+        if (entity->GetCategory() == EntityCategory::Controllable &&
+            Split(entity->GetName(), '_').size() == 1) {
+            return;
         }
+
+        EntityUpdate entity_update;
+        std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
+                      entity->GetName().c_str());
+        entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+        if (!entity->GetComponent<Network>()->GetActive()) {
+            entity_update.active = false;
+            Log(LogLevel::Info, "Client %s exiting", Split(entity_update.name, '_')[1].c_str());
+            this->RemoveEntity(entity);
+        }
+
+        zmq::message_t broadcast_update;
+        this->EncodeMessage(entity_update, broadcast_update);
+        this->server_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+    } catch (const zmq::error_t &e) {
+        Log(LogLevel::Info, "Caught error while broadcasting server updates: %s", e.what());
+        this->server_broadcast_socket.close();
     }
 }
 
@@ -572,7 +574,6 @@ void Engine::StartCSServer() {
         EventManager::GetInstance().ProcessEvents();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
-        this->CSServerBroadcastUpdates();
         this->TestCollision();
         this->Update();
     }
@@ -681,8 +682,13 @@ void Engine::CSClientReceiveBroadcastThread() {
 
                 if (entity->GetName() != player->GetName()) {
                     if (entity_update.active) {
-                        entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                        MoveEvent move_event;
+                        std::strncpy(move_event.entity_name, entity->GetName().c_str(),
+                                     sizeof(move_event.entity_name));
+                        move_event.position = entity_update.position;
+                        EventManager::GetInstance().RaiseMoveEvent(move_event);
                     } else {
+                        Log(LogLevel::Info, "Removing entity");
                         this->RemoveEntity(entity);
                     }
                 }
@@ -820,7 +826,6 @@ void Engine::StartCSClient() {
         this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
-        this->CSClientSendUpdate();
         this->TestCollision();
         this->Update();
         this->RenderScene();
@@ -837,34 +842,33 @@ void Engine::StartCSClient() {
     this->Shutdown();
 }
 
-void Engine::P2PBroadcastUpdates() {
+void Engine::P2PBroadcastUpdates(Entity *entity) {
     ZoneScoped;
 
-    for (Entity *entity : GetEntitiesByRole(this->network_info, this->GetEntities())) {
-        try {
-            EntityUpdate entity_update;
-            std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
-                          entity->GetName().c_str());
-            entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+    std::lock_guard<std::mutex> lock(this->broadcast_mutex);
+    try {
+        EntityUpdate entity_update;
+        std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
+                      entity->GetName().c_str());
+        entity_update.position = entity->GetComponent<Transform>()->GetPosition();
 
-            zmq::message_t broadcast_update;
-            this->EncodeMessage(entity_update, broadcast_update);
+        zmq::message_t broadcast_update;
+        this->EncodeMessage(entity_update, broadcast_update);
 
-            if (this->network_info.role == NetworkRole::Host) {
-                // The host peer broadcasts the positions of all host governed entities
-                this->host_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
-            } else if (this->network_info.role == NetworkRole::Peer &&
-                       this->network_info.id == GetPlayerIdFromName(entity->GetName())) {
-                // The other peers broadcast the position of its own controllable player
-                this->peer_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
-            }
-        } catch (const zmq::error_t &e) {
-            Log(LogLevel::Info, "Caught error while broadcasting p2p updates: %s", e.what());
-            if (this->network_info.role == NetworkRole::Host) {
-                this->host_broadcast_socket.close();
-            } else if (this->network_info.role == NetworkRole::Peer) {
-                this->peer_broadcast_socket.close();
-            }
+        if (this->network_info.role == NetworkRole::Host) {
+            // The host peer broadcasts the positions of all host governed entities
+            this->host_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+        } else if (this->network_info.role == NetworkRole::Peer &&
+                   this->network_info.id == GetPlayerIdFromName(entity->GetName())) {
+            // The other peers broadcast the position of its own controllable player
+            this->peer_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+        }
+    } catch (const zmq::error_t &e) {
+        Log(LogLevel::Info, "Caught error while broadcasting p2p updates: %s", e.what());
+        if (this->network_info.role == NetworkRole::Host) {
+            this->host_broadcast_socket.close();
+        } else if (this->network_info.role == NetworkRole::Peer) {
+            this->peer_broadcast_socket.close();
         }
     }
 }
@@ -893,7 +897,11 @@ void Engine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string player
                 this->DecodeMessage(message, entity_update);
                 Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
                 if (entity_update.active) {
-                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                    MoveEvent move_event;
+                    std::strncpy(move_event.entity_name, entity->GetName().c_str(),
+                                 sizeof(move_event.entity_name));
+                    move_event.position = entity_update.position;
+                    EventManager::GetInstance().RaiseMoveEvent(move_event);
                 } else {
                     this->RemoveEntity(entity);
                 }
@@ -950,7 +958,11 @@ void Engine::P2PReceiveBroadcastFromHostThread() {
 
                 if (entity->GetName() != player->GetName()) {
                     if (entity_update.active) {
-                        entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                        MoveEvent move_event;
+                        std::strncpy(move_event.entity_name, entity->GetName().c_str(),
+                                     sizeof(move_event.entity_name));
+                        move_event.position = entity_update.position;
+                        EventManager::GetInstance().RaiseMoveEvent(move_event);
                     } else {
                         this->RemoveEntity(entity);
                     }
@@ -992,7 +1004,6 @@ void Engine::StartP2P() {
         this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
-        this->P2PBroadcastUpdates();
         this->TestCollision();
         this->Update();
         this->RenderScene();
@@ -1308,11 +1319,11 @@ void Engine::TestCollision() {
 
             bool entity_1_zone = IsZoneCategory(entities[i]->GetCategory());
             bool entity_2_zone = IsZoneCategory(entities[j]->GetCategory());
-            bool entity_1_controllable = entities[i]->GetCategory() == EntityCategory::Controllable;
-            bool entity_2_controllable = entities[j]->GetCategory() == EntityCategory::Controllable;
+            bool entity_1_player = entities[i] == GetClientPlayer(this->network_info.id, entities);
+            bool entity_2_player = entities[j] == GetClientPlayer(this->network_info.id, entities);
 
-            if ((entity_1_zone && entity_2_zone) || (entity_1_zone && !entity_2_controllable) ||
-                (entity_2_zone && !entity_1_controllable)) {
+            if ((entity_1_zone && entity_2_zone) || (entity_1_zone && !entity_2_player) ||
+                (entity_2_zone && !entity_1_player)) {
                 continue;
             }
 

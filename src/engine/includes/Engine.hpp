@@ -70,6 +70,8 @@ class Engine {
     zmq::socket_t host_broadcast_socket;
     zmq::socket_t peer_broadcast_socket;
 
+    std::mutex broadcast_mutex;
+
     bool InitSingleClient();
     bool InitCSServer();
     bool InitCSClient();
@@ -87,11 +89,9 @@ class Engine {
     void ShowWelcomeScreen();
 
     void CSServerClientThread(int player_id);
-    void CSServerBroadcastUpdates();
     void CSServerListenerThread();
     void CSServerBroadcastPlayers();
     void CSClientReceiveBroadcastThread();
-    void CSClientSendUpdate();
 
     Entity *CreateNewPlayer(int player_id, std::string player_address = "");
     Entity *GetSpawnPoint(int index);
@@ -100,7 +100,6 @@ class Engine {
     void P2PHostBroadcastPlayers();
     void P2PReceiveBroadcastFromPeerThread(int player_id, std::string player_address);
     void P2PReceiveBroadcastFromHostThread();
-    void P2PBroadcastUpdates();
 
     void SendInactiveUpdate();
 
@@ -154,4 +153,8 @@ class Engine {
     void BindSpeedUpKey(SDL_Scancode key);
     void BindDisplayScalingKey(SDL_Scancode key);
     void BindHiddenZoneKey(SDL_Scancode key);
+
+    void CSServerBroadcastUpdates(Entity *entity);
+    void CSClientSendUpdate();
+    void P2PBroadcastUpdates(Entity *entity);
 };

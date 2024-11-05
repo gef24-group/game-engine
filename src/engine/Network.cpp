@@ -1,7 +1,14 @@
 #include "Network.hpp"
+#include "Engine.hpp"
 #include "Entity.hpp"
+#include "Event.hpp"
+#include "EventManager.hpp"
+#include "Types.hpp"
+#include "Utils.hpp"
 
 Network::Network(Entity *entity) {
+    EventManager::GetInstance().Register({EventType::Move, EventType::Spawn}, this);
+
     this->entity = entity;
     this->active = true;
     this->player_address = "";
@@ -19,3 +26,42 @@ void Network::SetPlayerAddress(std::string player_address) {
 void Network::SetOwner(NetworkRole owner) { this->owner = owner; }
 
 void Network::Update() {}
+
+void Network::OnEvent(Event event) {
+    EventType event_type = event.type;
+
+    switch (event_type) {
+    case EventType::Move: {
+        MoveEvent *move_event = std::get_if<MoveEvent>(&(event.data));
+        if (move_event && move_event->entity_name == this->entity->GetName()) {
+            NetworkRole engine_role = Engine::GetInstance().GetNetworkInfo().role;
+
+            switch (engine_role) {
+            case NetworkRole::Server:
+                Engine::GetInstance().CSServerBroadcastUpdates(this->entity);
+                break;
+            case NetworkRole::Client:
+                if (this->entity == GetClientPlayer(Engine::GetInstance().GetNetworkInfo().id,
+                                                    Engine::GetInstance().GetEntities())) {
+                    Engine::GetInstance().CSClientSendUpdate();
+                }
+                break;
+            case NetworkRole::Host:
+            case NetworkRole::Peer:
+                if (this->entity->GetComponent<Network>() &&
+                    this->entity->GetComponent<Network>()->GetOwner() == engine_role) {
+                    Engine::GetInstance().P2PBroadcastUpdates(this->entity);
+                }
+                break;
+            default:
+                Log(LogLevel::Error, "Network mode/role not supported");
+                break;
+            }
+        }
+
+        break;
+    }
+    default:
+        break;
+    }
+}
