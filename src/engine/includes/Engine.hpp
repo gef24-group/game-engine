@@ -100,7 +100,6 @@ class Engine {
     void P2PHostBroadcastPlayers();
     void P2PReceiveBroadcastFromPeerThread(int player_id, std::string player_address);
     void P2PReceiveBroadcastFromHostThread();
-    void P2PBroadcastUpdates();
 
     void SendInactiveUpdate();
 
@@ -157,4 +156,5 @@ class Engine {
 
     void CSServerBroadcastUpdates(Entity *entity);
     void CSClientSendUpdate();
+    void P2PBroadcastUpdates(Entity *entity);
 };

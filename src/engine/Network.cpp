@@ -34,17 +34,29 @@ void Network::OnEvent(Event event) {
     case EventType::Move: {
         MoveEvent *move_event = std::get_if<MoveEvent>(&(event.data));
         if (move_event && move_event->entity_name == this->entity->GetName()) {
-            if (Engine::GetInstance().GetNetworkInfo().role == NetworkRole::Server) {
+            NetworkRole engine_role = Engine::GetInstance().GetNetworkInfo().role;
+
+            switch (engine_role) {
+            case NetworkRole::Server:
                 Engine::GetInstance().CSServerBroadcastUpdates(this->entity);
-            } else if (Engine::GetInstance().GetNetworkInfo().role == NetworkRole::Client) {
+                break;
+            case NetworkRole::Client:
                 if (this->entity == GetClientPlayer(Engine::GetInstance().GetNetworkInfo().id,
                                                     Engine::GetInstance().GetEntities())) {
                     Engine::GetInstance().CSClientSendUpdate();
                 }
-            } else {
+                break;
+            case NetworkRole::Host:
+            case NetworkRole::Peer:
+                if (this->entity->GetComponent<Network>() &&
+                    this->entity->GetComponent<Network>()->GetOwner() == engine_role) {
+                    Engine::GetInstance().P2PBroadcastUpdates(this->entity);
+                }
+                break;
+            default:
                 Log(LogLevel::Error, "Network mode/role not supported");
+                break;
             }
-        } else {
         }
 
         break;
