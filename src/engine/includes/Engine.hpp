@@ -87,11 +87,9 @@ class Engine {
     void ShowWelcomeScreen();
 
     void CSServerClientThread(int player_id);
-    void CSServerBroadcastUpdates();
     void CSServerListenerThread();
     void CSServerBroadcastPlayers();
     void CSClientReceiveBroadcastThread();
-    void CSClientSendUpdate();
 
     Entity *CreateNewPlayer(int player_id, std::string player_address = "");
     Entity *GetSpawnPoint(int index);
@@ -154,4 +152,7 @@ class Engine {
     void BindSpeedUpKey(SDL_Scancode key);
     void BindDisplayScalingKey(SDL_Scancode key);
     void BindHiddenZoneKey(SDL_Scancode key);
+
+    void CSServerBroadcastUpdates(Entity *entity);
+    void CSClientSendUpdate();
 };

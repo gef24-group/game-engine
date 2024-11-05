@@ -2,10 +2,11 @@
 
 #include "Component.hpp"
 #include "Entity.hpp"
+#include "EventHandler.hpp"
 #include "Types.hpp"
 #include <atomic>
 
-class Network : public Component {
+class Network : public Component, public EventHandler {
     Entity *entity;
     std::atomic<bool> active;
     std::string player_address;
@@ -23,4 +24,5 @@ class Network : public Component {
     void SetOwner(NetworkRole owner);
 
     void Update() override;
+    void OnEvent(Event event) override;
 };

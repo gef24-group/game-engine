@@ -107,6 +107,7 @@ bool Engine::InitSingleClient() {
     return display_success;
 }
 
+// Construct and raise move events for each entity update received
 void Engine::CSServerClientThread(int player_id) {
     std::string thread_name = "CSServerClientThread_" + std::to_string(player_id);
     TracySetThreadName(thread_name.c_str());
@@ -133,7 +134,11 @@ void Engine::CSServerClientThread(int player_id) {
             Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
             if (entity != nullptr) {
                 if (entity_update.active) {
-                    entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                    MoveEvent move_event;
+                    std::strncpy(move_event.entity_name, entity->GetName().c_str(),
+                                 sizeof(move_event.entity_name));
+                    move_event.position = entity_update.position;
+                    EventManager::GetInstance().RaiseMoveEvent(move_event);
                 } else {
                     entity->GetComponent<Network>()->SetActive(false);
                 }
@@ -147,34 +152,35 @@ void Engine::CSServerClientThread(int player_id) {
     }
 };
 
-void Engine::CSServerBroadcastUpdates() {
+// Instead of making this function iterate over all networked entities, let this function expect a
+// reference to an entity as an argument. The handler of the move event in the 'Network' component
+// could then call this function which broadcasts the entity update to all the clients.
+void Engine::CSServerBroadcastUpdates(Entity *entity) {
     ZoneScoped;
 
-    for (Entity *entity : this->GetNetworkedEntities()) {
-        try {
-            // don't broadcast the default player entity, i.e the entity without an id in it
-            if (entity->GetCategory() == EntityCategory::Controllable &&
-                Split(entity->GetName(), '_').size() == 1) {
-                continue;
-            }
-
-            EntityUpdate entity_update;
-            std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
-                          entity->GetName().c_str());
-            entity_update.position = entity->GetComponent<Transform>()->GetPosition();
-            if (!entity->GetComponent<Network>()->GetActive()) {
-                entity_update.active = false;
-                Log(LogLevel::Info, "Client %s exiting", Split(entity_update.name, '_')[1].c_str());
-                this->RemoveEntity(entity);
-            }
-
-            zmq::message_t broadcast_update;
-            this->EncodeMessage(entity_update, broadcast_update);
-            this->server_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
-        } catch (const zmq::error_t &e) {
-            Log(LogLevel::Info, "Caught error while broadcasting server updates: %s", e.what());
-            this->server_broadcast_socket.close();
+    try {
+        // don't broadcast the default player entity, i.e the entity without an id in it
+        if (entity->GetCategory() == EntityCategory::Controllable &&
+            Split(entity->GetName(), '_').size() == 1) {
+            return;
         }
+
+        EntityUpdate entity_update;
+        std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
+                      entity->GetName().c_str());
+        entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+        if (!entity->GetComponent<Network>()->GetActive()) {
+            entity_update.active = false;
+            Log(LogLevel::Info, "Client %s exiting", Split(entity_update.name, '_')[1].c_str());
+            this->RemoveEntity(entity);
+        }
+
+        zmq::message_t broadcast_update;
+        this->EncodeMessage(entity_update, broadcast_update);
+        this->server_broadcast_socket.send(broadcast_update, zmq::send_flags::none);
+    } catch (const zmq::error_t &e) {
+        Log(LogLevel::Info, "Caught error while broadcasting server updates: %s", e.what());
+        this->server_broadcast_socket.close();
     }
 }
 
@@ -572,7 +578,7 @@ void Engine::StartCSServer() {
         EventManager::GetInstance().ProcessEvents();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
-        this->CSServerBroadcastUpdates();
+        // this->CSServerBroadcastUpdates();
         this->TestCollision();
         this->Update();
     }
@@ -645,6 +651,7 @@ Entity *Engine::CreateNewPlayer(int player_id, std::string player_address) {
     return nullptr;
 }
 
+// Reconstruct move event objects from the entity updates and raise a move event here.
 void Engine::CSClientReceiveBroadcastThread() {
     TracySetThreadName("CSClientReceiveBroadcastThread");
 
@@ -681,7 +688,11 @@ void Engine::CSClientReceiveBroadcastThread() {
 
                 if (entity->GetName() != player->GetName()) {
                     if (entity_update.active) {
-                        entity->GetComponent<Transform>()->SetPosition(entity_update.position);
+                        MoveEvent move_event;
+                        std::strncpy(move_event.entity_name, entity->GetName().c_str(),
+                                     sizeof(move_event.entity_name));
+                        move_event.position = entity_update.position;
+                        EventManager::GetInstance().RaiseMoveEvent(move_event);
                     } else {
                         this->RemoveEntity(entity);
                     }
@@ -695,6 +706,8 @@ void Engine::CSClientReceiveBroadcastThread() {
     }
 }
 
+// Call this function in the handler of the move event in the Network component rather than
+// calling it in the engine loop. Call this fn only for move events of client-governed objects
 void Engine::CSClientSendUpdate() {
     ZoneScoped;
 
@@ -820,7 +833,7 @@ void Engine::StartCSClient() {
         this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
-        this->CSClientSendUpdate();
+        // this->CSClientSendUpdate();
         this->TestCollision();
         this->Update();
         this->RenderScene();
