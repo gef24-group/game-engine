@@ -70,6 +70,8 @@ class Engine {
     zmq::socket_t host_broadcast_socket;
     zmq::socket_t peer_broadcast_socket;
 
+    std::mutex broadcast_mutex;
+
     bool InitSingleClient();
     bool InitCSServer();
     bool InitCSClient();

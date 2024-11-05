@@ -133,15 +133,14 @@ void Engine::CSServerClientThread(int player_id) {
 
             Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
             if (entity != nullptr) {
-                if (entity_update.active) {
-                    MoveEvent move_event;
-                    std::strncpy(move_event.entity_name, entity->GetName().c_str(),
-                                 sizeof(move_event.entity_name));
-                    move_event.position = entity_update.position;
-                    EventManager::GetInstance().RaiseMoveEvent(move_event);
-                } else {
+                if (!entity_update.active) {
                     entity->GetComponent<Network>()->SetActive(false);
                 }
+                MoveEvent move_event;
+                std::strncpy(move_event.entity_name, entity->GetName().c_str(),
+                             sizeof(move_event.entity_name));
+                move_event.position = entity_update.position;
+                EventManager::GetInstance().RaiseMoveEvent(move_event);
             }
 
         } catch (const zmq::error_t &e) {
@@ -158,6 +157,7 @@ void Engine::CSServerClientThread(int player_id) {
 void Engine::CSServerBroadcastUpdates(Entity *entity) {
     ZoneScoped;
 
+    std::lock_guard<std::mutex> lock(this->broadcast_mutex);
     try {
         // don't broadcast the default player entity, i.e the entity without an id in it
         if (entity->GetCategory() == EntityCategory::Controllable &&
@@ -694,6 +694,7 @@ void Engine::CSClientReceiveBroadcastThread() {
                         move_event.position = entity_update.position;
                         EventManager::GetInstance().RaiseMoveEvent(move_event);
                     } else {
+                        Log(LogLevel::Info, "Removing entity");
                         this->RemoveEntity(entity);
                     }
                 }
@@ -1321,11 +1322,11 @@ void Engine::TestCollision() {
 
             bool entity_1_zone = IsZoneCategory(entities[i]->GetCategory());
             bool entity_2_zone = IsZoneCategory(entities[j]->GetCategory());
-            bool entity_1_controllable = entities[i]->GetCategory() == EntityCategory::Controllable;
-            bool entity_2_controllable = entities[j]->GetCategory() == EntityCategory::Controllable;
+            bool entity_1_player = entities[i] == GetClientPlayer(this->network_info.id, entities);
+            bool entity_2_player = entities[j] == GetClientPlayer(this->network_info.id, entities);
 
-            if ((entity_1_zone && entity_2_zone) || (entity_1_zone && !entity_2_controllable) ||
-                (entity_2_zone && !entity_1_controllable)) {
+            if ((entity_1_zone && entity_2_zone) || (entity_1_zone && !entity_2_player) ||
+                (entity_2_zone && !entity_1_player)) {
                 continue;
             }
 
