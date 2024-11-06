@@ -26,10 +26,7 @@ struct KeyState {
 
 void Update(std::vector<Entity *> &entities) {}
 
-void HandleAlienEvent(Entity &alien, Event &event) {
-    if (event.type != EventType::Input) {
-        return;
-    }
+void HandleAlienInput(Event &event) {
     InputEvent *input_event = std::get_if<InputEvent>(&(event.data));
     if (input_event == nullptr) {
         return;
@@ -63,6 +60,49 @@ void HandleAlienEvent(Entity &alien, Event &event) {
     }
 }
 
+void HandleAlienCollision(Entity &alien, Event &event) {
+    CollisionEvent *collision_event = std::get_if<CollisionEvent>(&(event.data));
+    if (collision_event == nullptr) {
+        return;
+    }
+
+    Entity *collider = nullptr;
+    if (alien.GetName() == collision_event->collider_1->GetName()) {
+        collider = collision_event->collider_2;
+    } else if (alien.GetName() == collision_event->collider_2->GetName()) {
+        collider = collision_event->collider_1;
+    }
+    if (collider == nullptr) {
+        return;
+    }
+
+    if (collider->GetName().find("enemy") == 0) {
+        Log(LogLevel::Info, "");
+        Log(LogLevel::Info, "You lost :(");
+        Log(LogLevel::Info, "");
+        app->quit.store(true);
+    }
+    if (collider->GetName().find("house") == 0) {
+        Log(LogLevel::Info, "");
+        Log(LogLevel::Info, "You made it home!");
+        Log(LogLevel::Info, "");
+        app->quit.store(true);
+    }
+}
+
+void HandleAlienEvent(Entity &alien, Event &event) {
+    switch (event.type) {
+    case EventType::Input:
+        HandleAlienInput(event);
+        break;
+    case EventType::Collision:
+        HandleAlienCollision(alien, event);
+        break;
+    default:
+        break;
+    }
+}
+
 void UpdateAlien(Entity &alien) {
     if (key_state.up) {
         alien.GetComponent<Physics>()->SetVelocity(
@@ -83,26 +123,6 @@ void UpdateAlien(Entity &alien) {
     if (!key_state.left && !key_state.right) {
         alien.GetComponent<Physics>()->SetVelocity(
             {0, alien.GetComponent<Physics>()->GetVelocity().y});
-    }
-
-    if (alien.GetName() == "alien_" + std::to_string(network_info.id) &&
-        alien.GetComponent<Collision>()->GetColliders().size() > 0) {
-        for (Entity *collider : alien.GetComponent<Collision>()->GetColliders()) {
-            if (collider->GetName().find("enemy") == 0) {
-                Log(LogLevel::Info, "");
-                Log(LogLevel::Info, "You lost :(");
-                Log(LogLevel::Info, "");
-                app->quit.store(true);
-                break;
-            }
-            if (collider->GetName().find("house") == 0) {
-                Log(LogLevel::Info, "");
-                Log(LogLevel::Info, "You made it home!");
-                Log(LogLevel::Info, "");
-                app->quit.store(true);
-                break;
-            }
-        }
     }
 }
 

@@ -7,12 +7,12 @@
 #include "Utils.hpp"
 
 Network::Network(Entity *entity) {
-    EventManager::GetInstance().Register({EventType::Move, EventType::Spawn}, this);
-
     this->entity = entity;
     this->active = true;
     this->player_address = "";
     this->owner = NetworkRole::Client;
+
+    EventManager::GetInstance().Register({EventType::Move}, this);
 }
 
 bool Network::GetActive() { return this->active.load(); }
@@ -33,7 +33,7 @@ void Network::OnEvent(Event event) {
     switch (event_type) {
     case EventType::Move: {
         MoveEvent *move_event = std::get_if<MoveEvent>(&(event.data));
-        if (move_event && move_event->entity_name == this->entity->GetName()) {
+        if (move_event && move_event->entity == this->entity) {
             NetworkRole engine_role = Engine::GetInstance().GetNetworkInfo().role;
 
             switch (engine_role) {

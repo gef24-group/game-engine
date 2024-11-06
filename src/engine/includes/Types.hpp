@@ -87,7 +87,7 @@ struct EntityUpdate {
     bool active = true;
 };
 
-enum class EventType { Input, Move, Collision, Spawn, Death, Join, Leave };
+enum class EventType { Input, Move, Collision, Spawn, Death, Join, Discover, Leave };
 
 enum class InputEventType { Single, Chord, Sequence };
 
@@ -111,21 +111,20 @@ struct SpawnEvent {
 };
 
 struct MoveEvent {
-    char entity_name[100] = "";
+    Entity *entity;
     Position position;
 };
 
 struct JoinEvent {
-    char entity_name[100] = "";
     char player_address[100] = "";
 };
 
-struct LeaveEvent {
-    char entity_name[100] = "";
-};
+struct DiscoverEvent {};
+
+struct LeaveEvent {};
 
 typedef std::variant<InputEvent, CollisionEvent, DeathEvent, SpawnEvent, MoveEvent, JoinEvent,
-                     LeaveEvent>
+                     DiscoverEvent, LeaveEvent>
     EventData;
 
 enum class Priority { High, Medium, Low };

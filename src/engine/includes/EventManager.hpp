@@ -43,19 +43,23 @@ class EventManager {
     void RaiseDeathEvent(DeathEvent event);
     void RaiseSpawnEvent(SpawnEvent event);
     void RaiseMoveEvent(MoveEvent event);
-
-    bool HasDeathEvent();
+    void RaiseJoinEvent(JoinEvent event);
+    void RaiseDiscoverEvent(DiscoverEvent event);
+    void RaiseLeaveEvent(LeaveEvent event);
 
   private:
     // Static members for handlers and the event queue
 
     std::mutex event_queue_mutex;
+    std::mutex handlers_mutex;
     std::unordered_map<EventType, std::unordered_set<EventHandler *>> handlers;
     std::priority_queue<Event, std::vector<Event>, ComparePriority> event_queue;
 
     std::priority_queue<Event, std::vector<Event>, ComparePriority> GetEventQueue();
+    std::unordered_map<EventType, std::unordered_set<EventHandler *>> GetHandlers();
     void Raise(Event event);
     void HandleEvent(Event event);
     void PushEventQueue(Event event);
     void PopEventQueue();
+    bool IsDeathOrSpawnInQueue();
 };

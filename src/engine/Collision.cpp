@@ -15,19 +15,14 @@
 PROFILED;
 
 Collision::Collision(Entity *entity) {
-    EventManager::GetInstance().Register({EventType::Collision, EventType::Death}, this);
-
     this->entity = entity;
     this->restitution = 0;
-    this->colliders = std::unordered_set<Entity *>();
+
+    EventManager::GetInstance().Register({EventType::Collision, EventType::Death}, this);
 }
 
 float Collision::GetRestitution() { return this->restitution; }
 void Collision::SetRestitution(float restitution) { this->restitution = restitution; }
-
-std::unordered_set<Entity *> Collision::GetColliders() { return this->colliders; }
-void Collision::AddCollider(Entity *entity) { this->colliders.insert(entity); }
-void Collision::RemoveCollider(Entity *entity) { this->colliders.erase(entity); }
 
 void Collision::HandlePairwiseCollision(Entity *collider) {
     ZoneScoped;
@@ -50,7 +45,7 @@ void Collision::HandlePairwiseCollision(Entity *collider) {
             return;
         }
         if (collider->GetCategory() == EntityCategory::SideBoundary) {
-            Engine::GetInstance().HandleSideBoundaries();
+            Engine::GetInstance().HandleSideBoundaries(collider);
         }
     }
 

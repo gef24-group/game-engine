@@ -11,11 +11,11 @@
 PROFILED;
 
 Transform::Transform(Entity *entity) {
-    EventManager::GetInstance().Register({EventType::Move, EventType::Spawn}, this);
-
     this->entity = entity;
     this->SetPosition(Position{0, 0});
     this->size = Size{0, 0};
+
+    EventManager::GetInstance().Register({EventType::Move, EventType::Spawn}, this);
 }
 
 Position Transform::GetPosition() {
@@ -45,7 +45,7 @@ void Transform::OnEvent(Event event) {
     case EventType::Move: {
         MoveEvent *move_event = std::get_if<MoveEvent>(&(event.data));
         if (move_event) {
-            if (this->entity->GetName() == move_event->entity_name) {
+            if (this->entity == move_event->entity) {
                 this->SetPosition(move_event->position);
             }
         }

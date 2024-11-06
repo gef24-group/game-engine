@@ -10,12 +10,16 @@
 PROFILED;
 
 void EventManager::Register(std::vector<EventType> event_types, EventHandler *handler) {
+    std::lock_guard<std::mutex> lock(this->handlers_mutex);
+
     for (EventType event_type : event_types) {
         this->handlers[event_type].insert(handler);
     }
 }
 
 void EventManager::Deregister(std::vector<EventType> event_types, EventHandler *handler) {
+    std::lock_guard<std::mutex> lock(this->handlers_mutex);
+
     for (EventType event_type : event_types) {
         auto iterator = std::find(this->handlers[event_type].begin(),
                                   this->handlers[event_type].end(), handler);
@@ -36,8 +40,10 @@ void EventManager::Raise(Event event) {
 }
 
 void EventManager::HandleEvent(Event event) {
-    auto iterator = this->handlers.find(event.type);
-    if (iterator != this->handlers.end()) {
+    auto handlers = this->GetHandlers();
+
+    auto iterator = handlers.find(event.type);
+    if (iterator != handlers.end()) {
         std::unordered_set<EventHandler *> handlers = iterator->second;
         for (EventHandler *handler : handlers) {
             handler->OnEvent(event);
@@ -89,7 +95,7 @@ void EventManager::ProfileEventQueue() {
             zone_text += "Move";
             const MoveEvent *move_event = std::get_if<MoveEvent>(&(event.data));
             if (move_event) {
-                zone_text += "_" + std::string(move_event->entity_name);
+                zone_text += "_" + std::string(move_event->entity->GetName());
             }
 
             break;
@@ -163,17 +169,7 @@ void EventManager::RaiseCollisionEvent(CollisionEvent event) {
 }
 
 void EventManager::RaiseDeathEvent(DeathEvent event) {
-    auto event_queue = this->GetEventQueue();
-    bool has_death_or_spawn_event = false;
-    while (!event_queue.empty()) {
-        const auto &event = event_queue.top();
-        if (event.type == EventType::Death || event.type == EventType::Spawn) {
-            has_death_or_spawn_event = true;
-            break;
-        }
-        event_queue.pop();
-    }
-    if (has_death_or_spawn_event) {
+    if (this->IsDeathOrSpawnInQueue()) {
         return;
     }
 
@@ -200,24 +196,52 @@ void EventManager::RaiseMoveEvent(MoveEvent event) {
     this->Raise(move_event);
 }
 
-bool EventManager::HasDeathEvent() {
+void EventManager::RaiseJoinEvent(JoinEvent event) {
+    Event join_event = Event(EventType::Join, event);
+    join_event.SetDelay(-1);
+    join_event.SetPriority(Priority::High);
+
+    this->Raise(join_event);
+}
+
+void EventManager::RaiseDiscoverEvent(DiscoverEvent event) {
+    Event discover_event = Event(EventType::Discover, event);
+    discover_event.SetDelay(-1);
+    discover_event.SetPriority(Priority::High);
+
+    this->Raise(discover_event);
+}
+
+void EventManager::RaiseLeaveEvent(LeaveEvent event) {
+    Event leave_event = Event(EventType::Leave, event);
+    leave_event.SetDelay(-1);
+    leave_event.SetPriority(Priority::High);
+
+    this->Raise(leave_event);
+}
+
+bool EventManager::IsDeathOrSpawnInQueue() {
     auto event_queue = this->GetEventQueue();
-    bool has_death_event = false;
+    bool is_death_or_spawn_in_queue = false;
     while (!event_queue.empty()) {
         const auto &event = event_queue.top();
-        if (event.type == EventType::Death) {
-            has_death_event = true;
+        if (event.type == EventType::Death || event.type == EventType::Spawn) {
+            is_death_or_spawn_in_queue = true;
             break;
         }
         event_queue.pop();
     }
-
-    return has_death_event;
+    return is_death_or_spawn_in_queue;
 }
 
 std::priority_queue<Event, std::vector<Event>, ComparePriority> EventManager::GetEventQueue() {
     std::lock_guard<std::mutex> lock(this->event_queue_mutex);
     return this->event_queue;
+}
+
+std::unordered_map<EventType, std::unordered_set<EventHandler *>> EventManager::GetHandlers() {
+    std::lock_guard<std::mutex> lock(this->handlers_mutex);
+    return this->handlers;
 }
 
 void EventManager::PushEventQueue(Event event) {

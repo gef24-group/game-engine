@@ -135,11 +135,8 @@ void Engine::CSServerClientThread(int player_id) {
                 if (!entity_update.active) {
                     entity->GetComponent<Network>()->SetActive(false);
                 }
-                MoveEvent move_event;
-                std::strncpy(move_event.entity_name, entity->GetName().c_str(),
-                             sizeof(move_event.entity_name));
-                move_event.position = entity_update.position;
-                EventManager::GetInstance().RaiseMoveEvent(move_event);
+                EventManager::GetInstance().RaiseMoveEvent(
+                    MoveEvent{entity, entity_update.position});
             }
 
         } catch (const zmq::error_t &e) {
@@ -195,33 +192,11 @@ void Engine::CSServerListenerThread() {
             // for the player, and a thread meant solely for communication between the server and
             // that client is spawned
             if (message == "join") {
-                int player_id = this->players_connected += 1;
-
-                JoinReply join_reply;
-                join_reply.player_id = player_id;
-
-                zmq::message_t reply_msg(sizeof(JoinReply));
-                std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
-                this->join_socket.send(reply_msg, zmq::send_flags::none);
-
-                if (this->players_connected <= this->max_players) {
-                    this->CreateNewPlayer(player_id);
-                }
-
-                this->client_threads.emplace_back(
-                    [this, player_id]() { this->CSServerClientThread(player_id); });
+                EventManager::GetInstance().RaiseJoinEvent(JoinEvent{""});
             }
 
             if (message == "discover") {
-                std::string ack = "Acknowledge discover";
-                zmq::message_t reply(ack.size());
-                std::memcpy(reply.data(), ack.c_str(), ack.size());
-                this->join_socket.send(reply, zmq::send_flags::none);
-
-                // Whenever a new client joins the game, the discover request broadcasts the status
-                // of all clients the host knows about, so that all clients are aware of how many
-                // players are playing the game at the time.
-                this->CSServerBroadcastPlayers();
+                EventManager::GetInstance().RaiseDiscoverEvent(DiscoverEvent{});
             }
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the server listener thread: %s", e.what());
@@ -438,35 +413,14 @@ void Engine::P2PHostListenerThread() {
             // when a join message is received, the listen-server creates a new entity for that
             // player. It also spawns a new thread dedicated to receiving broadcasts from that peer
             if (Split(message, ' ')[0] == "join") {
-                int player_id = this->players_connected += 1;
-                std::string player_address = Split(message, ' ')[1];
-
-                JoinReply join_reply;
-                join_reply.player_id = player_id;
-
-                zmq::message_t reply_msg(sizeof(JoinReply));
-                std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
-                this->join_socket.send(reply_msg, zmq::send_flags::none);
-
-                if (this->players_connected <= this->max_players) {
-                    this->CreateNewPlayer(player_id, player_address);
-                }
-
-                this->peer_threads.emplace_back([this, player_id, player_address]() {
-                    this->P2PReceiveBroadcastFromPeerThread(player_id, player_address);
-                });
+                JoinEvent join_event;
+                std::strncpy(join_event.player_address, Split(message, ' ')[1].c_str(),
+                             sizeof(join_event.player_address));
+                EventManager::GetInstance().RaiseJoinEvent(join_event);
             }
 
             if (message == "discover") {
-                std::string ack = "Acknowledge discover";
-                zmq::message_t reply(ack.size());
-                std::memcpy(reply.data(), ack.c_str(), ack.size());
-                this->join_socket.send(reply, zmq::send_flags::none);
-
-                // Whenever a new peer joins the game, the discover request broadcasts the status of
-                // all peers the host knows about, so that all peers are aware of how many players
-                // are playing the game at the time.
-                this->P2PHostBroadcastPlayers();
+                EventManager::GetInstance().RaiseDiscoverEvent(DiscoverEvent{});
             }
         } catch (const zmq::error_t &e) {
             Log(LogLevel::Info, "Caught error in the host listener thread: %s", e.what());
@@ -481,6 +435,57 @@ void Engine::P2PHostListenerThread() {
         }
     }
 };
+
+void Engine::OnJoin(std::string player_address) {
+    NetworkRole engine_role = this->network_info.role;
+
+    int player_id = this->players_connected += 1;
+
+    JoinReply join_reply;
+    join_reply.player_id = player_id;
+
+    zmq::message_t reply_msg(sizeof(JoinReply));
+    std::memcpy(reply_msg.data(), &join_reply, sizeof(JoinReply));
+    this->join_socket.send(reply_msg, zmq::send_flags::none);
+
+    if (this->players_connected <= this->max_players) {
+        this->CreateNewPlayer(player_id, player_address);
+    }
+
+    if (engine_role == NetworkRole::Server) {
+        this->client_threads.emplace_back(
+            [this, player_id]() { this->CSServerClientThread(player_id); });
+    }
+    if (engine_role == NetworkRole::Host) {
+        this->peer_threads.emplace_back([this, player_id, player_address]() {
+            this->P2PReceiveBroadcastFromPeerThread(player_id, player_address);
+        });
+    }
+}
+
+void Engine::OnDiscover() {
+    NetworkRole engine_role = this->network_info.role;
+
+    std::string ack = "Acknowledge discover";
+    zmq::message_t reply(ack.size());
+    std::memcpy(reply.data(), ack.c_str(), ack.size());
+    this->join_socket.send(reply, zmq::send_flags::none);
+
+    if (engine_role == NetworkRole::Server) {
+        // Whenever a new client joins the game, the discover request broadcasts the status
+        // of all clients the host knows about, so that all clients are aware of how many
+        // players are playing the game at the time.
+        this->CSServerBroadcastPlayers();
+    }
+    if (engine_role == NetworkRole::Host) {
+        // Whenever a new peer joins the game, the discover request broadcasts the status of
+        // all peers the host knows about, so that all peers are aware of how many players
+        // are playing the game at the time.
+        this->P2PHostBroadcastPlayers();
+    }
+}
+
+void Engine::OnLeave() { this->SendInactiveUpdate(); }
 
 bool Engine::InitP2PHost() {
     ZoneScoped;
@@ -549,8 +554,8 @@ void Engine::StartSingleClient() {
     while (!app->quit.load() && !app->sigint.load()) {
         ZoneScopedNC("EngineLoop", 0xff4500);
 
-        EventManager::GetInstance().ProcessEvents();
         app->quit.store(this->HandleQuitEvent());
+        EventManager::GetInstance().ProcessEvents();
         this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
@@ -682,13 +687,9 @@ void Engine::CSClientReceiveBroadcastThread() {
 
                 if (entity->GetName() != player->GetName()) {
                     if (entity_update.active) {
-                        MoveEvent move_event;
-                        std::strncpy(move_event.entity_name, entity->GetName().c_str(),
-                                     sizeof(move_event.entity_name));
-                        move_event.position = entity_update.position;
-                        EventManager::GetInstance().RaiseMoveEvent(move_event);
+                        EventManager::GetInstance().RaiseMoveEvent(
+                            MoveEvent{entity, entity_update.position});
                     } else {
-                        Log(LogLevel::Info, "Removing entity");
                         this->RemoveEntity(entity);
                     }
                 }
@@ -821,8 +822,8 @@ void Engine::StartCSClient() {
     while (!app->quit.load() && !app->sigint.load()) {
         ZoneScopedNC("EngineLoop", 0xff4500);
 
-        EventManager::GetInstance().ProcessEvents();
         app->quit.store(this->HandleQuitEvent());
+        EventManager::GetInstance().ProcessEvents();
         this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
@@ -830,7 +831,7 @@ void Engine::StartCSClient() {
         this->Update();
         this->RenderScene();
     }
-    this->SendInactiveUpdate();
+    EventManager::GetInstance().RaiseLeaveEvent(LeaveEvent{});
 
     this->zmq_context.shutdown();
 
@@ -897,11 +898,8 @@ void Engine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string player
                 this->DecodeMessage(message, entity_update);
                 Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
                 if (entity_update.active) {
-                    MoveEvent move_event;
-                    std::strncpy(move_event.entity_name, entity->GetName().c_str(),
-                                 sizeof(move_event.entity_name));
-                    move_event.position = entity_update.position;
-                    EventManager::GetInstance().RaiseMoveEvent(move_event);
+                    EventManager::GetInstance().RaiseMoveEvent(
+                        MoveEvent{entity, entity_update.position});
                 } else {
                     this->RemoveEntity(entity);
                 }
@@ -958,11 +956,8 @@ void Engine::P2PReceiveBroadcastFromHostThread() {
 
                 if (entity->GetName() != player->GetName()) {
                     if (entity_update.active) {
-                        MoveEvent move_event;
-                        std::strncpy(move_event.entity_name, entity->GetName().c_str(),
-                                     sizeof(move_event.entity_name));
-                        move_event.position = entity_update.position;
-                        EventManager::GetInstance().RaiseMoveEvent(move_event);
+                        EventManager::GetInstance().RaiseMoveEvent(
+                            MoveEvent{entity, entity_update.position});
                     } else {
                         this->RemoveEntity(entity);
                     }
@@ -999,8 +994,8 @@ void Engine::StartP2P() {
     while (!app->quit.load() && !app->sigint.load()) {
         ZoneScopedNC("EngineLoop", 0xff4500);
 
-        EventManager::GetInstance().ProcessEvents();
         app->quit.store(this->HandleQuitEvent());
+        EventManager::GetInstance().ProcessEvents();
         this->input->Process();
         this->GetTimeDelta();
         this->ApplyEntityPhysicsAndUpdates();
@@ -1008,7 +1003,7 @@ void Engine::StartP2P() {
         this->Update();
         this->RenderScene();
     }
-    this->SendInactiveUpdate();
+    EventManager::GetInstance().RaiseLeaveEvent(LeaveEvent{});
 
     this->zmq_context.shutdown();
 
@@ -1328,29 +1323,14 @@ void Engine::TestCollision() {
             }
 
             if (SDL_HasIntersection(&entity_1, &entity_2)) {
-                if (entities[i]->GetComponent<Collision>() != nullptr) {
-                    entities[i]->GetComponent<Collision>()->AddCollider(entities[j]);
-                }
-                if (entities[j]->GetComponent<Collision>() != nullptr) {
-                    entities[j]->GetComponent<Collision>()->AddCollider(entities[i]);
-                }
-
                 EventManager::GetInstance().RaiseCollisionEvent(
                     CollisionEvent{entities[i], entities[j]});
-
-            } else {
-                if (entities[i]->GetComponent<Collision>() != nullptr) {
-                    entities[i]->GetComponent<Collision>()->RemoveCollider(entities[j]);
-                }
-                if (entities[j]->GetComponent<Collision>() != nullptr) {
-                    entities[j]->GetComponent<Collision>()->RemoveCollider(entities[i]);
-                }
             }
         }
     }
 }
 
-void Engine::HandleSideBoundaries() {
+void Engine::HandleSideBoundaries(Entity *side_boundary) {
     ZoneScoped;
 
     Entity *player = GetClientPlayer(this->network_info.id, this->GetEntities());
@@ -1361,37 +1341,31 @@ void Engine::HandleSideBoundaries() {
     this->SetSideBoundaryVelocities(Velocity{0, 0});
     this->camera->GetComponent<Physics>()->SetVelocity({0, 0});
 
-    for (Entity *collider : player->GetComponent<Collision>()->GetColliders()) {
-        if (collider->GetCategory() == EntityCategory::SideBoundary) {
-            int obj_x =
-                static_cast<int>(std::round(player->GetComponent<Transform>()->GetPosition().x));
-            int obj_y =
-                static_cast<int>(std::round(player->GetComponent<Transform>()->GetPosition().y));
-            int col_x =
-                static_cast<int>(std::round(collider->GetComponent<Transform>()->GetPosition().x));
-            int col_y =
-                static_cast<int>(std::round(collider->GetComponent<Transform>()->GetPosition().y));
+    int obj_x = static_cast<int>(std::round(player->GetComponent<Transform>()->GetPosition().x));
+    int obj_y = static_cast<int>(std::round(player->GetComponent<Transform>()->GetPosition().y));
+    int col_x =
+        static_cast<int>(std::round(side_boundary->GetComponent<Transform>()->GetPosition().x));
+    int col_y =
+        static_cast<int>(std::round(side_boundary->GetComponent<Transform>()->GetPosition().y));
 
-            int obj_width = player->GetComponent<Transform>()->GetSize().width;
-            int obj_height = player->GetComponent<Transform>()->GetSize().height;
-            int col_width = collider->GetComponent<Transform>()->GetSize().width;
-            int col_height = collider->GetComponent<Transform>()->GetSize().height;
+    int obj_width = player->GetComponent<Transform>()->GetSize().width;
+    int obj_height = player->GetComponent<Transform>()->GetSize().height;
+    int col_width = side_boundary->GetComponent<Transform>()->GetSize().width;
+    int col_height = side_boundary->GetComponent<Transform>()->GetSize().height;
 
-            SDL_Rect rect_1 = {obj_x, obj_y, obj_width, obj_height};
-            SDL_Rect rect_2 = {col_x, col_y, col_width, col_height};
-            Overlap overlap = GetOverlap(rect_1, rect_2);
-            float vel_x = player->GetComponent<Physics>()->GetVelocity().x;
-            float vel_y = player->GetComponent<Physics>()->GetVelocity().y;
+    SDL_Rect rect_1 = {obj_x, obj_y, obj_width, obj_height};
+    SDL_Rect rect_2 = {col_x, col_y, col_width, col_height};
+    Overlap overlap = GetOverlap(rect_1, rect_2);
+    float vel_x = player->GetComponent<Physics>()->GetVelocity().x;
+    float vel_y = player->GetComponent<Physics>()->GetVelocity().y;
 
-            if (overlap == Overlap::Left || overlap == Overlap::Right) {
-                this->camera->GetComponent<Physics>()->SetVelocity({vel_x, 0});
-                this->SetSideBoundaryVelocities({vel_x, 0});
-            }
-            if (overlap == Overlap::Top || overlap == Overlap::Bottom) {
-                this->camera->GetComponent<Physics>()->SetVelocity({0, vel_y});
-                this->SetSideBoundaryVelocities({0, vel_y});
-            }
-        }
+    if (overlap == Overlap::Left || overlap == Overlap::Right) {
+        this->camera->GetComponent<Physics>()->SetVelocity({vel_x, 0});
+        this->SetSideBoundaryVelocities({vel_x, 0});
+    }
+    if (overlap == Overlap::Top || overlap == Overlap::Bottom) {
+        this->camera->GetComponent<Physics>()->SetVelocity({0, vel_y});
+        this->SetSideBoundaryVelocities({0, vel_y});
     }
 
     this->camera->GetComponent<Physics>()->Update();

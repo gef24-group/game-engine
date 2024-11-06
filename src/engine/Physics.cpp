@@ -46,12 +46,9 @@ void Physics::Move() {
     float new_pos_y = curr_position.y + (this->velocity.y * time) +
                       (HALF * this->acceleration.y * float(pow(time, 2)));
 
-    MoveEvent move_event;
-    std::strncpy(move_event.entity_name, this->entity->GetName().c_str(),
-                 sizeof(move_event.entity_name));
-    move_event.position = Position{new_pos_x, new_pos_y};
     if (new_pos_x != curr_position.x || new_pos_y != curr_position.y) {
-        EventManager::GetInstance().RaiseMoveEvent(move_event);
+        EventManager::GetInstance().RaiseMoveEvent(
+            MoveEvent{this->entity, Position{new_pos_x, new_pos_y}});
     }
 
     this->velocity.x += (this->acceleration.x * time);

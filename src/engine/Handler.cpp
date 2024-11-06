@@ -3,11 +3,11 @@
 #include "EventManager.hpp"
 
 Handler::Handler(Entity *entity) {
-    EventManager::GetInstance().Register({EventType::Input}, this);
-
     this->entity = entity;
     this->update_callback = [](Entity &) {};
     this->event_callback = [](Entity &, Event &) {};
+
+    EventManager::GetInstance().Register({EventType::Input, EventType::Collision}, this);
 }
 
 std::function<void(Entity &)> Handler::GetUpdateCallback() { return this->update_callback; }

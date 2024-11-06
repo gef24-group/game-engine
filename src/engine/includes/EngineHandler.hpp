@@ -11,6 +11,8 @@ class EngineHandler : public EventHandler {
     SDL_Scancode display_scaling_key;
     SDL_Scancode hidden_zone_key;
 
+    void HandleEngineInput(Event &event);
+
   public:
     EngineHandler();
 

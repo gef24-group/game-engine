@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <vector>
 #include <zmq.hpp>
@@ -145,7 +146,7 @@ class Engine {
     void AddSpawnPoint(Position position, Size size);
     void AddDeathZone(Position position, Size size);
     void RespawnPlayer();
-    void HandleSideBoundaries();
+    void HandleSideBoundaries(Entity *side_boundary);
     void SetCallback(std::function<void(std::vector<Entity *> &)> callback);
 
     void BindPauseKey(SDL_Scancode key);
@@ -157,4 +158,8 @@ class Engine {
     void CSServerBroadcastUpdates(Entity *entity);
     void CSClientSendUpdate();
     void P2PBroadcastUpdates(Entity *entity);
+
+    void OnJoin(std::string player_address);
+    void OnDiscover();
+    void OnLeave();
 };

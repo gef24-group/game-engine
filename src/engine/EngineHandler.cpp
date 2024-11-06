@@ -4,14 +4,14 @@
 #include "SDL_scancode.h"
 
 EngineHandler::EngineHandler() {
-    EventManager::GetInstance().Register({EventType::Input, EventType::Join, EventType::Leave},
-                                         this);
-
     this->pause_key = SDL_SCANCODE_P;
     this->speed_down_key = SDL_SCANCODE_COMMA;
     this->speed_up_key = SDL_SCANCODE_PERIOD;
     this->display_scaling_key = SDL_SCANCODE_X;
     this->hidden_zone_key = SDL_SCANCODE_Z;
+
+    EventManager::GetInstance().Register(
+        {EventType::Input, EventType::Join, EventType::Discover, EventType::Leave}, this);
 }
 
 void EngineHandler::BindPauseKey(SDL_Scancode key) { this->pause_key = key; }
@@ -20,10 +20,7 @@ void EngineHandler::BindSpeedUpKey(SDL_Scancode key) { this->speed_up_key = key;
 void EngineHandler::BindDisplayScalingKey(SDL_Scancode key) { this->display_scaling_key = key; }
 void EngineHandler::BindHiddenZoneKey(SDL_Scancode key) { this->hidden_zone_key = key; }
 
-void EngineHandler::OnEvent(Event event) {
-    if (event.type != EventType::Input) {
-        return;
-    }
+void EngineHandler::HandleEngineInput(Event &event) {
     InputEvent *input_event = std::get_if<InputEvent>(&(event.data));
     if (input_event == nullptr) {
         return;
@@ -50,5 +47,29 @@ void EngineHandler::OnEvent(Event event) {
     }
     if (key == this->hidden_zone_key) {
         Engine::GetInstance().ToggleShowZoneBorders();
+    }
+}
+
+void EngineHandler::OnEvent(Event event) {
+    EventType event_type = event.type;
+
+    switch (event_type) {
+    case EventType::Input:
+        this->HandleEngineInput(event);
+        break;
+    case EventType::Join: {
+        JoinEvent *join_event = std::get_if<JoinEvent>(&(event.data));
+        Engine::GetInstance().OnJoin(join_event->player_address);
+
+        break;
+    }
+    case EventType::Discover:
+        Engine::GetInstance().OnDiscover();
+        break;
+    case EventType::Leave:
+        Engine::GetInstance().OnLeave();
+        break;
+    default:
+        break;
     }
 }
