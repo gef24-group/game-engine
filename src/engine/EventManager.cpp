@@ -84,7 +84,7 @@ void EventManager::ProfileEventQueue() {
             zone_text += "Input";
             const InputEvent *input_event = std::get_if<InputEvent>(&(event.data));
             if (input_event) {
-                SDL_Scancode key = input_event->keys[0];
+                SDL_Scancode key = input_event->key;
                 zone_text += "_" + std::to_string(key);
             }
 
@@ -156,6 +156,13 @@ void EventManager::RaiseInputEvent(InputEvent event) {
     Event input_event = Event(EventType::Input, event);
     input_event.SetDelay(0);
     input_event.SetPriority(Priority::High);
+
+    if (event.type == InputEventType::Single) {
+        Log(LogLevel::Info, "Raising single input: [%d] [%d]", event.pressed, event.key);
+    }
+    if (event.type == InputEventType::Chord) {
+        Log(LogLevel::Info, "Raising chord  input: [%d], [%d]", event.pressed, event.chord_id);
+    }
 
     this->Raise(input_event);
 }

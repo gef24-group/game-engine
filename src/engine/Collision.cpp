@@ -37,9 +37,6 @@ void Collision::HandlePairwiseCollision(Entity *collider) {
 
     if (this->entity == GetClientPlayer(Engine::GetInstance().GetNetworkInfo().id,
                                         Engine::GetInstance().GetEntities())) {
-        // if (EventManager::GetInstance().HasDeathEvent()) {
-        //     return;
-        // }
         if (collider->GetCategory() == EntityCategory::DeathZone) {
             EventManager::GetInstance().RaiseDeathEvent(DeathEvent{this->entity});
             return;

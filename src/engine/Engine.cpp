@@ -1257,6 +1257,10 @@ void Engine::BindDisplayScalingKey(SDL_Scancode key) {
 }
 void Engine::BindHiddenZoneKey(SDL_Scancode key) { this->engine_handler->BindHiddenZoneKey(key); }
 
+void Engine::RegisterInputChord(int chord_id, std::unordered_set<SDL_Scancode> chord) {
+    this->input->RegisterInputChord(chord_id, chord);
+}
+
 void Engine::Update() {
     ZoneScoped;
 
@@ -1316,9 +1320,12 @@ void Engine::TestCollision() {
             bool entity_2_zone = IsZoneCategory(entities[j]->GetCategory());
             bool entity_1_player = entities[i] == GetClientPlayer(this->network_info.id, entities);
             bool entity_2_player = entities[j] == GetClientPlayer(this->network_info.id, entities);
+            bool entity_1_controllable = entities[i]->GetCategory() == EntityCategory::Controllable;
+            bool entity_2_controllable = entities[j]->GetCategory() == EntityCategory::Controllable;
 
             if ((entity_1_zone && entity_2_zone) || (entity_1_zone && !entity_2_player) ||
-                (entity_2_zone && !entity_1_player)) {
+                (entity_2_zone && !entity_1_player) ||
+                (entity_1_controllable && entity_2_controllable)) {
                 continue;
             }
 

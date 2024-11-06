@@ -155,6 +155,8 @@ class Engine {
     void BindDisplayScalingKey(SDL_Scancode key);
     void BindHiddenZoneKey(SDL_Scancode key);
 
+    void RegisterInputChord(int chord_id, std::unordered_set<SDL_Scancode> chord);
+
     void CSServerBroadcastUpdates(Entity *entity);
     void CSClientSendUpdate();
     void P2PBroadcastUpdates(Entity *entity);

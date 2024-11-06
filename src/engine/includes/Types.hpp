@@ -92,8 +92,9 @@ enum class EventType { Input, Move, Collision, Spawn, Death, Join, Discover, Lea
 enum class InputEventType { Single, Chord, Sequence };
 
 struct InputEvent {
-    SDL_Scancode keys[10];
     InputEventType type;
+    SDL_Scancode key;
+    int chord_id = 0;
     bool pressed;
 };
 

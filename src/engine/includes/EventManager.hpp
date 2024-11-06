@@ -48,8 +48,6 @@ class EventManager {
     void RaiseLeaveEvent(LeaveEvent event);
 
   private:
-    // Static members for handlers and the event queue
-
     std::mutex event_queue_mutex;
     std::mutex handlers_mutex;
     std::unordered_map<EventType, std::unordered_set<EventHandler *>> handlers;

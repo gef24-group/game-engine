@@ -10,6 +10,7 @@
 #include "Types.hpp"
 #include "Utils.hpp"
 #include <string>
+#include <unordered_set>
 
 const int TILE_SIZE = 100;
 Size window_size;
@@ -22,18 +23,18 @@ struct KeyState {
     bool down;
     bool left;
     bool right;
+    bool power_up;
+    bool power_down;
+    bool power_left;
+    bool power_right;
 } key_state;
 
 void Update(std::vector<Entity *> &entities) {}
 
-void HandleAlienInput(Event &event) {
-    InputEvent *input_event = std::get_if<InputEvent>(&(event.data));
-    if (input_event == nullptr) {
-        return;
-    }
-    bool pressed = input_event->pressed;
+void HandleAlienSingleInput(InputEvent *event) {
+    bool pressed = event->pressed;
 
-    SDL_Scancode key = input_event->keys[0];
+    SDL_Scancode key = event->key;
     switch (key) {
     case SDL_SCANCODE_W:
     case SDL_SCANCODE_UP:
@@ -55,6 +56,57 @@ void HandleAlienInput(Event &event) {
         key_state.right = pressed;
         break;
 
+    default:
+        break;
+    }
+}
+
+void HandleAlienChordInput(Entity &alien, InputEvent *event) {
+    bool pressed = event->pressed;
+
+    switch (event->chord_id) {
+    case 1:
+    case 5:
+        key_state.power_up = pressed;
+        alien.GetComponent<Physics>()->SetVelocity(
+            {alien.GetComponent<Physics>()->GetVelocity().x, -150});
+        break;
+    case 2:
+    case 6:
+        key_state.power_down = pressed;
+        alien.GetComponent<Physics>()->SetVelocity(
+            {alien.GetComponent<Physics>()->GetVelocity().x, 150});
+        break;
+    case 3:
+    case 7:
+        key_state.power_left = pressed;
+        alien.GetComponent<Physics>()->SetVelocity(
+            {-150, alien.GetComponent<Physics>()->GetVelocity().y});
+        break;
+    case 4:
+    case 8:
+        key_state.power_right = pressed;
+        alien.GetComponent<Physics>()->SetVelocity(
+            {150, alien.GetComponent<Physics>()->GetVelocity().y});
+        break;
+    default:
+        break;
+    }
+}
+
+void HandleAlienInput(Entity &alien, Event &event) {
+    InputEvent *input_event = std::get_if<InputEvent>(&(event.data));
+    if (input_event == nullptr) {
+        return;
+    }
+
+    switch (input_event->type) {
+    case InputEventType::Single:
+        HandleAlienSingleInput(input_event);
+        break;
+    case InputEventType::Chord:
+        HandleAlienChordInput(alien, input_event);
+        break;
     default:
         break;
     }
@@ -93,7 +145,7 @@ void HandleAlienCollision(Entity &alien, Event &event) {
 void HandleAlienEvent(Entity &alien, Event &event) {
     switch (event.type) {
     case EventType::Input:
-        HandleAlienInput(event);
+        HandleAlienInput(alien, event);
         break;
     case EventType::Collision:
         HandleAlienCollision(alien, event);
@@ -421,6 +473,19 @@ void BindEngineInputs() {
     Engine::GetInstance().BindHiddenZoneKey(SDL_SCANCODE_Z);
 }
 
+void RegisterInputChords() {
+    Engine::GetInstance().RegisterInputChord(1, {SDL_SCANCODE_A, SDL_SCANCODE_D});
+
+    // Engine::GetInstance().RegisterInputChord(1, {SDL_SCANCODE_W, SDL_SCANCODE_SPACE});
+    // Engine::GetInstance().RegisterInputChord(2, {SDL_SCANCODE_S, SDL_SCANCODE_SPACE});
+    // Engine::GetInstance().RegisterInputChord(3, {SDL_SCANCODE_A, SDL_SCANCODE_SPACE});
+    // Engine::GetInstance().RegisterInputChord(4, {SDL_SCANCODE_D, SDL_SCANCODE_SPACE});
+    // Engine::GetInstance().RegisterInputChord(5, {SDL_SCANCODE_UP, SDL_SCANCODE_SPACE});
+    // Engine::GetInstance().RegisterInputChord(6, {SDL_SCANCODE_DOWN, SDL_SCANCODE_SPACE});
+    // Engine::GetInstance().RegisterInputChord(7, {SDL_SCANCODE_LEFT, SDL_SCANCODE_SPACE});
+    // Engine::GetInstance().RegisterInputChord(8, {SDL_SCANCODE_RIGHT, SDL_SCANCODE_SPACE});
+}
+
 int main(int argc, char *args[]) {
     std::string title = "CSC581 HW4 Joshua's Game";
 
@@ -440,6 +505,7 @@ int main(int argc, char *args[]) {
     }
 
     BindEngineInputs();
+    RegisterInputChords();
     network_info = Engine::GetInstance().GetNetworkInfo();
     window_size = GetWindowSize();
 

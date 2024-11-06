@@ -30,7 +30,7 @@ void EngineHandler::HandleEngineInput(Event &event) {
         return;
     }
 
-    SDL_Scancode key = input_event->keys[0];
+    SDL_Scancode key = input_event->key;
     if (key == this->pause_key) {
         Engine::GetInstance().EngineTimelineTogglePause();
     }
