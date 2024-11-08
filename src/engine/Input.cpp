@@ -74,7 +74,6 @@ void Input::Process() {
         }
 
         this->buffer.push_back({key, pressed});
-        // this->LogBuffer();
 
         int chord_id = this->BufferContainsChord();
         if (chord_id != 0) {

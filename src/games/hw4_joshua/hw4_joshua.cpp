@@ -23,10 +23,6 @@ struct KeyState {
     bool down;
     bool left;
     bool right;
-    bool power_up;
-    bool power_down;
-    bool power_left;
-    bool power_right;
 } key_state;
 
 void Update(std::vector<Entity *> &entities) {}
@@ -65,22 +61,18 @@ void HandleAlienChordInput(Entity &alien, InputEvent *event) {
     }
     switch (event->chord_id) {
     case 1:
-        key_state.power_up = pressed;
         alien.GetComponent<Physics>()->SetVelocity(
             {alien.GetComponent<Physics>()->GetVelocity().x, -200});
         break;
     case 2:
-        key_state.power_down = pressed;
         alien.GetComponent<Physics>()->SetVelocity(
             {alien.GetComponent<Physics>()->GetVelocity().x, 200});
         break;
     case 3:
-        key_state.power_left = pressed;
         alien.GetComponent<Physics>()->SetVelocity(
             {-200, alien.GetComponent<Physics>()->GetVelocity().y});
         break;
     case 4:
-        key_state.power_right = pressed;
         alien.GetComponent<Physics>()->SetVelocity(
             {200, alien.GetComponent<Physics>()->GetVelocity().y});
         break;
@@ -123,12 +115,6 @@ void HandleAlienCollision(Entity &alien, Event &event) {
         return;
     }
 
-    if (collider->GetName().find("enemy") == 0) {
-        Log(LogLevel::Info, "");
-        Log(LogLevel::Info, "You lost :(");
-        Log(LogLevel::Info, "");
-        app->quit.store(true);
-    }
     if (collider->GetName().find("house") == 0) {
         Log(LogLevel::Info, "");
         Log(LogLevel::Info, "You made it home!");
@@ -288,23 +274,19 @@ Entity *CreateSun() {
     return sun;
 }
 
-std::vector<Entity *> CreateGround() {
-    std::vector<Entity *> ground;
-    for (int i = 0; i < (window_size.width / TILE_SIZE) * 2; i++) {
-        Entity *ground_tile = new Entity("ground_" + std::to_string(i), EntityCategory::Stationary);
-        ground_tile->AddComponent<Render>();
-        ground_tile->AddComponent<Transform>();
-        ground_tile->AddComponent<Network>();
-        ground_tile->AddComponent<Handler>();
+Entity *CreateGround() {
+    Entity *ground = new Entity("ground", EntityCategory::Stationary);
+    ground->AddComponent<Render>();
+    ground->AddComponent<Transform>();
+    ground->AddComponent<Network>();
+    ground->AddComponent<Handler>();
 
-        ground_tile->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-        ground_tile->GetComponent<Transform>()->SetPosition(
-            Position{float(i * TILE_SIZE), float(window_size.height - TILE_SIZE)});
-        ground_tile->GetComponent<Transform>()->SetSize(Size{TILE_SIZE, TILE_SIZE});
-        ground_tile->GetComponent<Render>()->SetTexture("assets/ground.png");
-        ground_tile->GetComponent<Network>()->SetOwner(NetworkRole::Client);
-        ground.push_back(ground_tile);
-    }
+    ground->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
+    ground->GetComponent<Transform>()->SetPosition(
+        Position{0, float(window_size.height - TILE_SIZE)});
+    ground->GetComponent<Transform>()->SetSize(Size{TILE_SIZE * 38, TILE_SIZE});
+    ground->GetComponent<Render>()->SetTexture("assets/ground.png");
+    ground->GetComponent<Network>()->SetOwner(NetworkRole::Client);
     return ground;
 }
 
@@ -359,11 +341,12 @@ std::vector<Entity *> CreateClouds() {
 std::vector<Entity *> CreateEnemies() {
     std::vector<Entity *> enemies;
     int enemy_index = 0;
-    float pos_x = 220.0f;
+    float pos_x = 1540.0f;
     float pos_y = float(window_size.height - (TILE_SIZE * 2));
 
     while (pos_x < 3000) {
-        Entity *enemy = new Entity("enemy_" + std::to_string(enemy_index), EntityCategory::Moving);
+        Entity *enemy =
+            new Entity("enemy_" + std::to_string(enemy_index), EntityCategory::DeathZone);
         enemy->AddComponent<Transform>();
         enemy->AddComponent<Physics>();
         enemy->AddComponent<Handler>();
@@ -371,7 +354,7 @@ std::vector<Entity *> CreateEnemies() {
         enemy->AddComponent<Network>();
 
         float pos_y_offset = enemy_index % 2 == 0 ? -(TILE_SIZE * 3) : 0;
-        float vel_y = enemy_index % 2 == 0 ? 30 : -30;
+        float vel_y = enemy_index % 2 == 0 ? 20 : -20;
 
         enemy->GetComponent<Transform>()->SetPosition(Position{pos_x, pos_y + pos_y_offset});
         enemy->GetComponent<Transform>()->SetSize(Size{TILE_SIZE, TILE_SIZE});
@@ -394,14 +377,11 @@ std::vector<Entity *> CreateEntities() {
     Entity *platform = CreatePlatform();
     Entity *house = CreateHouse();
     Entity *sun = CreateSun();
-    std::vector<Entity *> ground = CreateGround();
+    Entity *ground = CreateGround();
     std::vector<Entity *> clouds = CreateClouds();
     std::vector<Entity *> enemies = CreateEnemies();
 
-    std::vector<Entity *> entities = std::vector({alien, platform, house, sun});
-    for (Entity *ground_tile : ground) {
-        entities.push_back(ground_tile);
-    }
+    std::vector<Entity *> entities = std::vector({alien, platform, house, sun, ground});
     for (Entity *cloud : clouds) {
         entities.push_back(cloud);
     }

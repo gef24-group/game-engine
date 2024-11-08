@@ -154,15 +154,8 @@ void EventManager::ProfileEventQueue() {
 
 void EventManager::RaiseInputEvent(InputEvent event) {
     Event input_event = Event(EventType::Input, event);
-    input_event.SetDelay(-1);
+    input_event.SetDelay(0);
     input_event.SetPriority(Priority::High);
-
-    if (event.type == InputEventType::Single) {
-        Log(LogLevel::Info, "Raising single input: [%d] [%d]", event.pressed, event.key);
-    }
-    if (event.type == InputEventType::Chord) {
-        Log(LogLevel::Info, "Raising chord  input: [%d], [%d]", event.pressed, event.chord_id);
-    }
 
     this->Raise(input_event);
 }
