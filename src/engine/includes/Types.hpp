@@ -89,7 +89,7 @@ struct EntityUpdate {
 
 enum class EventType { Input, Move, Collision, Spawn, Death, Join, Discover, Leave };
 
-enum class InputEventType { Single, Chord, Sequence };
+enum class InputEventType { Single, Chord };
 
 struct InputEvent {
     InputEventType type;
