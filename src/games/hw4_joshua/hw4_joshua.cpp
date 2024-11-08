@@ -62,11 +62,11 @@ void HandleAlienChordInput(Entity &alien, InputEvent *event) {
     switch (event->chord_id) {
     case 1:
         alien.GetComponent<Physics>()->SetVelocity(
-            {alien.GetComponent<Physics>()->GetVelocity().x, -200});
+            {alien.GetComponent<Physics>()->GetVelocity().x, -150});
         break;
     case 2:
         alien.GetComponent<Physics>()->SetVelocity(
-            {alien.GetComponent<Physics>()->GetVelocity().x, 200});
+            {alien.GetComponent<Physics>()->GetVelocity().x, 150});
         break;
     case 3:
         alien.GetComponent<Physics>()->SetVelocity(
