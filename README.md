@@ -30,13 +30,13 @@ make
 To build a specific game, pass the `GAME` variable to `make`  
 For example, if these are the games defined in [`.targetgames`](.targetgames)
 ```bash
-hw3_joshua
-hw3_rohan
-hw3_mitesh
+hw4_joshua
+hw4_rohan
+hw4_mitesh
 ```
-And you would like to only build `hw3_joshua`, then you would need to run
+And you would like to only build `hw4_joshua`, then you would need to run
 ```bash
-make GAME=hw3_joshua
+make GAME=hw4_joshua
 ```
 
 ## Play
@@ -60,30 +60,30 @@ The flags supported by the engine are
 
 ## Examples
 ### Client-server mode
-To run `hw3_mitesh` in the client-server mode, run these commands in different shells  
+To run `hw4_mitesh` in the client-server mode, run these commands in different shells  
 
 **Server**
 ```bash
-make play GAME=hw3_mitesh ARGS="--mode cs --role server"
+make play GAME=hw4_mitesh ARGS="--mode cs --role server"
 ```
 **Client**
 ```bash
-make play GAME=hw3_mitesh ARGS="--mode cs --role client"
+make play GAME=hw4_mitesh ARGS="--mode cs --role client"
 ```
 
 ### Peer-to-peer mode
-To run `hw3_rohan` in the peer-to-peer mode, run these commands in different shells  
+To run `hw4_rohan` in the peer-to-peer mode, run these commands in different shells  
 
 **Host**
 ```bash
-make play GAME=hw3_rohan ARGS="--mode p2p --role host"
+make play GAME=hw4_rohan ARGS="--mode p2p --role host"
 ```
 **Peer**
 ```bash
-make play GAME=hw3_rohan ARGS="--mode p2p --role peer"
+make play GAME=hw4_rohan ARGS="--mode p2p --role peer"
 ```
 
-> The HW3 games written by Joshua (jjoseph6), Rohan (rjmathe2), and Mitesh (magarwa3) lie in the `hw3_joshua`, `hw3_rohan` and `hw3_mitesh` folders respectively
+> The HW4 games written by Joshua (jjoseph6), Rohan (rjmathe2), and Mitesh (magarwa3) lie in the `hw4_joshua`, `hw4_rohan` and `hw4_mitesh` folders respectively
 
 ## Cleanup
 If you would like to clear all build artifacts, please run
