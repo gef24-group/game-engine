@@ -18,7 +18,8 @@ class Input {
     int timeout;
 
     bool IsKeyInChords(SDL_Scancode key);
-    int BufferContainsChord();
+    bool BufferContainsPartialChord();
+    int BufferContainsFullChord();
     void LogBuffer();
     void FlushBuffer();
     void TriggerChord(int chord_id);

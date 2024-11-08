@@ -15,7 +15,7 @@ Input::Input() {
     this->buffer = std::vector<std::pair<SDL_Scancode, bool>>();
     this->start = std::chrono::steady_clock::now();
     this->elapsed = 0;
-    this->timeout = 100;
+    this->timeout = 50;
 }
 
 bool Input::IsKeyInChords(SDL_Scancode key) {
@@ -75,7 +75,11 @@ void Input::Process() {
 
         this->buffer.push_back({key, pressed});
 
-        int chord_id = this->BufferContainsChord();
+        if (this->BufferContainsPartialChord()) {
+            this->start = std::chrono::steady_clock::now();
+        }
+
+        int chord_id = this->BufferContainsFullChord();
         if (chord_id != 0) {
             this->TriggerChord(chord_id);
         }
@@ -93,7 +97,20 @@ void Input::Process() {
     memcpy((void *)this->keyboard_state, new_state, SDL_NUM_SCANCODES);
 }
 
-int Input::BufferContainsChord() {
+bool Input::BufferContainsPartialChord() {
+    for (auto &chord : this->chords) {
+        const auto &keys = chord.GetKeys();
+
+        for (const auto &[key, pressed] : this->buffer) {
+            if (keys.count(key) > 0 && pressed) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int Input::BufferContainsFullChord() {
     for (auto &chord : this->chords) {
         bool chord_found = true;
 
