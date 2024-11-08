@@ -37,22 +37,18 @@ void HandleAlienSingleInput(InputEvent *event) {
     SDL_Scancode key = event->key;
     switch (key) {
     case SDL_SCANCODE_W:
-    case SDL_SCANCODE_UP:
         key_state.up = pressed;
         break;
 
     case SDL_SCANCODE_S:
-    case SDL_SCANCODE_DOWN:
         key_state.down = pressed;
         break;
 
     case SDL_SCANCODE_A:
-    case SDL_SCANCODE_LEFT:
         key_state.left = pressed;
         break;
 
     case SDL_SCANCODE_D:
-    case SDL_SCANCODE_RIGHT:
         key_state.right = pressed;
         break;
 
@@ -69,28 +65,24 @@ void HandleAlienChordInput(Entity &alien, InputEvent *event) {
     }
     switch (event->chord_id) {
     case 1:
-    case 5:
         key_state.power_up = pressed;
         alien.GetComponent<Physics>()->SetVelocity(
-            {alien.GetComponent<Physics>()->GetVelocity().x, -150});
+            {alien.GetComponent<Physics>()->GetVelocity().x, -200});
         break;
     case 2:
-    case 6:
         key_state.power_down = pressed;
         alien.GetComponent<Physics>()->SetVelocity(
-            {alien.GetComponent<Physics>()->GetVelocity().x, 150});
+            {alien.GetComponent<Physics>()->GetVelocity().x, 200});
         break;
     case 3:
-    case 7:
         key_state.power_left = pressed;
         alien.GetComponent<Physics>()->SetVelocity(
-            {-150, alien.GetComponent<Physics>()->GetVelocity().y});
+            {-200, alien.GetComponent<Physics>()->GetVelocity().y});
         break;
     case 4:
-    case 8:
         key_state.power_right = pressed;
         alien.GetComponent<Physics>()->SetVelocity(
-            {150, alien.GetComponent<Physics>()->GetVelocity().y});
+            {200, alien.GetComponent<Physics>()->GetVelocity().y});
         break;
     default:
         break;
@@ -177,7 +169,8 @@ void UpdateAlien(Entity &alien) {
     }
     if (!key_state.left && !key_state.right) {
         alien.GetComponent<Physics>()->SetVelocity(
-            {0, alien.GetComponent<Physics>()->GetVelocity().y});
+            {float(alien.GetComponent<Physics>()->GetVelocity().x * 0.99),
+             alien.GetComponent<Physics>()->GetVelocity().y});
     }
 }
 
@@ -393,8 +386,7 @@ std::vector<Entity *> CreateEnemies() {
         enemy_index += 1;
         pos_x += 660;
     }
-    // return enemies;
-    return std::vector<Entity *>();
+    return enemies;
 }
 
 std::vector<Entity *> CreateEntities() {
@@ -478,16 +470,10 @@ void BindEngineInputs() {
 }
 
 void RegisterInputChords() {
-    Engine::GetInstance().RegisterInputChord(1, {SDL_SCANCODE_A, SDL_SCANCODE_D});
-
-    // Engine::GetInstance().RegisterInputChord(1, {SDL_SCANCODE_W, SDL_SCANCODE_SPACE});
-    // Engine::GetInstance().RegisterInputChord(2, {SDL_SCANCODE_S, SDL_SCANCODE_SPACE});
-    // Engine::GetInstance().RegisterInputChord(3, {SDL_SCANCODE_A, SDL_SCANCODE_SPACE});
-    // Engine::GetInstance().RegisterInputChord(4, {SDL_SCANCODE_D, SDL_SCANCODE_SPACE});
-    // Engine::GetInstance().RegisterInputChord(5, {SDL_SCANCODE_UP, SDL_SCANCODE_SPACE});
-    // Engine::GetInstance().RegisterInputChord(6, {SDL_SCANCODE_DOWN, SDL_SCANCODE_SPACE});
-    // Engine::GetInstance().RegisterInputChord(7, {SDL_SCANCODE_LEFT, SDL_SCANCODE_SPACE});
-    // Engine::GetInstance().RegisterInputChord(8, {SDL_SCANCODE_RIGHT, SDL_SCANCODE_SPACE});
+    Engine::GetInstance().RegisterInputChord(1, {SDL_SCANCODE_W, SDL_SCANCODE_P});
+    Engine::GetInstance().RegisterInputChord(2, {SDL_SCANCODE_S, SDL_SCANCODE_P});
+    Engine::GetInstance().RegisterInputChord(3, {SDL_SCANCODE_A, SDL_SCANCODE_P});
+    Engine::GetInstance().RegisterInputChord(4, {SDL_SCANCODE_D, SDL_SCANCODE_P});
 }
 
 int main(int argc, char *args[]) {
