@@ -1,33 +1,52 @@
 #include "Input.hpp"
-
-#include "Engine.hpp"
+#include "Chord.hpp"
 #include "EventManager.hpp"
 #include "SDL_keyboard.h"
 #include "SDL_scancode.h"
 #include "Types.hpp"
 #include "Utils.hpp"
+#include <algorithm>
 #include <cstddef>
 
 Input::Input() {
     this->keyboard_state = nullptr;
-    this->chords = std::unordered_map<int, std::unordered_set<SDL_Scancode>>();
-    this->key_press_times = std::unordered_map<SDL_Scancode, int64_t>();
-    this->chord_delay = 100;
-}
+    this->chords = std::vector<Chord>();
 
-// Event handler function to be called on key state change
-void Input::RaiseEvent(SDL_Scancode key, bool is_pressed) {
-    EventManager::GetInstance().RaiseInputEvent(
-        InputEvent{InputEventType::Single, key, 0, is_pressed});
+    this->buffer = std::vector<std::pair<SDL_Scancode, bool>>();
+    this->start = std::chrono::steady_clock::now();
+    this->elapsed = 0;
+    this->timeout = 100;
 }
 
 bool Input::IsKeyInChords(SDL_Scancode key) {
-    for (const auto &[chord_id, chord_keys] : this->chords) {
-        if (chord_keys.count(key) > 0) {
+    for (Chord &chord : this->chords) {
+        if (chord.IsKeyInChord(key)) {
             return true;
         }
     }
     return false;
+}
+
+void Input::LogBuffer() {
+    std::string log_buffer = "";
+    for (const auto &entry : this->buffer) {
+        SDL_Scancode key = entry.first;
+        bool pressed = entry.second;
+
+        log_buffer += std::to_string(key) + "_" + std::to_string(pressed) + " , ";
+    }
+    Log(LogLevel::Info, "buffer: %s", log_buffer.c_str());
+}
+
+void Input::FlushBuffer() {
+    for (const auto &entry : this->buffer) {
+        SDL_Scancode key = entry.first;
+        bool pressed = entry.second;
+
+        EventManager::GetInstance().RaiseInputEvent(
+            InputEvent{InputEventType::Single, key, 0, pressed});
+    }
+    this->buffer.clear();
 }
 
 void Input::Process() {
@@ -35,39 +54,8 @@ void Input::Process() {
 
     // If first call, initialize prevState to match the current state
     if (!this->keyboard_state) {
-        int num_keys;
         this->keyboard_state = new Uint8[SDL_NUM_SCANCODES];
         memcpy((void *)this->keyboard_state, new_state, SDL_NUM_SCANCODES);
-    }
-
-    // To ensure only changes to chords are raised
-    static std::unordered_map<int, bool> active_chords;
-
-    int64_t current_time = Engine::GetInstance().EngineTimelineGetTime();
-
-    for (const auto &[chord_id, chord_keys] : this->chords) {
-        bool chord_detected = true;
-
-        for (SDL_Scancode key : chord_keys) {
-            if (!new_state[key]) {
-                chord_detected = false;
-                break;
-            }
-        }
-
-        if (chord_detected) {
-            if (!active_chords[chord_id]) {
-                EventManager::GetInstance().RaiseInputEvent(
-                    InputEvent{InputEventType::Chord, SDL_SCANCODE_UNKNOWN, chord_id, true});
-                active_chords[chord_id] = true;
-            }
-        } else {
-            if (active_chords[chord_id]) {
-                EventManager::GetInstance().RaiseInputEvent(
-                    InputEvent{InputEventType::Chord, SDL_SCANCODE_UNKNOWN, chord_id, false});
-                active_chords[chord_id] = false;
-            }
-        }
     }
 
     // Iterate over all scancodes and check for changes
@@ -76,36 +64,79 @@ void Input::Process() {
             continue;
         }
 
-        bool is_pressed = new_state[i];
+        bool pressed = new_state[i];
         SDL_Scancode key = static_cast<SDL_Scancode>(i);
 
-        if (is_pressed) {
-            key_press_times[key] = current_time;
-        } else {
-            key_press_times.erase(key);
+        if (!this->IsKeyInChords(key)) {
+            EventManager::GetInstance().RaiseInputEvent(
+                InputEvent{InputEventType::Single, key, 0, pressed});
+            continue;
         }
 
-        if (this->IsKeyInChords(key)) {
-            int64_t delay = Engine::GetInstance().EngineTimelineGetTime() - key_press_times[key];
+        this->buffer.push_back({key, pressed});
 
-            if (delay >= (this->chord_delay * 1'000'000)) {
-                this->RaiseEvent(key, is_pressed);
-            }
-        } else {
-            this->RaiseEvent(key, is_pressed);
+        int chord_id = this->BufferContainsChord();
+        if (chord_id != 0) {
+            this->TriggerChord(chord_id);
         }
+    }
+
+    auto now = std::chrono::steady_clock::now();
+    this->elapsed =
+        std::chrono::duration_cast<std::chrono::milliseconds>(now - this->start).count();
+
+    if (this->elapsed >= this->timeout) {
+        this->ResetChords();
     }
 
     // Update the previous state
     memcpy((void *)this->keyboard_state, new_state, SDL_NUM_SCANCODES);
 }
 
-void Input::RegisterInputChord(int chord_id, std::unordered_set<SDL_Scancode> chord) {
-    if (chord_id == 0) {
-        Log(LogLevel::Error, "The chord_id should be greater than 0!");
-        app->quit.store(true);
-        return;
+int Input::BufferContainsChord() {
+    for (auto &chord : this->chords) {
+        bool chord_found = true;
+
+        for (const auto &key : chord.GetKeys()) {
+            auto buffer_iterator =
+                std::find_if(this->buffer.begin(), this->buffer.end(),
+                             [key](const std::pair<SDL_Scancode, bool> &entry) {
+                                 return entry.first == key && entry.second == true;
+                             });
+            if (buffer_iterator == buffer.end()) {
+                chord_found = false;
+                break;
+            }
+        }
+
+        if (chord_found) {
+            for (const auto &key : chord.GetKeys()) {
+                auto buffer_iterator =
+                    std::remove_if(buffer.begin(), buffer.end(),
+                                   [key](const std::pair<SDL_Scancode, bool> &entry) {
+                                       return entry.first == key && entry.second == true;
+                                   });
+                buffer.erase(buffer_iterator, buffer.end());
+            }
+            return chord.GetChordID();
+        }
     }
 
-    this->chords[chord_id] = chord;
+    return 0;
+}
+
+void Input::TriggerChord(int chord_id) {
+    this->ResetChords();
+
+    EventManager::GetInstance().RaiseInputEvent(
+        InputEvent{InputEventType::Chord, SDL_SCANCODE_UNKNOWN, chord_id, true});
+}
+
+void Input::ResetChords() {
+    this->start = std::chrono::steady_clock::now();
+    this->FlushBuffer();
+}
+
+void Input::RegisterInputChord(int chord_id, std::unordered_set<SDL_Scancode> keys) {
+    this->chords.push_back(Chord(chord_id, keys));
 }
