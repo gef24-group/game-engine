@@ -154,7 +154,7 @@ void EventManager::ProfileEventQueue() {
 
 void EventManager::RaiseInputEvent(InputEvent event) {
     Event input_event = Event(EventType::Input, event);
-    input_event.SetDelay(0);
+    input_event.SetDelay(-1);
     input_event.SetPriority(Priority::High);
 
     if (event.type == InputEventType::Single) {

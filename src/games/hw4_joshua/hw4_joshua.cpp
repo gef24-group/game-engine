@@ -64,6 +64,9 @@ void HandleAlienSingleInput(InputEvent *event) {
 void HandleAlienChordInput(Entity &alien, InputEvent *event) {
     bool pressed = event->pressed;
 
+    if (!pressed) {
+        return;
+    }
     switch (event->chord_id) {
     case 1:
     case 5:
@@ -390,7 +393,8 @@ std::vector<Entity *> CreateEnemies() {
         enemy_index += 1;
         pos_x += 660;
     }
-    return enemies;
+    // return enemies;
+    return std::vector<Entity *>();
 }
 
 std::vector<Entity *> CreateEntities() {
