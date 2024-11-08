@@ -72,8 +72,6 @@ void Collision::HandlePairwiseCollision(Entity *collider) {
     Overlap overlap = GetOverlap(rect_1, rect_2);
 
     int pos_x = 0, pos_y = 0;
-    float vel_x = this->entity->GetComponent<Physics>()->GetVelocity().x;
-    float vel_y = this->entity->GetComponent<Physics>()->GetVelocity().y;
 
     if (overlap == Overlap::Left) {
         pos_x = col_x - obj_width;
@@ -89,18 +87,22 @@ void Collision::HandlePairwiseCollision(Entity *collider) {
         pos_y = col_y + col_height;
     }
 
-    this->entity->GetComponent<Transform>()->SetPosition(Position{float(pos_x), float(pos_y)});
+    if (this->entity->GetComponent<Physics>()) {
+        this->entity->GetComponent<Transform>()->SetPosition(Position{float(pos_x), float(pos_y)});
+        float vel_x = this->entity->GetComponent<Physics>()->GetVelocity().x;
+        float vel_y = this->entity->GetComponent<Physics>()->GetVelocity().y;
 
-    if (collider->GetCategory() != EntityCategory::SideBoundary) {
-        if (overlap == Overlap::Left || overlap == Overlap::Right) {
-            vel_x *= -this->GetRestitution();
+        if (collider->GetCategory() != EntityCategory::SideBoundary) {
+            if (overlap == Overlap::Left || overlap == Overlap::Right) {
+                vel_x *= -this->GetRestitution();
+            }
+            if (overlap == Overlap::Top || overlap == Overlap::Bottom) {
+                vel_y *= -this->GetRestitution();
+            }
         }
-        if (overlap == Overlap::Top || overlap == Overlap::Bottom) {
-            vel_y *= -this->GetRestitution();
-        }
+
+        this->entity->GetComponent<Physics>()->SetVelocity(Velocity{vel_x, vel_y});
     }
-
-    this->entity->GetComponent<Physics>()->SetVelocity(Velocity{vel_x, vel_y});
 }
 
 void Collision::Update() {}

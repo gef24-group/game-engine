@@ -39,9 +39,34 @@ void AssignOperationsToKeys() {
     Engine::GetInstance().RegisterInputChord(3, {SDL_SCANCODE_UP, SDL_SCANCODE_SPACE});
 }
 
-void HandlePlayerSingleInput(InputEvent event) {
-    bool pressed = event.pressed;
-    SDL_Scancode key = event.key;
+// Pass a nullptr if the input event was not a chord event so that the chord actions are disabled.
+void HandlePlayerChordInput(InputEvent *event) {
+    if (event) {
+        bool pressed = event->pressed;
+
+        switch (event->chord_id) {
+        case 1:
+            player_event.dash_left = pressed;
+            break;
+        case 2:
+            player_event.dash_right = pressed;
+            break;
+        case 3:
+            player_event.power_jump = pressed;
+            break;
+        default:
+            break;
+        }
+    } else {
+        // Chord release events are not raised
+        player_event.dash_left = player_event.dash_right = player_event.power_jump = false;
+    }
+}
+
+void HandlePlayerSingleInput(InputEvent *event) {
+    HandlePlayerChordInput(nullptr);
+    bool pressed = event->pressed;
+    SDL_Scancode key = event->key;
 
     switch (key) {
     case SDL_SCANCODE_LEFT:
@@ -60,39 +85,16 @@ void HandlePlayerSingleInput(InputEvent event) {
     }
 }
 
-void HandlePlayerChordInput(Entity &player, InputEvent &event) {
-    bool pressed = event.pressed;
-
-    switch (event.chord_id) {
-    case 1:
-        player_event.dash_left = pressed;
-        player.GetComponent<Physics>()->SetVelocity(
-            {-90, player.GetComponent<Physics>()->GetVelocity().y});
-        break;
-    case 2:
-        player_event.dash_right = pressed;
-        player.GetComponent<Physics>()->SetVelocity(
-            {90, player.GetComponent<Physics>()->GetVelocity().y});
-        break;
-    case 3:
-        player_event.power_jump = pressed;
-        player.GetComponent<Physics>()->SetVelocity(
-            {player.GetComponent<Physics>()->GetVelocity().x, -100});
-        break;
-    default:
-        break;
-    }
-}
-
 void HandlePlayerEvent(Entity &player, Event &event) {
     InputEvent *input_event = std::get_if<InputEvent>(&(event.data));
+
     if (input_event) {
         switch (input_event->type) {
         case InputEventType::Single:
-            HandlePlayerSingleInput(*input_event);
+            HandlePlayerSingleInput(input_event);
             break;
         case InputEventType::Chord:
-            HandlePlayerChordInput(player, *input_event);
+            HandlePlayerChordInput(input_event);
             break;
         default:
             break;
@@ -107,16 +109,35 @@ void UpdatePlayer(Entity &player) {
         player_moved = true;
         player.GetComponent<Physics>()->SetVelocity(
             {30, player.GetComponent<Physics>()->GetVelocity().y});
-    } else if (player_event.move_left) {
+    }
+    if (player_event.move_left) {
         player_moved = true;
         player.GetComponent<Physics>()->SetVelocity(
             {-30, player.GetComponent<Physics>()->GetVelocity().y});
     }
-
     if (player_event.jump) {
+        // Log(LogLevel::Info, "Regular jump");
         player_moved = true;
         player.GetComponent<Physics>()->SetVelocity(
             {player.GetComponent<Physics>()->GetVelocity().x, -30});
+    }
+    if (player_event.dash_left) {
+        // Log(LogLevel::Info, "Left dash!");
+        player.GetComponent<Physics>()->SetVelocity(
+            {-90, player.GetComponent<Physics>()->GetVelocity().y});
+        player_moved = true;
+    }
+    if (player_event.dash_right) {
+        // Log(LogLevel::Info, "Right dash!");
+        player.GetComponent<Physics>()->SetVelocity(
+            {90, player.GetComponent<Physics>()->GetVelocity().y});
+        player_moved = true;
+    }
+    if (player_event.power_jump) {
+        // Log(LogLevel::Info, "Power jump!");
+        player.GetComponent<Physics>()->SetVelocity(
+            {player.GetComponent<Physics>()->GetVelocity().x, -100});
+        player_moved = true;
     }
 
     if (!player_moved) {
@@ -330,7 +351,6 @@ Entity *CreatePlayer() {
     player->AddComponent<Network>();
     player->AddComponent<Handler>();
 
-    // player->GetComponent<Transform>()->SetPosition({300, 300});
     player->GetComponent<Transform>()->SetSize({50, 100});
 
     player->GetComponent<Physics>()->SetAcceleration({0, 10});
