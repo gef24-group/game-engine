@@ -152,7 +152,7 @@ void UpdatePlatforms(Entity &platform) {
     float platform_velocity_val = 20;
 
     if (platform.GetName() == "moving_platform_1") {
-        if (platform_position.y < 100) {
+        if (platform_position.y < 300) {
             platform.GetComponent<Physics>()->SetVelocity({0, platform_velocity_val});
         } else if (platform_position.y > 900) {
             platform.GetComponent<Physics>()->SetVelocity({0, -platform_velocity_val});
