@@ -9,25 +9,28 @@ TRACY_CAPTURE_TIME ?= 300
 
 all: build
 
-build:
-	cmake -S . -B build -DSANITIZER=$(SANITIZER) -DPROFILE=${PROFILE}
+configure:
+	cmake -G Ninja -S . -B build -DSANITIZER=$(SANITIZER) -DPROFILE=${PROFILE}
 	@ln -sf build/compile_commands.json compile_commands.json
-	@echo
-	cmake --build build --target $(GAME) -- -j8
+
+build:
+	cmake --build build --target $(GAME)
 
 build-tracy-gui:
-	cd vendor/tracy && cmake -B profiler/build -S profiler -DCMAKE_BUILD_TYPE=Release
-	cd vendor/tracy && cmake --build profiler/build --config Release
+	cd build/_deps/tracy-src && cmake -B profiler/build -S profiler -DCMAKE_BUILD_TYPE=Release
+	cd build/_deps/tracy-src && cmake --build profiler/build --config Release
 
 build-tracy-capture:
-	cd vendor/tracy && cmake -B capture/build -S capture -DCMAKE_BUILD_TYPE=Release
-	cd vendor/tracy && cmake --build capture/build --config Release
+	cd build/_deps/tracy-src && cmake -B capture/build -S capture -DCMAKE_BUILD_TYPE=Release
+	cd build/_deps/tracy-src && cmake --build capture/build --config Release
 
 open-tracy-gui:
-	nohup ./vendor/tracy/profiler/build/tracy-profiler </dev/null >/dev/null 2>&1 &
+	nohup ./build/_deps/tracy-src/profiler/build/tracy-profiler </dev/null >/dev/null 2>&1 &
 
 clean:
-	rm -rf build compile_commands*.json .cache
+	rm -rf compile_commands*.json .cache
+	@echo
+	cmake --build build --target clean
 
 play:
 	@if [ "$(GAME)" = "all" ]; then \
@@ -57,7 +60,7 @@ play-profile:
 	fi
 	mkdir -p traces
 	cd ./build/$(GAME) && TRACY_PORT=$(TRACY_PORT) ./$(GAME) $(ARGS) &
-	./vendor/tracy/capture/build/tracy-capture -o ./traces/$(TRACY_OUTPUT) -p $(TRACY_PORT) -s $(TRACY_CAPTURE_TIME)
+	./build/_deps/tracy-src/capture/build/tracy-capture -o ./traces/$(TRACY_OUTPUT) -p $(TRACY_PORT) -s $(TRACY_CAPTURE_TIME)
 
 format:
 	find src -name '*.[ch]pp' | xargs -P 8 -n 1 clang-format -i
@@ -68,4 +71,4 @@ check-format:
 check-tidy:
 	find src/engine $(shell cat .targetgames | sed 's/^/src\/games\//') -name '*.[ch]pp' -print | xargs -P 8 -n 1 clang-tidy
 
-.PHONY: all build build-tracy-gui build-tracy-capture open-tracy-gui clean play play-profile format check-format check-tidy
+.PHONY: all configure build build-tracy-gui build-tracy-capture open-tracy-gui clean play play-profile format check-format check-tidy

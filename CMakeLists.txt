@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
 # Set project name
 project(game-engine)
@@ -9,17 +9,18 @@ set(CMAKE_CXX_STANDARD 17)
 # Generate compile_commands.json
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Some libraries are downloaded using FetchContent
-include(FetchContent)
+# Set RPATH to the same directory as the executable
+if(APPLE)
+    set(CMAKE_BUILD_RPATH "@executable_path")
+elseif(UNIX)
+    set(CMAKE_BUILD_RPATH "$ORIGIN")
+endif()
 
-# Download the "nlohmann/json" library
-FetchContent_Declare(
-    json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/vendor/json
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(json)
+# Include configuration options
+include(cmake/config.cmake)
+
+# Include dependencies
+include(cmake/dependencies.cmake)
 
 # Add SANITIZER support if it is provided
 if(SANITIZER)
@@ -33,36 +34,13 @@ if(SANITIZER)
     endif()
 endif()
 
-# Add the tracy profiler if PROFILE is ON
+# Add the PROFILE definition if PROFILE is ON
 if (PROFILE STREQUAL "ON")
-    set(TRACY_ENABLE ON)
-
-    FetchContent_Declare(
-        tracy
-        GIT_REPOSITORY https://github.com/wolfpld/tracy.git
-        GIT_TAG v0.11.1
-        GIT_SHALLOW TRUE
-        GIT_PROGRESS TRUE
-        SOURCE_DIR ${CMAKE_SOURCE_DIR}/vendor/tracy
-    )
-    FetchContent_MakeAvailable(tracy)
-
     add_definitions(-DPROFILE)
 endif()
 
-# Add CMake modules to find external libraries
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-# Find required packages
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
-find_package(Threads REQUIRED)
-find_package(cppzmq REQUIRED)
-
 # Include required header files
 include_directories(
-    ${SDL2_INCLUDE_DIRS}
-    ${SDL2_IMAGE_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/src/engine/includes
 )
 
@@ -107,15 +85,16 @@ foreach(GAME_DIR ${GAMES})
     # Link required libraries to the game
     target_link_libraries(
         ${GAME_NAME}
-        ${SDL2_LIBRARIES}
-        ${SDL2_IMAGE_LIBRARIES}
-        Threads::Threads
+        PRIVATE
+        SDL2::SDL2
+        SDL2_image::SDL2_image
         cppzmq
         nlohmann_json::nlohmann_json
+        Threads::Threads
     )
 
     if (PROFILE STREQUAL "ON")
-        target_link_libraries(${GAME_NAME} TracyClient)
+        target_link_libraries(${GAME_NAME} PRIVATE TracyClient)
     endif()
 
     foreach(ASSET ${GAME_ASSETS})
@@ -129,4 +108,15 @@ foreach(GAME_DIR ${GAMES})
             COMMAND ${CMAKE_COMMAND} -E copy ${ASSET} "${GAME_OUTPUT_DIR}/assets"
         )
     endforeach()
+
+    # Copy shared libraries to the same folder as the executable
+    add_custom_command(
+        TARGET ${GAME_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:SDL2::SDL2>"
+            "$<TARGET_FILE:SDL2_image::SDL2_image>"
+            "$<TARGET_FILE:libzmq>"
+            "$<TARGET_FILE_DIR:${GAME_NAME}>"
+        VERBATIM
+    )
 endforeach()

@@ -16,14 +16,13 @@ jobs:
           sudo apt install \
             build-essential \
             x11-apps \
-            libsdl2-2.0-0 \
-            libsdl2-dev \
-            libsdl2-image-2.0-0 \
-            libsdl2-image-dev \
-            libzmq3-dev \
             cmake \
+            ninja-build \
             clang-format \
             clang-tidy
+
+    - name: Configure build
+      run: make configure
 
     - name: Check build
       run: make
