@@ -11,7 +11,6 @@ all: build
 
 configure:
 	cmake -G Ninja -S . -B build -DSANITIZER=$(SANITIZER) -DPROFILE=${PROFILE}
-	@ln -sf build/compile_commands.json compile_commands.json
 
 build:
 	cmake --build build --target $(GAME)
@@ -28,8 +27,6 @@ open-tracy-gui:
 	nohup ./build/_deps/tracy-src/profiler/build/tracy-profiler </dev/null >/dev/null 2>&1 &
 
 clean:
-	rm -rf compile_commands*.json .cache
-	@echo
 	cmake --build build --target clean
 
 play:
