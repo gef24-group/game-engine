@@ -253,7 +253,7 @@ std::vector<Entity *> CreateMiscelleanousEntities() {
     miscelleanous_entity1->GetComponent<Transform>()->SetPosition(
         {1000, float(window_size.height) - 1080});
     miscelleanous_entity1->GetComponent<Transform>()->SetSize({150, 150});
-    miscelleanous_entity1->GetComponent<Render>()->SetTexture("assets/bird.png");
+    miscelleanous_entity1->GetComponent<Render>()->SetTexture("bird.png");
     miscelleanous_entity1->GetComponent<Network>()->SetOwner(NetworkRole::Server);
     miscelleanous_entities.push_back(miscelleanous_entity1);
 
@@ -265,7 +265,7 @@ std::vector<Entity *> CreateMiscelleanousEntities() {
     miscelleanous_entity2->GetComponent<Transform>()->SetPosition(
         {2200, float(window_size.height) - 1080});
     miscelleanous_entity2->GetComponent<Transform>()->SetSize({150, 150});
-    miscelleanous_entity2->GetComponent<Render>()->SetTexture("assets/bird.png");
+    miscelleanous_entity2->GetComponent<Render>()->SetTexture("bird.png");
 
     // miscelleanous_entity1->GetComponent<Render>()->SetColor(ground_color);
     miscelleanous_entity2->GetComponent<Network>()->SetOwner(NetworkRole::Server);
@@ -279,7 +279,7 @@ std::vector<Entity *> CreateMiscelleanousEntities() {
     miscelleanous_entity3->GetComponent<Transform>()->SetPosition(
         {1800, float(window_size.height) - 1020});
     miscelleanous_entity3->GetComponent<Transform>()->SetSize({150, 150});
-    miscelleanous_entity3->GetComponent<Render>()->SetTexture("assets/sun.png");
+    miscelleanous_entity3->GetComponent<Render>()->SetTexture("sun.png");
 
     // miscelleanous_entity1->GetComponent<Render>()->SetColor(ground_color);
     miscelleanous_entity3->GetComponent<Network>()->SetOwner(NetworkRole::Server);
@@ -366,7 +366,7 @@ Entity *CreatePlayer() {
     player->GetComponent<Transform>()->SetSize({100, 100});
 
     player->GetComponent<Physics>()->SetAcceleration({0, 10});
-    player->GetComponent<Render>()->SetTextureTemplate("assets/player_{}.png");
+    player->GetComponent<Render>()->SetTextureTemplate("player_{}.png");
     player->GetComponent<Network>()->SetOwner(NetworkRole::Client);
     player->GetComponent<Handler>()->SetUpdateCallback(UpdatePlayer);
     player->GetComponent<Handler>()->SetEventCallback(HandlePlayerEvent);

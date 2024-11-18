@@ -10,6 +10,7 @@
 extern App *app;
 
 SDL_Texture *LoadTexture(std::string path);
+std::string GetAssetPath(const std::string &path);
 void Log(LogLevel log_level, const char *fmt, ...);
 Size GetWindowSize();
 Overlap GetOverlap(SDL_Rect rect_1, SDL_Rect rect_2);

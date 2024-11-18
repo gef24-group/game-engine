@@ -16,7 +16,7 @@ const int TILE_SIZE = 100;
 Size window_size;
 NetworkInfo network_info;
 std::vector<const char *> enemy_textures =
-    std::vector({"assets/ladybug.png", "assets/mouse.png", "assets/worm.png", "assets/bee.png"});
+    std::vector({"ladybug.png", "mouse.png", "worm.png", "bee.png"});
 
 struct KeyState {
     bool up;
@@ -208,7 +208,7 @@ Entity *CreateAlien() {
     alien->AddComponent<Network>();
 
     alien->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-    alien->GetComponent<Render>()->SetTextureTemplate("assets/alien_{}.png");
+    alien->GetComponent<Render>()->SetTextureTemplate("alien_{}.png");
     alien->GetComponent<Transform>()->SetSize(Size{TILE_SIZE, TILE_SIZE});
     alien->GetComponent<Physics>()->SetAcceleration(Acceleration{0, 15});
     alien->GetComponent<Physics>()->SetVelocity(Velocity{0, 0});
@@ -228,7 +228,7 @@ Entity *CreatePlatform() {
     platform->AddComponent<Network>();
 
     platform->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-    platform->GetComponent<Render>()->SetTexture("assets/stone.png");
+    platform->GetComponent<Render>()->SetTexture("stone.png");
     platform->GetComponent<Transform>()->SetPosition(Position{20, TILE_SIZE * 5});
     platform->GetComponent<Transform>()->SetSize(Size{TILE_SIZE * 3, TILE_SIZE / 2});
     platform->GetComponent<Physics>()->SetVelocity(Velocity{40, 0});
@@ -247,7 +247,7 @@ Entity *CreateHouse() {
     house_size.height *= 2;
     house_size.width *= 2;
     house->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-    house->GetComponent<Render>()->SetTexture("assets/house.png");
+    house->GetComponent<Render>()->SetTexture("house.png");
     house->GetComponent<Transform>()->SetPosition(
         Position{float(window_size.width * 2) - float(house_size.width) - 50,
                  float(window_size.height - (TILE_SIZE + house_size.height))});
@@ -266,7 +266,7 @@ Entity *CreateSun() {
     sun_size.height += 80;
     sun_size.width += 80;
     sun->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-    sun->GetComponent<Render>()->SetTexture("assets/sun.png");
+    sun->GetComponent<Render>()->SetTexture("sun.png");
     sun->GetComponent<Transform>()->SetPosition(
         Position{float(window_size.width) / 2 - 900, (TILE_SIZE - 100)});
     sun->GetComponent<Transform>()->SetSize(sun_size);
@@ -285,7 +285,7 @@ Entity *CreateGround() {
     ground->GetComponent<Transform>()->SetPosition(
         Position{0, float(window_size.height - TILE_SIZE)});
     ground->GetComponent<Transform>()->SetSize(Size{TILE_SIZE * 38, TILE_SIZE});
-    ground->GetComponent<Render>()->SetTexture("assets/ground.png");
+    ground->GetComponent<Render>()->SetTexture("ground.png");
     ground->GetComponent<Network>()->SetOwner(NetworkRole::Client);
     return ground;
 }
@@ -297,7 +297,7 @@ std::vector<Entity *> CreateClouds() {
     cloud_1->AddComponent<Network>();
 
     cloud_1->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-    cloud_1->GetComponent<Render>()->SetTexture("assets/cloud_1.png");
+    cloud_1->GetComponent<Render>()->SetTexture("cloud_1.png");
     cloud_1->GetComponent<Transform>()->SetPosition(Position{460, (TILE_SIZE * 1.5)});
     cloud_1->GetComponent<Transform>()->SetSize(Size{203, 121});
     cloud_1->GetComponent<Network>()->SetOwner(NetworkRole::Client);
@@ -308,7 +308,7 @@ std::vector<Entity *> CreateClouds() {
     cloud_2->AddComponent<Network>();
 
     cloud_2->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-    cloud_2->GetComponent<Render>()->SetTexture("assets/cloud_2.png");
+    cloud_2->GetComponent<Render>()->SetTexture("cloud_2.png");
     cloud_2->GetComponent<Transform>()->SetPosition(Position{1260, (TILE_SIZE * 1.5)});
     cloud_2->GetComponent<Transform>()->SetSize(Size{216, 139});
     cloud_2->GetComponent<Network>()->SetOwner(NetworkRole::Client);
@@ -319,7 +319,7 @@ std::vector<Entity *> CreateClouds() {
     cloud_3->AddComponent<Network>();
 
     cloud_3->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-    cloud_3->GetComponent<Render>()->SetTexture("assets/cloud_1.png");
+    cloud_3->GetComponent<Render>()->SetTexture("cloud_1.png");
     cloud_3->GetComponent<Transform>()->SetPosition(Position{2060, (TILE_SIZE * 1.5)});
     cloud_3->GetComponent<Transform>()->SetSize(Size{203, 121});
     cloud_3->GetComponent<Network>()->SetOwner(NetworkRole::Client);
@@ -330,7 +330,7 @@ std::vector<Entity *> CreateClouds() {
     cloud_4->AddComponent<Network>();
 
     cloud_4->GetComponent<Render>()->SetColor(Color{0, 0, 0, 0});
-    cloud_4->GetComponent<Render>()->SetTexture("assets/cloud_2.png");
+    cloud_4->GetComponent<Render>()->SetTexture("cloud_2.png");
     cloud_4->GetComponent<Transform>()->SetPosition(Position{2860, (TILE_SIZE * 1.5)});
     cloud_4->GetComponent<Transform>()->SetSize(Size{203, 121});
     cloud_4->GetComponent<Network>()->SetOwner(NetworkRole::Client);

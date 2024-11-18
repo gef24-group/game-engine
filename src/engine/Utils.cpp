@@ -11,6 +11,8 @@
 #include <vector>
 
 SDL_Texture *LoadTexture(std::string path) {
+    path = GetAssetPath(path);
+
     if (app->renderer == nullptr) {
         return NULL;
     }
@@ -40,6 +42,16 @@ SDL_Texture *LoadTexture(std::string path) {
     }
 
     return texture;
+}
+
+std::string GetAssetPath(const std::string &path) {
+    std::string base_dir = "assets";
+
+#ifdef _WIN32
+    return ".\\" + base_dir + "\\" + path;
+#else
+    return "./" + base_dir + "/" + path;
+#endif
 }
 
 void Log(LogLevel log_level, const char *fmt, ...) {

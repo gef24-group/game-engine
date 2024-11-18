@@ -354,7 +354,7 @@ Entity *CreatePlayer() {
     player->GetComponent<Transform>()->SetSize({50, 100});
 
     player->GetComponent<Physics>()->SetAcceleration({0, 10});
-    player->GetComponent<Render>()->SetTextureTemplate("assets/player_{}.png");
+    player->GetComponent<Render>()->SetTextureTemplate("player_{}.png");
     player->GetComponent<Network>()->SetOwner(NetworkRole::Client);
     player->GetComponent<Handler>()->SetUpdateCallback(UpdatePlayer);
     player->GetComponent<Handler>()->SetEventCallback(HandlePlayerEvent);
