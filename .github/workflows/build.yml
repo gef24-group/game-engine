@@ -1,0 +1,76 @@
+name: build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04, macos-15, windows-2022 ]
+
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies on Ubuntu
+      if: ${{ matrix.os == 'ubuntu-24.04' }}
+      run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            x11-apps \
+            cmake \
+            ninja-build
+
+    - name: Install dependencies on macOS
+      if: ${{ matrix.os == 'macos-15' }}
+      run: |
+          xcode-select --install
+          brew install cmake ninja
+
+    - name: Install dependencies on Windows
+      if: ${{ matrix.os == 'windows-2022' }}
+      run: |
+          choco install -y ninja
+
+    - name: Configure build on Ubuntu or macOS
+      if: ${{ matrix.os != 'windows-2022' }}
+      run: make configure
+
+    - name: Configure build on Windows
+      if: ${{ matrix.os == 'windows-2022' }}
+      run: .\scripts\configure.ps1
+
+    - name: Build on Ubuntu or macOS
+      if: ${{ matrix.os != 'windows-2022' }}
+      run: make
+
+    - name: Build on Windows
+      if: ${{ matrix.os == 'windows-2022' }}
+      run: .\scripts\build.ps1
+
+    - name: Prepare artifacts on Ubuntu or macOS
+      if: ${{ matrix.os != 'windows-2022' }}
+      run: |
+        mkdir -p bin
+        while IFS= read -r game; do
+          cp -r "build/$game" bin/
+        done < .targetgames
+
+    - name: Prepare artifacts on Windows
+      if: ${{ matrix.os == 'windows-2022' }}
+      run: |
+        mkdir bin
+        Get-Content .targetgames | ForEach-Object {
+          Copy-Item -Recurse -Path "build\$_" -Destination bin
+        }
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.os }}
+        path: bin
