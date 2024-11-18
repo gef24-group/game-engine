@@ -66,6 +66,8 @@ check-format:
 	find src -name '*.[ch]pp' | xargs -P 8 -n 1 clang-format --dry-run --Werror
 
 check-tidy:
+	ln -sf build/compile_commands.json compile_commands.json
 	find src/engine $(shell cat .targetgames | sed 's/^/src\/games\//') -name '*.[ch]pp' -print | xargs -P 8 -n 1 clang-tidy
+	rm -rf compile_commands.json
 
 .PHONY: all configure build build-tracy-gui build-tracy-capture open-tracy-gui clean play play-profile format check-format check-tidy
