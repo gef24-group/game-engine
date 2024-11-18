@@ -40,9 +40,10 @@ jobs:
 
     - name: Configure build on Windows
       if: ${{ matrix.os == 'windows-2022' }}
+      shell: cmd
       run: |
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-        .\scripts\configure.ps1
+        powershell -File .\scripts\configure.ps1
 
     - name: Build on Ubuntu or macOS
       if: ${{ matrix.os != 'windows-2022' }}
@@ -50,9 +51,10 @@ jobs:
 
     - name: Build on Windows
       if: ${{ matrix.os == 'windows-2022' }}
+      shell: cmd
       run: |
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-        .\scripts\build.ps1
+        powershell -File .\scripts\build.ps1
 
     - name: Prepare artifacts on Ubuntu or macOS
       if: ${{ matrix.os != 'windows-2022' }}
