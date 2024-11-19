@@ -10,7 +10,7 @@ TRACY_CAPTURE_TIME ?= 300
 all: build
 
 configure:
-	cmake -G Ninja -S . -B build -DSANITIZER=$(SANITIZER) -DPROFILE=${PROFILE}
+	cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Release -DSANITIZER=$(SANITIZER) -DPROFILE=${PROFILE}
 
 build:
 	cmake --build build --target $(GAME)

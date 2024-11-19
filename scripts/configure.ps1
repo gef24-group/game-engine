@@ -6,7 +6,7 @@ $current_dir = Get-Location
 $root_dir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location -Path $root_dir
 
-$command = "cmake -G Ninja -S . -B build -DPROFILE=$PROFILE"
+$command = "cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Release -DPROFILE=$PROFILE"
 Write-Host $command
 Write-Host ""
 Invoke-Expression $command
