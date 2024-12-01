@@ -1,8 +1,6 @@
 #include "Handler.hpp"
-#include "Engine.hpp"
 #include "Entity.hpp"
 #include "EventManager.hpp"
-#include "Utils.hpp"
 #include <vector>
 
 Handler::Handler(Entity *entity) {
@@ -26,15 +24,4 @@ void Handler::SetEventCallback(std::function<void(Entity &, Event &)> event_call
 
 void Handler::Update() { this->update_callback(*this->entity); }
 
-void Handler::OnEvent(Event event) {
-    InputEvent *input_event = std::get_if<InputEvent>(&(event.data));
-    int player_id = Engine::GetInstance().GetNetworkInfo().id;
-    std::vector<Entity *> entities = Engine::GetInstance().GetEntities();
-
-    if (input_event && this->entity != GetClientPlayer(player_id, entities)) {
-        // Return early to avoid triggering input events for objects that inputs aren't meant for
-        return;
-    }
-
-    this->event_callback(*this->entity, event);
-}
+void Handler::OnEvent(Event event) { this->event_callback(*this->entity, event); }
