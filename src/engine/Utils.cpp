@@ -160,6 +160,14 @@ std::vector<Entity *> GetEntitiesByRole(NetworkInfo network_info, std::vector<En
     }
 
     if (network_info.role == NetworkRole::Client || network_info.role == NetworkRole::Peer) {
+        for (auto *entity : entities) {
+            if (entity->GetComponent<Network>() != nullptr &&
+                entity->GetComponent<Network>()->GetOwner() == network_info.role &&
+                entity->GetCategory() != EntityCategory::Controllable) {
+                entity_list.push_back(entity);
+            }
+        }
+
         entity_list.push_back(GetClientPlayer(network_info.id, entities));
     }
 
