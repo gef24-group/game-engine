@@ -35,8 +35,8 @@ void HandleBulletEvent(Entity &bullet, Event &event) {
 
     if (collision_event) {
         if (collision_event->collider_1 == &bullet || collision_event->collider_2 == &bullet) {
-            if (collision_event->collider_1->GetName() == "alien" ||
-                collision_event->collider_2->GetName() == "alien") {
+            if (collision_event->collider_1->GetName().substr(0, 5) == "alien" ||
+                collision_event->collider_2->GetName().substr(0, 5) == "alien") {
                 Log(LogLevel::Info,
                     "Collision between an alien and a bullet detected in HandleBulletEvent");
                 Engine::GetInstance().RemoveEntity(collision_event->collider_1);
@@ -162,23 +162,28 @@ Entity *CreateCannon() {
     return cannon;
 }
 
-Entity *CreateAlien() {
-    Entity *alien = new Entity("alien", EntityCategory::Moving);
-    alien->AddComponent<Transform>();
-    alien->AddComponent<Physics>();
-    alien->AddComponent<Render>();
-    alien->AddComponent<Collision>();
-    alien->AddComponent<Network>();
-    alien->AddComponent<Handler>();
+std::vector<Entity *> CreateAliens() {
+    std::vector<Entity *> aliens;
 
-    alien->GetComponent<Transform>()->SetPosition({900, 300});
-    alien->GetComponent<Transform>()->SetSize({200, 100});
-    alien->GetComponent<Render>()->SetTexture("alien_row_1.png");
-    alien->GetComponent<Network>()->SetOwner(NetworkRole::Client);
-    alien->GetComponent<Handler>()->SetUpdateCallback(UpdateAlien);
-    alien->GetComponent<Handler>()->SetEventCallback(HandleAlienEvent);
+    for (int i = 0; i < 10; i++) {
+        Entity *alien = new Entity("alien_" + std::to_string(i), EntityCategory::Moving);
+        alien->AddComponent<Transform>();
+        alien->AddComponent<Physics>();
+        alien->AddComponent<Render>();
+        alien->AddComponent<Collision>();
+        alien->AddComponent<Network>();
+        alien->AddComponent<Handler>();
 
-    return alien;
+        alien->GetComponent<Transform>()->SetPosition({float(190 + 160 * i), 300});
+        alien->GetComponent<Transform>()->SetSize({150, 100});
+        alien->GetComponent<Render>()->SetTexture("alien_row_1.png");
+        alien->GetComponent<Network>()->SetOwner(NetworkRole::Client);
+        alien->GetComponent<Handler>()->SetUpdateCallback(UpdateAlien);
+        alien->GetComponent<Handler>()->SetEventCallback(HandleAlienEvent);
+        aliens.push_back(alien);
+    }
+
+    return aliens;
 }
 
 void CreateSpawnPoints() {
@@ -195,12 +200,10 @@ std::vector<Entity *> CreateEntities() {
     CreateSpawnPoints();
     // CreateDeathZones();
     Entity *cannon = CreateCannon();
-    Entity *alien = CreateAlien();
+    std::vector<Entity *> aliens = CreateAliens();
 
     entities.push_back(cannon);
-    entities.push_back(alien);
-    // entities.insert(entities.end(), ground.begin(), ground.end());
-    // entities.insert(entities.end(), platforms.begin(), platforms.end());
+    entities.insert(entities.end(), aliens.begin(), aliens.end());
 
     for (Entity *entity : entities) {
         if (network_info.mode == NetworkMode::PeerToPeer) {
