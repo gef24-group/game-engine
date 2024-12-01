@@ -1,7 +1,6 @@
 #include "Handler.hpp"
 #include "Entity.hpp"
 #include "EventManager.hpp"
-#include <vector>
 
 Handler::Handler(Entity *entity) {
     this->entity = entity;
