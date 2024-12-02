@@ -1,4 +1,5 @@
 include(cmake/CPM.cmake)
+include(InstallRequiredSystemLibraries)
 
 CPMAddPackage(
     NAME SDL

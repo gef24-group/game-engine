@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 # Set project name
 project(game-engine)
@@ -110,13 +110,24 @@ foreach(GAME_DIR ${GAMES})
     endforeach()
 
     # Copy shared libraries to the same folder as the executable
-    add_custom_command(
-        TARGET ${GAME_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "$<TARGET_FILE:SDL2::SDL2>"
-            "$<TARGET_FILE:SDL2_image::SDL2_image>"
-            "$<TARGET_FILE:libzmq>"
-            "$<TARGET_FILE_DIR:${GAME_NAME}>"
-        VERBATIM
-    )
+    if (WIN32)
+        add_custom_command(
+            TARGET ${GAME_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                "$<TARGET_RUNTIME_DLLS:${GAME_NAME}>"
+                "${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}"
+                "$<TARGET_FILE_DIR:${GAME_NAME}>"
+            COMMAND_EXPAND_LISTS
+        )
+    else()
+        add_custom_command(
+            TARGET ${GAME_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                "$<TARGET_SONAME_FILE:SDL2::SDL2>"
+                "$<TARGET_SONAME_FILE:SDL2_image::SDL2_image>"
+                "$<TARGET_SONAME_FILE:libzmq>"
+                "$<TARGET_FILE_DIR:${GAME_NAME}>"
+            VERBATIM
+        )
+    endif()
 endforeach()
