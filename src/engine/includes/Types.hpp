@@ -20,7 +20,7 @@ enum class LogLevel { Verbose = 1, Debug, Info, Warn, Error, Critical, Prioritie
 enum class NetworkMode { Single, ClientServer, PeerToPeer };
 enum class NetworkRole { Server, Client, Host, Peer };
 enum class Direction { Horizontal, Vertical };
-enum class Overlap { Left, Right, Top, Bottom };
+enum class Overlap { Left, Right, Top, Bottom, None };
 enum class Encoding { Struct, JSON };
 
 struct Color {

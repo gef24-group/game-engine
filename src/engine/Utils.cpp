@@ -91,7 +91,7 @@ void Log(LogLevel log_level, const char *fmt, ...) {
 Size GetWindowSize() { return Size{app->window.width, app->window.height}; }
 
 Overlap GetOverlap(SDL_Rect rect_1, SDL_Rect rect_2) {
-    Overlap overlap;
+    Overlap overlap = Overlap::None;
 
     int left_overlap = (rect_1.x + rect_1.w) - rect_2.x;
     int right_overlap = (rect_2.x + rect_2.w) - rect_1.x;
