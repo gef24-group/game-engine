@@ -1053,6 +1053,8 @@ bool Engine::InitializeDisplay() {
         app->renderer = renderer;
     }
 
+    SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1");
+
     return true;
 }
 
