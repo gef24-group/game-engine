@@ -21,7 +21,9 @@ if ($GAME -ceq "all") {
     exit 1
 }
 
-$command = "./build/$GAME/$GAME $GAME_ARGS"
+Set-Location -Path ".\build\$GAME"
+
+$command = ".\$GAME $GAME_ARGS"
 Write-Host $command
 Write-Host ""
 $env:TRACY_PORT = $TRACY_PORT
