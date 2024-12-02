@@ -5,5 +5,7 @@
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
     "C_Cpp.codeAnalysis.clangTidy.enabled": true,
     "C_Cpp.codeAnalysis.runAutomatically": true,
-    "files.eol": "\n"
+    "files.eol": "\n",
+    "cmake.configureOnEdit": false,
+    "cmake.configureOnOpen": false,
 }
