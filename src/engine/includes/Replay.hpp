@@ -3,6 +3,8 @@
 #include "Event.hpp"
 #include "EventHandler.hpp"
 #include "Types.hpp"
+#include <atomic>
+#include <memory>
 #include <mutex>
 #include <utility>
 #include <vector>
