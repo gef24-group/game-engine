@@ -17,6 +17,8 @@
 NetworkInfo network_info;
 Size window_size;
 int64_t last_bullet_fired_time = 0;
+bool alien_hit_right_boundary = false;
+bool alien_hit_left_boundary = false;
 
 struct CannonEvent {
     bool move_left;
@@ -24,11 +26,52 @@ struct CannonEvent {
     bool shoot;
 } cannon_event;
 
-void Update(std::vector<Entity *> &entities) {}
+void Update(std::vector<Entity *> &entities) {
+    bool alien_found = false;
+    bool alien_win = false;
+
+    for (Entity *entity : entities) {
+        if (entity->GetName().substr(0, 5) == "alien") {
+            alien_found = true;
+            Velocity alien_velocity = entity->GetComponent<Physics>()->GetVelocity();
+            Position alien_position = entity->GetComponent<Transform>()->GetPosition();
+            if (alien_hit_left_boundary) {
+                entity->GetComponent<Physics>()->SetVelocity({5, 0});
+                entity->GetComponent<Transform>()->SetPosition(
+                    {alien_position.x, alien_position.y + 50});
+            }
+            if (alien_hit_right_boundary) {
+                entity->GetComponent<Physics>()->SetVelocity({-5, 0});
+                entity->GetComponent<Transform>()->SetPosition(
+                    {alien_position.x, alien_position.y + 50});
+            }
+
+            if (alien_position.y > 700) {
+                alien_win = true;
+            }
+        }
+    }
+
+    // All aliens have been destroyed.
+    if (!alien_found) {
+        Log(LogLevel::Info, "All aliens have been destroyed. You win!");
+        app->quit.store(true);
+    }
+    if (alien_win) {
+        Log(LogLevel::Info, "The aliens have breached your defenses. You lose!");
+        app->quit.store(true);
+    }
+    if (alien_hit_left_boundary) {
+        alien_hit_left_boundary = false;
+    }
+    if (alien_hit_right_boundary) {
+        alien_hit_right_boundary = false;
+    }
+}
 
 void UpdateBullet(Entity &bullet) { bullet.GetComponent<Physics>()->SetVelocity({0, -10}); }
 
-void UpdateAlien(Entity &alien) { alien.GetComponent<Physics>()->SetVelocity({0, 0}); }
+void UpdateAlien(Entity &alien) {}
 
 void HandleBulletEvent(Entity &bullet, Event &event) {
     CollisionEvent *collision_event = std::get_if<CollisionEvent>(&(event.data));
@@ -37,10 +80,12 @@ void HandleBulletEvent(Entity &bullet, Event &event) {
         if (collision_event->collider_1 == &bullet || collision_event->collider_2 == &bullet) {
             if (collision_event->collider_1->GetName().substr(0, 5) == "alien" ||
                 collision_event->collider_2->GetName().substr(0, 5) == "alien") {
-                Log(LogLevel::Info,
-                    "Collision between an alien and a bullet detected in HandleBulletEvent");
                 Engine::GetInstance().RemoveEntity(collision_event->collider_1);
                 Engine::GetInstance().RemoveEntity(collision_event->collider_2);
+            }
+            if (collision_event->collider_1->GetName() == "top_boundary" ||
+                collision_event->collider_2->GetName() == "top_boundary") {
+                Engine::GetInstance().RemoveEntity(&bullet);
             }
         }
     }
@@ -51,12 +96,19 @@ void HandleAlienEvent(Entity &alien, Event &event) {
 
     if (collision_event) {
         if (collision_event->collider_1 == &alien || collision_event->collider_2 == &alien) {
-            if (collision_event->collider_1->GetName() == "bullet" ||
-                collision_event->collider_2->GetName() == "bullet") {
-                Log(LogLevel::Info,
-                    "Collision between an alien and a bullet detected in HandleAlienEvent");
+            std::string collider_1_name = collision_event->collider_1->GetName();
+            std::string collider_2_name = collision_event->collider_2->GetName();
+
+            if (collider_1_name == "bullet" || collider_2_name == "bullet") {
                 Engine::GetInstance().RemoveEntity(collision_event->collider_1);
                 Engine::GetInstance().RemoveEntity(collision_event->collider_2);
+            }
+
+            if (collider_1_name == "left_boundary" || collider_2_name == "left_boundary") {
+                alien_hit_left_boundary = true;
+            }
+            if (collider_1_name == "right_boundary" || collider_2_name == "right_boundary") {
+                alien_hit_right_boundary = true;
             }
         }
     }
@@ -174,8 +226,9 @@ std::vector<Entity *> CreateAliens() {
         alien->AddComponent<Network>();
         alien->AddComponent<Handler>();
 
-        alien->GetComponent<Transform>()->SetPosition({float(190 + 160 * i), 300});
+        alien->GetComponent<Transform>()->SetPosition({float(190 + 160 * i), 150});
         alien->GetComponent<Transform>()->SetSize({150, 100});
+        alien->GetComponent<Physics>()->SetVelocity({5, 0});
         alien->GetComponent<Render>()->SetTexture("alien_row_1.png");
         alien->GetComponent<Network>()->SetOwner(NetworkRole::Client);
         alien->GetComponent<Handler>()->SetUpdateCallback(UpdateAlien);
@@ -183,7 +236,60 @@ std::vector<Entity *> CreateAliens() {
         aliens.push_back(alien);
     }
 
+    for (int i = 10; i < 20; i++) {
+        Entity *alien = new Entity("alien_" + std::to_string(i), EntityCategory::Moving);
+        alien->AddComponent<Transform>();
+        alien->AddComponent<Physics>();
+        alien->AddComponent<Render>();
+        alien->AddComponent<Collision>();
+        alien->AddComponent<Network>();
+        alien->AddComponent<Handler>();
+
+        alien->GetComponent<Transform>()->SetPosition({float(190 + 160 * (i - 10)), 40});
+        alien->GetComponent<Physics>()->SetVelocity({5, 0});
+        alien->GetComponent<Transform>()->SetSize({150, 100});
+        alien->GetComponent<Render>()->SetTexture("alien_row_2.png");
+        alien->GetComponent<Network>()->SetOwner(NetworkRole::Client);
+        alien->GetComponent<Handler>()->SetUpdateCallback(UpdateAlien);
+        alien->GetComponent<Handler>()->SetEventCallback(HandleAlienEvent);
+        aliens.push_back(alien);
+    }
+
     return aliens;
+}
+
+std::vector<Entity *> CreateGameBoundaries() {
+    std::vector<Entity *> game_boundaries;
+
+    Entity *left_boundary = new Entity("left_boundary", EntityCategory::Stationary);
+    Entity *right_boundary = new Entity("right_boundary", EntityCategory::Stationary);
+    Entity *top_boundary = new Entity("top_boundary", EntityCategory::Stationary);
+    Entity *bottom_boundary = new Entity("bottom_boundary", EntityCategory::Stationary);
+
+    left_boundary->AddComponent<Transform>();
+    left_boundary->AddComponent<Collision>();
+    right_boundary->AddComponent<Transform>();
+    right_boundary->AddComponent<Collision>();
+    top_boundary->AddComponent<Transform>();
+    top_boundary->AddComponent<Collision>();
+    bottom_boundary->AddComponent<Transform>();
+    bottom_boundary->AddComponent<Collision>();
+
+    left_boundary->GetComponent<Transform>()->SetPosition({0, 0});
+    left_boundary->GetComponent<Transform>()->SetSize({50, window_size.height});
+    right_boundary->GetComponent<Transform>()->SetPosition({float(window_size.width - 50), 0});
+    right_boundary->GetComponent<Transform>()->SetSize({50, window_size.height});
+    top_boundary->GetComponent<Transform>()->SetPosition({50, 0});
+    top_boundary->GetComponent<Transform>()->SetSize({window_size.width - 100, 50});
+    bottom_boundary->GetComponent<Transform>()->SetPosition({50, float(window_size.height - 50)});
+    bottom_boundary->GetComponent<Transform>()->SetSize({window_size.width - 100, 50});
+
+    game_boundaries.push_back(left_boundary);
+    game_boundaries.push_back(right_boundary);
+    game_boundaries.push_back(top_boundary);
+    game_boundaries.push_back(bottom_boundary);
+
+    return game_boundaries;
 }
 
 void CreateSpawnPoints() {
@@ -201,9 +307,11 @@ std::vector<Entity *> CreateEntities() {
     // CreateDeathZones();
     Entity *cannon = CreateCannon();
     std::vector<Entity *> aliens = CreateAliens();
+    std::vector<Entity *> game_boundaries = CreateGameBoundaries();
 
     entities.push_back(cannon);
     entities.insert(entities.end(), aliens.begin(), aliens.end());
+    entities.insert(entities.end(), game_boundaries.begin(), game_boundaries.end());
 
     for (Entity *entity : entities) {
         if (network_info.mode == NetworkMode::PeerToPeer) {
