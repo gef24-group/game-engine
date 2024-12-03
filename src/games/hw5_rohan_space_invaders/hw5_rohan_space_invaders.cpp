@@ -353,7 +353,7 @@ void DestroyEntities(std::vector<Entity *> entities) {
 }
 
 int main(int argc, char *args[]) {
-    std::string game_title = "Rohan's CSC581 HW3 Game: Platformer";
+    std::string game_title = "Rohan's CSC581 HW5 Game: Space Invaders";
     int max_player_count = 100, texture_count = 4;
 
     // Initializing the Game Engine
