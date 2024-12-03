@@ -1,6 +1,8 @@
 #include "EventManager.hpp"
 #include "Engine.hpp"
 #include "EventHandler.hpp"
+#include "Replay.hpp"
+#include "Transform.hpp"
 #include "Types.hpp"
 #include "Utils.hpp"
 #include <unordered_set>
@@ -31,8 +33,21 @@ void EventManager::Deregister(std::vector<EventType> event_types, EventHandler *
 }
 
 void EventManager::Raise(Event event) {
+    if (Replay::GetInstance().GetIsReplaying()) {
+        this->HandleReplayedEvent(event);
+        return;
+    }
+
     if (event.GetDelay() == -1) {
         this->HandleEvent(event);
+        return;
+    }
+
+    this->PushEventQueue(event);
+}
+
+void EventManager::HandleReplayedEvent(Event event) {
+    if (event.type != EventType::Move && event.type != EventType::StopReplay) {
         return;
     }
 
@@ -57,9 +72,19 @@ void EventManager::ProcessEvents() {
 #endif
 
     int64_t current_time = Engine::GetInstance().EngineTimelineGetFrameTime().current;
+    int64_t first_event_timestamp = 0;
+    if (!this->GetEventQueue().empty()) {
+        first_event_timestamp = this->GetEventQueue().top().GetTimestamp();
+    }
 
     while (!this->GetEventQueue().empty()) {
         Event event = this->GetEventQueue().top(); // Get the highest priority event
+
+        if (Replay::GetInstance().GetIsReplaying()) {
+            if (event.timestamp > first_event_timestamp) {
+                break;
+            }
+        }
 
         if (event.timestamp > current_time) {
             break;
@@ -188,7 +213,13 @@ void EventManager::RaiseSpawnEvent(SpawnEvent event) {
     this->Raise(spawn_event);
 }
 
-void EventManager::RaiseMoveEvent(MoveEvent event) {
+void EventManager::RaiseMoveEvent(MoveEvent event, bool ignore_change) {
+    Position new_pos = event.position;
+    Position cur_pos = event.entity->GetComponent<Transform>()->GetPosition();
+    if (!ignore_change && new_pos.x == cur_pos.x && new_pos.y == cur_pos.y) {
+        return;
+    }
+
     Event move_event = Event(EventType::Move, event);
     move_event.SetDelay(-1);
     move_event.SetPriority(Priority::High);
@@ -218,6 +249,38 @@ void EventManager::RaiseLeaveEvent(LeaveEvent event) {
     leave_event.SetPriority(Priority::High);
 
     this->Raise(leave_event);
+}
+
+void EventManager::RaiseStartRecordEvent(StartRecordEvent event) {
+    Event start_record_event = Event(EventType::StartRecord, event);
+    start_record_event.SetDelay(-1);
+    start_record_event.SetPriority(Priority::High);
+
+    this->Raise(start_record_event);
+}
+
+void EventManager::RaiseStopRecordEvent(StopRecordEvent event) {
+    Event stop_record_event = Event(EventType::StopRecord, event);
+    stop_record_event.SetDelay(-1);
+    stop_record_event.SetPriority(Priority::High);
+
+    this->Raise(stop_record_event);
+}
+
+void EventManager::RaiseStartReplayEvent(StartReplayEvent event) {
+    Event start_replay = Event(EventType::StartReplay, event);
+    start_replay.SetDelay(-1);
+    start_replay.SetPriority(Priority::High);
+
+    this->Raise(start_replay);
+}
+
+void EventManager::RaiseStopReplayEvent(StopReplayEvent event) {
+    Event stop_replay = Event(EventType::StopReplay, event);
+    stop_replay.SetDelay(-1);
+    stop_replay.SetPriority(Priority::High);
+
+    this->Raise(stop_replay);
 }
 
 bool EventManager::IsDeathOrSpawnInQueue() {
@@ -252,4 +315,17 @@ void EventManager::PushEventQueue(Event event) {
 void EventManager::PopEventQueue() {
     std::lock_guard<std::mutex> lock(this->event_queue_mutex);
     this->event_queue.pop();
+}
+
+int64_t EventManager::GetLastEventTimestamp() {
+    int64_t last_event_timestamp;
+
+    auto event_queue = this->GetEventQueue();
+    while (!event_queue.empty()) {
+        Event event = event_queue.top();
+        last_event_timestamp = event.GetTimestamp();
+        event_queue.pop();
+    }
+
+    return last_event_timestamp;
 }

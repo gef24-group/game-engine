@@ -9,6 +9,7 @@
 #include "Network.hpp"
 #include "Physics.hpp"
 #include "Render.hpp"
+#include "Replay.hpp"
 #include "SDL.h"
 #include "SDL_error.h"
 #include "SDL_events.h"
@@ -56,6 +57,8 @@ Engine::Engine() {
     this->camera->AddComponent<Transform>();
     this->camera->AddComponent<Physics>();
     this->camera->GetComponent<Physics>()->SetEngineTimeline(this->engine_timeline);
+
+    Replay::GetInstance().SetCamera(this->camera);
 
     this->show_zone_borders = false;
     this->side_boundary_color = Color{0, 0, 255, 128};
@@ -135,8 +138,11 @@ void Engine::CSServerClientThread(int player_id) {
                 if (!entity_update.active) {
                     entity->GetComponent<Network>()->SetActive(false);
                 }
-                EventManager::GetInstance().RaiseMoveEvent(
-                    MoveEvent{entity, entity_update.position});
+                if (!Replay::GetInstance().GetIsReplaying()) {
+                    bool ignore_change = !entity_update.active;
+                    EventManager::GetInstance().RaiseMoveEvent(
+                        MoveEvent{entity, entity_update.position}, ignore_change);
+                }
             }
 
         } catch (const zmq::error_t &e) {
@@ -561,6 +567,7 @@ void Engine::StartSingleClient() {
         this->ApplyEntityPhysicsAndUpdates();
         this->TestCollision();
         this->Update();
+        this->RecordEvents();
         this->RenderScene();
     }
 
@@ -687,8 +694,10 @@ void Engine::CSClientReceiveBroadcastThread() {
 
                 if (entity->GetName() != player->GetName()) {
                     if (entity_update.active) {
-                        EventManager::GetInstance().RaiseMoveEvent(
-                            MoveEvent{entity, entity_update.position});
+                        if (!Replay::GetInstance().GetIsReplaying()) {
+                            EventManager::GetInstance().RaiseMoveEvent(
+                                MoveEvent{entity, entity_update.position});
+                        }
                     } else {
                         this->RemoveEntity(entity);
                     }
@@ -829,6 +838,7 @@ void Engine::StartCSClient() {
         this->ApplyEntityPhysicsAndUpdates();
         this->TestCollision();
         this->Update();
+        this->RecordEvents();
         this->RenderScene();
     }
     EventManager::GetInstance().RaiseLeaveEvent(LeaveEvent{});
@@ -898,8 +908,10 @@ void Engine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string player
                 this->DecodeMessage(message, entity_update);
                 Entity *entity = GetEntityByName(entity_update.name, this->GetEntities());
                 if (entity_update.active) {
-                    EventManager::GetInstance().RaiseMoveEvent(
-                        MoveEvent{entity, entity_update.position});
+                    if (!Replay::GetInstance().GetIsReplaying()) {
+                        EventManager::GetInstance().RaiseMoveEvent(
+                            MoveEvent{entity, entity_update.position});
+                    }
                 } else {
                     this->RemoveEntity(entity);
                 }
@@ -956,8 +968,10 @@ void Engine::P2PReceiveBroadcastFromHostThread() {
 
                 if (entity->GetName() != player->GetName()) {
                     if (entity_update.active) {
-                        EventManager::GetInstance().RaiseMoveEvent(
-                            MoveEvent{entity, entity_update.position});
+                        if (!Replay::GetInstance().GetIsReplaying()) {
+                            EventManager::GetInstance().RaiseMoveEvent(
+                                MoveEvent{entity, entity_update.position});
+                        }
                     } else {
                         this->RemoveEntity(entity);
                     }
@@ -1001,6 +1015,7 @@ void Engine::StartP2P() {
         this->ApplyEntityPhysicsAndUpdates();
         this->TestCollision();
         this->Update();
+        this->RecordEvents();
         this->RenderScene();
     }
     EventManager::GetInstance().RaiseLeaveEvent(LeaveEvent{});
@@ -1114,9 +1129,14 @@ void Engine::ToggleShowZoneBorders() {
     std::vector<Entity *> entities = this->GetEntities();
 
     for (Entity *entity : entities) {
-        if (entity->GetCategory() == EntityCategory::SideBoundary ||
-            entity->GetCategory() == EntityCategory::SpawnPoint ||
-            entity->GetCategory() == EntityCategory::DeathZone) {
+        bool is_side_boundary = entity->GetCategory() == EntityCategory::SideBoundary &&
+                                (entity->GetName().find("side_boundary_") == 0);
+        bool is_spawn_point = entity->GetCategory() == EntityCategory::SpawnPoint &&
+                              (entity->GetName().find("spawn_point_") == 0);
+        bool is_death_zone = entity->GetCategory() == EntityCategory::DeathZone &&
+                             (entity->GetName().find("death_zone_") == 0);
+
+        if (is_side_boundary || is_spawn_point || is_death_zone) {
             entity->GetComponent<Render>()->SetVisible(this->show_zone_borders);
         }
     }
@@ -1258,6 +1278,8 @@ void Engine::BindDisplayScalingKey(SDL_Scancode key) {
     this->engine_handler->BindDisplayScalingKey(key);
 }
 void Engine::BindHiddenZoneKey(SDL_Scancode key) { this->engine_handler->BindHiddenZoneKey(key); }
+void Engine::BindRecordKey(SDL_Scancode key) { Replay::GetInstance().BindRecordKey(key); }
+void Engine::BindReplayKey(SDL_Scancode key) { Replay::GetInstance().BindReplayKey(key); }
 
 void Engine::RegisterInputChord(int chord_id, std::unordered_set<SDL_Scancode> chord) {
     this->input->RegisterInputChord(chord_id, chord);
@@ -1450,6 +1472,7 @@ void Engine::RenderScene() {
             entity->GetComponent<Render>()->Update();
         }
     }
+    this->RenderBorder();
 
 #ifdef PROFILE
     this->CaptureTracyFrameImage();
@@ -1468,6 +1491,34 @@ void Engine::RenderBackground() {
     SDL_SetRenderDrawColor(app->renderer, this->background_color.red, this->background_color.green,
                            this->background_color.blue, 255);
     SDL_RenderClear(app->renderer);
+}
+
+void Engine::RenderBorder() {
+    ZoneScoped;
+
+    int border_thickness = 10;
+    int window_width = app->window.width;
+    int window_height = app->window.height;
+
+    SDL_Rect top_border = {0, 0, window_width, border_thickness};
+    SDL_Rect bottom_border = {0, window_height - border_thickness, window_width, border_thickness};
+    SDL_Rect left_border = {0, 0, border_thickness, window_height};
+    SDL_Rect right_border = {window_width - border_thickness, 0, border_thickness, window_height};
+
+    if (Replay::GetInstance().GetIsRecording()) {
+        SDL_SetRenderDrawColor(app->renderer, 255, 0, 0, 255);
+        SDL_RenderFillRect(app->renderer, &top_border);
+        SDL_RenderFillRect(app->renderer, &bottom_border);
+        SDL_RenderFillRect(app->renderer, &left_border);
+        SDL_RenderFillRect(app->renderer, &right_border);
+    }
+    if (Replay::GetInstance().GetIsReplaying()) {
+        SDL_SetRenderDrawColor(app->renderer, 0, 0, 255, 255);
+        SDL_RenderFillRect(app->renderer, &top_border);
+        SDL_RenderFillRect(app->renderer, &bottom_border);
+        SDL_RenderFillRect(app->renderer, &left_border);
+        SDL_RenderFillRect(app->renderer, &right_border);
+    }
 }
 
 void Engine::CaptureTracyFrameImage() {
@@ -1500,6 +1551,43 @@ void Engine::CaptureTracyFrameImage() {
 
     SDL_FreeSurface(surface);
     SDL_FreeSurface(scaled_surface);
+}
+
+void Engine::SetEntityPositions() {
+    std::vector<Entity *> all_entities = this->GetEntities();
+    all_entities.push_back(this->camera.get());
+
+    for (const auto &entity : all_entities) {
+        this->entity_positions[entity] = entity->GetComponent<Transform>()->GetPosition();
+    }
+}
+
+void Engine::RecordEvents() {
+    if (!Replay::GetInstance().GetIsRecording()) {
+        return;
+    }
+
+    std::vector<Entity *> all_entities = this->GetEntities();
+    all_entities.push_back(this->camera.get());
+
+    for (const auto &entity : all_entities) {
+        Position prev_pos = Position{};
+        auto iterator = this->entity_positions.find(entity);
+        if (iterator != this->entity_positions.end()) {
+            prev_pos = iterator->second;
+        }
+        Position curr_pos = entity->GetComponent<Transform>()->GetPosition();
+        if (curr_pos.x == prev_pos.x && curr_pos.y == prev_pos.y) {
+            continue;
+        }
+
+        Event move_event = Event(EventType::Move, MoveEvent{entity, curr_pos});
+        move_event.SetDelay(-1);
+        move_event.SetPriority(Priority::High);
+        Replay::GetInstance().RecordEvent(move_event);
+    }
+
+    this->SetEntityPositions();
 }
 
 void Engine::HandleScaling() {

@@ -37,15 +37,22 @@ class EventManager {
     void ProcessEvents();
 
     void ProfileEventQueue();
+    int64_t GetLastEventTimestamp();
 
     void RaiseInputEvent(InputEvent event);
     void RaiseCollisionEvent(CollisionEvent event);
     void RaiseDeathEvent(DeathEvent event);
     void RaiseSpawnEvent(SpawnEvent event);
-    void RaiseMoveEvent(MoveEvent event);
+    void RaiseMoveEvent(MoveEvent event, bool ignore_change = false);
     void RaiseJoinEvent(JoinEvent event);
     void RaiseDiscoverEvent(DiscoverEvent event);
     void RaiseLeaveEvent(LeaveEvent event);
+    void RaiseStartRecordEvent(StartRecordEvent event);
+    void RaiseStopRecordEvent(StopRecordEvent event);
+    void RaiseStartReplayEvent(StartReplayEvent event);
+    void RaiseStopReplayEvent(StopReplayEvent event);
+
+    void Raise(Event event);
 
   private:
     std::mutex event_queue_mutex;
@@ -55,8 +62,8 @@ class EventManager {
 
     std::priority_queue<Event, std::vector<Event>, ComparePriority> GetEventQueue();
     std::unordered_map<EventType, std::unordered_set<EventHandler *>> GetHandlers();
-    void Raise(Event event);
     void HandleEvent(Event event);
+    void HandleReplayedEvent(Event event);
     void PushEventQueue(Event event);
     void PopEventQueue();
     bool IsDeathOrSpawnInQueue();

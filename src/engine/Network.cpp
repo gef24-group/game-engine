@@ -3,6 +3,7 @@
 #include "Entity.hpp"
 #include "Event.hpp"
 #include "EventManager.hpp"
+#include "Replay.hpp"
 #include "Types.hpp"
 #include "Utils.hpp"
 
@@ -32,6 +33,10 @@ void Network::OnEvent(Event event) {
 
     switch (event_type) {
     case EventType::Move: {
+        if (Replay::GetInstance().GetIsReplaying()) {
+            return;
+        }
+
         MoveEvent *move_event = std::get_if<MoveEvent>(&(event.data));
         if (move_event && move_event->entity == this->entity) {
             NetworkRole engine_role = Engine::GetInstance().GetNetworkInfo().role;
@@ -58,7 +63,6 @@ void Network::OnEvent(Event event) {
                 break;
             }
         }
-
         break;
     }
     default:

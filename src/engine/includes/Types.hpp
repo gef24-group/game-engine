@@ -87,7 +87,20 @@ struct EntityUpdate {
     bool active = true;
 };
 
-enum class EventType { Input, Move, Collision, Spawn, Death, Join, Discover, Leave };
+enum class EventType {
+    Input,
+    Move,
+    Collision,
+    Spawn,
+    Death,
+    Join,
+    Discover,
+    Leave,
+    StartRecord,
+    StopRecord,
+    StartReplay,
+    StopReplay
+};
 
 enum class InputEventType { Single, Chord };
 
@@ -124,8 +137,17 @@ struct DiscoverEvent {};
 
 struct LeaveEvent {};
 
+struct StartRecordEvent {};
+
+struct StopRecordEvent {};
+
+struct StartReplayEvent {};
+
+struct StopReplayEvent {};
+
 typedef std::variant<InputEvent, CollisionEvent, DeathEvent, SpawnEvent, MoveEvent, JoinEvent,
-                     DiscoverEvent, LeaveEvent>
+                     DiscoverEvent, LeaveEvent, StartRecordEvent, StopRecordEvent, StartReplayEvent,
+                     StopReplayEvent>
     EventData;
 
 enum class Priority { High, Medium, Low };

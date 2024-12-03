@@ -52,6 +52,7 @@ class Engine {
 
     std::mutex entities_mutex;
     std::vector<Entity *> entities;
+    std::unordered_map<Entity *, Position> entity_positions;
     std::function<void(std::vector<Entity *> &)> callback;
 
     std::thread listener_thread;
@@ -114,9 +115,12 @@ class Engine {
     void ResetSideBoundaries();
     void SetSideBoundaryVelocities(Velocity velocity);
     void Update();
+    void SetEntityPositions();
+    void RecordEvents();
     void HandleScaling();
     void RenderScene();
     void RenderBackground();
+    void RenderBorder();
     void CaptureTracyFrameImage();
     void Shutdown();
 
@@ -154,6 +158,8 @@ class Engine {
     void BindSpeedUpKey(SDL_Scancode key);
     void BindDisplayScalingKey(SDL_Scancode key);
     void BindHiddenZoneKey(SDL_Scancode key);
+    void BindRecordKey(SDL_Scancode key);
+    void BindReplayKey(SDL_Scancode key);
 
     void RegisterInputChord(int chord_id, std::unordered_set<SDL_Scancode> chord);
 

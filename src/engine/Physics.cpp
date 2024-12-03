@@ -1,6 +1,7 @@
 #include "Physics.hpp"
 #include "Entity.hpp"
 #include "EventManager.hpp"
+#include "Replay.hpp"
 #include "Timeline.hpp"
 #include "Transform.hpp"
 #include "Types.hpp"
@@ -46,13 +47,13 @@ void Physics::Move() {
     float new_pos_y = curr_position.y + (this->velocity.y * time) +
                       (HALF * this->acceleration.y * float(pow(time, 2)));
 
-    if (new_pos_x != curr_position.x || new_pos_y != curr_position.y) {
+    if (!Replay::GetInstance().GetIsReplaying()) {
         EventManager::GetInstance().RaiseMoveEvent(
             MoveEvent{this->entity, Position{new_pos_x, new_pos_y}});
-    }
 
-    this->velocity.x += (this->acceleration.x * time);
-    this->velocity.y += (this->acceleration.y * time);
+        this->velocity.x += (this->acceleration.x * time);
+        this->velocity.y += (this->acceleration.y * time);
+    }
 }
 
 int64_t Physics::GetDelta() { return this->engine_timeline->GetFrameTime().delta; }
