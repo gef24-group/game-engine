@@ -3,19 +3,33 @@ This repo houses the game engine developed for CSC 581 (Game Engine Foundations)
 
 ## Build
 ### Prerequisites
-To build the game engine and included games, please ensure that you have all prerequisites installed.
+This project uses CMake along with Ninja as the build system  
+You may install a [pre built package](https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages) of Ninja on your platform  
+Additionally, please ensure that the required dependencies are installed on your platform
 
 #### Ubuntu 24.04
 ```bash
 sudo apt update
-sudo apt install build-essential x11-apps libsdl2-2.0-0 libsdl2-dev libsdl2-image-2.0-0 libsdl2-image-dev libzmq3-dev cmake
+sudo apt install build-essential x11-apps cmake
 ```
 
-#### macOS Sequoia 15.0.1
+#### macOS Sequoia 15.1.1
 Install Homebrew from [brew.sh](https://brew.sh/)
 ```bash
 xcode-select --install
-brew install sdl2 sdl2_image zeromq cppzmq cmake
+brew install cmake
+```
+
+#### Windows 11 Version 24H2
+Install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) and choose the `Desktop development with C++` workload  
+Please note that all the Windows commands will need to be run on `Developer PowerShell for VS 2022`
+
+### Configure the build
+Fetch dependent libraries and generate build files for your platform  
+This is a one-time step and need not be done when rebuilding the project
+```bash
+make configure           # Ubuntu or macOS
+.\scripts\configure.ps1  # Windows 11
 ```
 
 ### Build all games
@@ -23,31 +37,34 @@ Every folder in `src/games` maps to a game
 The [`.targetgames`](.targetgames) file defines all the games that are supported in the current build  
 To build all games defined in [`.targetgames`](.targetgames), run
 ```bash
-make
+make                 # Ubuntu or macOS
+.\scripts\build.ps1  # Windows 11
 ```
 
 ### Build a specific game
-To build a specific game, pass the `GAME` variable to `make`  
+To build a specific game, set the `GAME` variable  
 For example, if these are the games defined in [`.targetgames`](.targetgames)
 ```bash
-hw4_joshua
-hw4_rohan
-hw4_mitesh
+hw5_joshua_homebound
+hw5_rohan_space_invaders
+hw5_rohan_brick_breaker
 ```
-And you would like to only build `hw4_joshua`, then you would need to run
+And you would like to only build `hw5_joshua_homebound`, then you would need to run
 ```bash
-make GAME=hw4_joshua
+make GAME=hw5_joshua_homebound                  # Ubuntu or macOS
+.\scripts\build.ps1 -GAME hw5_joshua_homebound  # Windows 11
 ```
 
 ## Play
 After a game has been built, you may play it using this command
 ```bash
-make play GAME=<game> ARGS="<args>"
+make play GAME=<game> ARGS="<game_args>"                  # Ubuntu or macOS
+.\scripts\play.ps1 -GAME <game> -GAME_ARGS "<game_args>"  # Windows 11
 ```
 
 ## Engine flags
-Most games include multi-player support, but require certain flags to be passed to the engine. This is facilitated by the `ARGS` variable  
-
+Most games include multi-player support, but require certain flags to be passed to the engine  
+This is facilitated by the `ARGS` variable (`GAME_ARGS` on Windows)  
 The flags supported by the engine are
 ```bash
 --mode      [single, cs, p2p]             (default: single)
@@ -59,40 +76,49 @@ The flags supported by the engine are
 ```
 
 ## Examples
-### Client-server mode
-To run `hw4_mitesh` in the client-server mode, run these commands in different shells  
+### Client-server mode (Ubuntu or macOS)
+To run `hw5_joshua_homebound` in the client-server mode, run these commands in different shells
 
 **Server**
 ```bash
-make play GAME=hw4_mitesh ARGS="--mode cs --role server"
+make play GAME=hw5_joshua_homebound ARGS="--mode cs --role server"
 ```
 **Client**
 ```bash
-make play GAME=hw4_mitesh ARGS="--mode cs --role client"
+make play GAME=hw5_joshua_homebound ARGS="--mode cs --role client"
 ```
 
-### Peer-to-peer mode
-To run `hw4_rohan` in the peer-to-peer mode, run these commands in different shells  
+### Peer-to-peer mode (Ubuntu or macOS)
+To run `hw5_rohan_space_invaders` in the peer-to-peer mode, run these commands in different shells
 
 **Host**
 ```bash
-make play GAME=hw4_rohan ARGS="--mode p2p --role host"
+make play GAME=hw5_rohan_space_invaders ARGS="--mode p2p --role host"
 ```
 **Peer**
 ```bash
-make play GAME=hw4_rohan ARGS="--mode p2p --role peer"
+make play GAME=hw5_rohan_space_invaders ARGS="--mode p2p --role peer"
 ```
 
-> The HW4 games written by Joshua (jjoseph6), Rohan (rjmathe2), and Mitesh (magarwa3) lie in the `hw4_joshua`, `hw4_rohan` and `hw4_mitesh` folders respectively
+### Client mode (Windows 11)
+To run `hw5_rohan_brick_breaker` in the client mode, run the following command  
+This assumes that the server was already started on the same machine
+
+**Client**
+```bash
+.\scripts\play.ps1 -GAME hw5_rohan_brick_breaker -GAME_ARGS "--mode cs --role client"
+```
 
 ## Cleanup
-If you would like to clear all build artifacts, please run
+To clear all build artifacts, run
 ```bash
-make clean
+make clean           # Ubuntu or macOS
+.\scripts\clean.ps1  # Windows 11
 ```
 
 ## Common inputs
-Here is a map of inputs common to every game  
+Here is a map of inputs common to every game
+
 | Input        | Action                        |
 |--------------|-------------------------------|
 | <kbd>p</kbd> | Toggle timeline pause         |
@@ -100,6 +126,8 @@ Here is a map of inputs common to every game
 | <kbd>.</kbd> | Speed up the timeline         |
 | <kbd>x</kbd> | Toggle display scaling        |
 | <kbd>z</kbd> | Toggle hidden zone visibility |
+| <kbd>q</kbd> | Toggle recording              |
+| <kbd>r</kbd> | Replay the recording          |
 
 ## References
 Please find all references in [References.md](References.md)
