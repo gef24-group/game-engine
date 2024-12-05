@@ -11,6 +11,8 @@ Render::Render(Entity *entity) {
     this->texture_template = "";
     this->shape = Shape::Rectangle;
     this->color = Color{0, 0, 0, 255};
+    this->angle = 0;
+    this->anchor = nullptr;
     this->border = Border{false, Color{0, 0, 0, 255}};
     this->camera = std::make_shared<Entity>("camera", EntityCategory::Camera);
 }
@@ -19,6 +21,8 @@ SDL_Texture *Render::GetTexture() { return this->texture; }
 std::string Render::GetTextureTemplate() { return this->texture_template; }
 Shape Render::GetShape() { return this->shape; }
 Color Render::GetColor() { return this->color; }
+double Render::GetAngle() { return this->angle; }
+SDL_Point *Render::GetAnchor() { return this->anchor; }
 Border Render::GetBorder() { return this->border; }
 
 void Render::SetCamera(std::shared_ptr<Entity> camera) { this->camera = camera; }
@@ -30,6 +34,8 @@ void Render::SetTextureTemplate(std::string texture_template) {
 }
 void Render::SetShape(Shape shape) { this->shape = shape; }
 void Render::SetColor(Color color) { this->color = color; }
+void Render::SetAngle(double angle) { this->angle = angle; }
+void Render::SetAnchor(SDL_Point *anchor) { this->anchor = anchor; }
 void Render::SetBorder(Border border) { this->border = border; }
 
 void Render::RenderEntity() {
@@ -65,7 +71,8 @@ void Render::RenderEntity() {
             SDL_RenderFillRect(app->renderer, &rectangle);
         }
     } else {
-        SDL_RenderCopy(app->renderer, this->texture, NULL, &rectangle);
+        SDL_RenderCopyEx(app->renderer, this->texture, NULL, &rectangle, this->angle, this->anchor,
+                         SDL_FLIP_NONE);
         if (this->border.show) {
             SDL_SetRenderDrawBlendMode(app->renderer, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(app->renderer, border_r, border_g, border_b, border_a);

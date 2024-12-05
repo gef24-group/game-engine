@@ -13,6 +13,8 @@ class Render : public Component {
     std::string texture_template;
     Shape shape;
     Color color;
+    double angle;
+    SDL_Point *anchor;
     Border border;
     std::shared_ptr<Entity> camera;
 
@@ -23,6 +25,8 @@ class Render : public Component {
     std::string GetTextureTemplate();
     Shape GetShape();
     Color GetColor();
+    double GetAngle();
+    SDL_Point *GetAnchor();
     Border GetBorder();
 
     void SetCamera(std::shared_ptr<Entity> camera);
@@ -31,6 +35,8 @@ class Render : public Component {
     void SetTextureTemplate(std::string texture_template);
     void SetShape(Shape shape);
     void SetColor(Color color);
+    void SetAngle(double angle);
+    void SetAnchor(SDL_Point *anchor);
     void SetBorder(Border border);
 
     void RenderEntity();
