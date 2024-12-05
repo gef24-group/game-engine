@@ -53,7 +53,7 @@ void MoveBubblesDown() {
 
 void Update(std::vector<Entity *> &entities) { MoveBubblesDown(); }
 
-void UpdateBullet(Entity &bullet) { bullet.GetComponent<Physics>()->SetVelocity({10, -10}); }
+void UpdateBullet(Entity &bullet) { bullet.GetComponent<Physics>()->SetVelocity({0, -10}); }
 
 void UpdateBubble(Entity &bubble) { bubble.GetComponent<Physics>()->SetVelocity({0, 0}); }
 
@@ -195,7 +195,7 @@ void HandleGunEvent(Entity &gun, Event &event) {
 
 void UpdateGun(Entity &gun) {
 
-    const float TILT_MARGIN = 10.0f;
+    const float TILT_MARGIN = 3.0f;
 
     // Get current position of the gun
     auto current_position = gun.GetComponent<Transform>()->GetPosition();
@@ -203,10 +203,12 @@ void UpdateGun(Entity &gun) {
     // Process input events
     if (gun_event.move_right) {
         // Tilt the gun to the right by adjusting the position
-        gun.GetComponent<Transform>()->SetPosition({current_position.x, current_position.y});
+        gun.GetComponent<Transform>()->SetPosition(
+            {current_position.x + TILT_MARGIN, current_position.y});
     } else if (gun_event.move_left) {
         // Tilt the gun to the left by adjusting the position
-        gun.GetComponent<Transform>()->SetPosition({current_position.x, current_position.y});
+        gun.GetComponent<Transform>()->SetPosition(
+            {current_position.x - TILT_MARGIN, current_position.y});
     } else {
         // Reset gun position when no movement keys are pressed
         gun.GetComponent<Transform>()->SetPosition({current_position.x, current_position.y});
