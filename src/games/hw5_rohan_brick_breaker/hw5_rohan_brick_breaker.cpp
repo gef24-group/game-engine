@@ -36,7 +36,7 @@ void Update(std::vector<Entity *> &entities) {
     }
 
     if (!brick_found) {
-        Log(LogLevel::Info, "All bricks are destroyed. You win!");
+        Log(LogLevel::Info, "\n\nAll bricks are destroyed. You win!\n\n");
         app->quit.store(true);
     }
 }
@@ -54,6 +54,7 @@ void UpdatePaddle(Entity &paddle) {
 }
 
 void HandleBrickEvent(Entity &brick, Event &event) {
+
     CollisionEvent *collision_event = std::get_if<CollisionEvent>(&(event.data));
 
     if (collision_event) {
@@ -76,7 +77,7 @@ void HandleBallEvent(Entity &ball, Event &event) {
         if (collision_event->collider_1 == &ball || collision_event->collider_2 == &ball) {
             if (collision_event->collider_1->GetName() == "bottom_boundary" ||
                 collision_event->collider_2->GetName() == "bottom_boundary") {
-                Log(LogLevel::Info, "You missed the ball :( ! You lose!");
+                Log(LogLevel::Info, "\n\nYou missed the ball :( ! You lose!\n\n");
                 app->quit.store(true);
             }
         }
@@ -157,7 +158,7 @@ std::vector<Entity *> CreateBricks() {
     }
 
     for (int i = 10; i < 20; i++) {
-        Entity *brick = new Entity("brick_" + std::to_string(i), EntityCategory::Moving);
+        Entity *brick = new Entity("brick_" + std::to_string(i), EntityCategory::Stationary);
         brick->AddComponent<Transform>();
         brick->AddComponent<Physics>();
         brick->AddComponent<Render>();
@@ -306,7 +307,7 @@ void DestroyEntities(std::vector<Entity *> entities) {
 
 int main(int argc, char *args[]) {
     std::string game_title = "Rohan's CSC581 HW5 Game: Brick Breaker";
-    int max_player_count = 100, texture_count = 4;
+    int max_player_count = 100, texture_count = 0;
 
     // Initializing the Game Engine
     if (!SetEngineCLIOptions(argc, args)) {

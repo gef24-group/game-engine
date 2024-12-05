@@ -19,6 +19,7 @@ Size window_size;
 int64_t last_bullet_fired_time = 0;
 bool alien_hit_right_boundary = false;
 bool alien_hit_left_boundary = false;
+int bullet_count = 0;
 
 struct CannonEvent {
     bool move_left;
@@ -54,11 +55,11 @@ void Update(std::vector<Entity *> &entities) {
 
     // All aliens have been destroyed.
     if (!alien_found) {
-        Log(LogLevel::Info, "All aliens have been destroyed. You win!");
+        Log(LogLevel::Info, "\n\nAll aliens have been destroyed. You win!\n\n");
         app->quit.store(true);
     }
     if (alien_win) {
-        Log(LogLevel::Info, "The aliens have breached your defenses. You lose!");
+        Log(LogLevel::Info, "\n\nThe aliens have breached your defenses. You lose!\n\n");
         app->quit.store(true);
     }
     if (alien_hit_left_boundary) {
@@ -69,7 +70,7 @@ void Update(std::vector<Entity *> &entities) {
     }
 }
 
-void UpdateBullet(Entity &bullet) { bullet.GetComponent<Physics>()->SetVelocity({0, -10}); }
+void UpdateBullet(Entity &bullet) { bullet.GetComponent<Physics>()->SetVelocity({0, -30}); }
 
 void UpdateAlien(Entity &alien) {}
 
@@ -99,7 +100,8 @@ void HandleAlienEvent(Entity &alien, Event &event) {
             std::string collider_1_name = collision_event->collider_1->GetName();
             std::string collider_2_name = collision_event->collider_2->GetName();
 
-            if (collider_1_name == "bullet" || collider_2_name == "bullet") {
+            if (collider_1_name.substr(0, 6) == "bullet" ||
+                collider_2_name.substr(0, 6) == "bullet") {
                 Engine::GetInstance().RemoveEntity(collision_event->collider_1);
                 Engine::GetInstance().RemoveEntity(collision_event->collider_2);
             }
@@ -115,7 +117,10 @@ void HandleAlienEvent(Entity &alien, Event &event) {
 }
 
 void Shoot(Position cannon_position) {
-    Entity *bullet = new Entity("bullet", EntityCategory::Moving);
+    bullet_count += 1;
+    Entity *bullet =
+        new Entity("bullet_" + std::to_string(network_info.id) + "_" + std::to_string(bullet_count),
+                   EntityCategory::Moving);
     bullet->AddComponent<Transform>();
     bullet->AddComponent<Physics>();
     bullet->AddComponent<Render>();
@@ -146,9 +151,9 @@ void UpdateCannon(Entity &cannon) {
     }
 
     if (cannon_event.shoot) {
-        // Shoot if the last bullet was fired 100ms ago
+        // Shoot if the last bullet was fired 250ms ago
         if (Engine::GetInstance().EngineTimelineGetFrameTime().current - last_bullet_fired_time >
-            100000000) {
+            250000000) {
             Shoot(cannon.GetComponent<Transform>()->GetPosition());
             last_bullet_fired_time = Engine::GetInstance().EngineTimelineGetFrameTime().current;
         }
@@ -334,10 +339,6 @@ void AssignOperationsToKeys() {
     Engine::GetInstance().BindSpeedUpKey(SDL_SCANCODE_PERIOD);
     Engine::GetInstance().BindDisplayScalingKey(SDL_SCANCODE_X);
     Engine::GetInstance().BindHiddenZoneKey(SDL_SCANCODE_Z);
-
-    Engine::GetInstance().RegisterInputChord(1, {SDL_SCANCODE_LEFT, SDL_SCANCODE_SPACE});
-    Engine::GetInstance().RegisterInputChord(2, {SDL_SCANCODE_RIGHT, SDL_SCANCODE_SPACE});
-    Engine::GetInstance().RegisterInputChord(3, {SDL_SCANCODE_UP, SDL_SCANCODE_SPACE});
 }
 
 void AddObjectsToEngine(std::vector<Entity *> entities) {
@@ -354,7 +355,7 @@ void DestroyEntities(std::vector<Entity *> entities) {
 
 int main(int argc, char *args[]) {
     std::string game_title = "Rohan's CSC581 HW5 Game: Space Invaders";
-    int max_player_count = 100, texture_count = 4;
+    int max_player_count = 100, texture_count = 1;
 
     // Initializing the Game Engine
     if (!SetEngineCLIOptions(argc, args)) {
