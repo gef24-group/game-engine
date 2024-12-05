@@ -1,3 +1,7 @@
+// This game will not be compiled or analyzed due to breaking API changes
+// Please revert to the following commit to compile this game
+// 9af70f40c9a0b342d480f27e040742551d40f4da
+
 #include "Collision.hpp"
 #include "Engine.hpp"
 #include "Entity.hpp"
