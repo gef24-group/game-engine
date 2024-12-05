@@ -1,3 +1,6 @@
+[![checks](https://github.com/gef24-group/game-engine/actions/workflows/checks.yml/badge.svg)](https://github.com/gef24-group/game-engine/actions/workflows/checks.yml)
+[![build](https://github.com/gef24-group/game-engine/actions/workflows/build.yml/badge.svg)](https://github.com/gef24-group/game-engine/actions/workflows/build.yml)
+
 # game-engine
 This repo houses the game engine developed for CSC 581 (Game Engine Foundations), Group 15, Fall 2024 @ NC State
 
