@@ -8,8 +8,5 @@
     "files.eol": "\n",
     "cmake.configureOnEdit": false,
     "cmake.configureOnOpen": false,
-    "cmake.configureArgs": [
-        "-G",
-        "Ninja"
-    ],
+    "cmake.generator": "Ninja",
 }

@@ -37,12 +37,14 @@ class Replay : public EventHandler {
 
     std::mutex recorded_events_mutex;
     std::vector<Event> recorded_events;
-    std::vector<std::pair<Entity *, Position>> start_record_positions;
-    std::vector<std::pair<Entity *, Position>> start_replay_positions;
+    std::vector<std::pair<Entity *, std::pair<Position, double>>> start_record_transforms;
+    std::vector<std::pair<Entity *, std::pair<Position, double>>> start_replay_transforms;
 
     void HandleReplayInput(Event &event);
-    void SetStartPositions(std::vector<std::pair<Entity *, Position>> &positions);
-    void ApplyStartPositions(std::vector<std::pair<Entity *, Position>> &positions);
+    void SetStartTransforms(
+        std::vector<std::pair<Entity *, std::pair<Position, double>>> &start_transforms);
+    void ApplyStartTransforms(
+        std::vector<std::pair<Entity *, std::pair<Position, double>>> &start_transforms);
     void AdjustRecordedEventTimes();
     void RaiseRecordedEvents();
 

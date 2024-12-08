@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SDL_scancode.h"
+#include <SDL_rect.h>
 #include <string>
 #include <variant>
 
@@ -83,6 +84,7 @@ struct JoinReply {
 struct EntityUpdate {
     char name[100] = "";
     Position position;
+    double angle = 0;
     char player_address[100] = "";
     bool active = true;
 };
@@ -90,6 +92,7 @@ struct EntityUpdate {
 enum class EventType {
     Input,
     Move,
+    SendUpdate,
     Collision,
     Spawn,
     Death,
@@ -127,6 +130,11 @@ struct SpawnEvent {
 struct MoveEvent {
     Entity *entity;
     Position position;
+    double angle = 0;
+};
+
+struct SendUpdateEvent {
+    Entity *entity;
 };
 
 struct JoinEvent {
@@ -145,9 +153,9 @@ struct StartReplayEvent {};
 
 struct StopReplayEvent {};
 
-typedef std::variant<InputEvent, CollisionEvent, DeathEvent, SpawnEvent, MoveEvent, JoinEvent,
-                     DiscoverEvent, LeaveEvent, StartRecordEvent, StopRecordEvent, StartReplayEvent,
-                     StopReplayEvent>
+typedef std::variant<InputEvent, CollisionEvent, DeathEvent, SpawnEvent, MoveEvent, SendUpdateEvent,
+                     JoinEvent, DiscoverEvent, LeaveEvent, StartRecordEvent, StopRecordEvent,
+                     StartReplayEvent, StopReplayEvent>
     EventData;
 
 enum class Priority { High, Medium, Low };

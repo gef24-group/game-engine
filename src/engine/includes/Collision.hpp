@@ -8,6 +8,7 @@ class Collision : public Component, public EventHandler {
   private:
     Entity *entity;
     float restitution;
+    bool avoid_transform;
 
     void HandlePairwiseCollision(Entity *collider);
 
@@ -15,7 +16,10 @@ class Collision : public Component, public EventHandler {
     Collision(Entity *entity);
 
     float GetRestitution();
+    bool GetAvoidTransform();
+
     void SetRestitution(float restitution);
+    void SetAvoidTransform(bool avoid_transform);
 
     void Update() override;
     void OnEvent(Event event) override;

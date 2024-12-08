@@ -52,7 +52,7 @@ class Engine {
 
     std::mutex entities_mutex;
     std::vector<Entity *> entities;
-    std::unordered_map<Entity *, Position> entity_positions;
+    std::unordered_map<Entity *, std::pair<Position, double>> entity_transforms;
     std::function<void(std::vector<Entity *> &)> callback;
 
     std::thread listener_thread;
@@ -115,7 +115,7 @@ class Engine {
     void ResetSideBoundaries();
     void SetSideBoundaryVelocities(Velocity velocity);
     void Update();
-    void SetEntityPositions();
+    void SetEntityTransforms();
     void RecordEvents();
     void HandleScaling();
     void RenderScene();

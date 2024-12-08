@@ -25,3 +25,5 @@
 - [How do you implement the Singleton design pattern?](https://stackoverflow.com/a/1008289)
 - [CSC 581 Lecture 10: Events](https://docs.google.com/presentation/d/1Seo9HoLZKKs6MBxaKrAQd9k8miXSqZrf)
 - [CSC 581 Lecture 11: Events Part 2](https://docs.google.com/presentation/d/1-zU8n_dg1VV7KPEHIKhd5fKL2jd1ejZB)
+- [125scratch, GaryCXJk, Frogger sprite sheet](https://www.spriters-resource.com/arcade/frogger/sheet/11067/)
+- [Kenney, Racing Pack](https://www.kenney.nl/assets/racing-pack)

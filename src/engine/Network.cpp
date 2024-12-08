@@ -13,7 +13,7 @@ Network::Network(Entity *entity) {
     this->player_address = "";
     this->owner = NetworkRole::Client;
 
-    EventManager::GetInstance().Register({EventType::Move}, this);
+    EventManager::GetInstance().Register({EventType::SendUpdate}, this);
 }
 
 bool Network::GetActive() { return this->active.load(); }
@@ -32,13 +32,13 @@ void Network::OnEvent(Event event) {
     EventType event_type = event.type;
 
     switch (event_type) {
-    case EventType::Move: {
+    case EventType::SendUpdate: {
         if (Replay::GetInstance().GetIsReplaying()) {
             return;
         }
 
-        MoveEvent *move_event = std::get_if<MoveEvent>(&(event.data));
-        if (move_event && move_event->entity == this->entity) {
+        SendUpdateEvent *send_update_event = std::get_if<SendUpdateEvent>(&(event.data));
+        if (send_update_event && send_update_event->entity == this->entity) {
             NetworkRole engine_role = Engine::GetInstance().GetNetworkInfo().role;
 
             switch (engine_role) {

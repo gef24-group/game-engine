@@ -14,8 +14,8 @@ Replay::Replay() {
     this->replay_key = SDL_SCANCODE_R;
 
     this->recorded_events = std::vector<Event>();
-    this->start_record_positions = std::vector<std::pair<Entity *, Position>>();
-    this->start_replay_positions = std::vector<std::pair<Entity *, Position>>();
+    this->start_record_transforms = std::vector<std::pair<Entity *, std::pair<Position, double>>>();
+    this->start_replay_transforms = std::vector<std::pair<Entity *, std::pair<Position, double>>>();
 
     EventManager::GetInstance().Register({EventType::Input, EventType::StartRecord,
                                           EventType::StopRecord, EventType::StartReplay,
@@ -48,22 +48,28 @@ std::vector<Event> Replay::GetRecordedEvents() {
     return this->recorded_events;
 }
 
-void Replay::SetStartPositions(std::vector<std::pair<Entity *, Position>> &start_positions) {
-    start_positions.clear();
+void Replay::SetStartTransforms(
+    std::vector<std::pair<Entity *, std::pair<Position, double>>> &start_transforms) {
+    start_transforms.clear();
     for (const auto &entity : Engine::GetInstance().GetEntities()) {
-        start_positions.push_back({entity, entity->GetComponent<Transform>()->GetPosition()});
+        start_transforms.push_back({entity,
+                                    {entity->GetComponent<Transform>()->GetPosition(),
+                                     entity->GetComponent<Transform>()->GetAngle()}});
     }
-    start_positions.push_back(
-        {this->camera.get(), this->camera->GetComponent<Transform>()->GetPosition()});
+    start_transforms.push_back({this->camera.get(),
+                                {this->camera->GetComponent<Transform>()->GetPosition(),
+                                 this->camera->GetComponent<Transform>()->GetAngle()}});
 }
 
-void Replay::ApplyStartPositions(std::vector<std::pair<Entity *, Position>> &start_positions) {
-    for (const auto &entity_position : start_positions) {
-        Entity *entity = entity_position.first;
-        Position position = entity_position.second;
-        EventManager::GetInstance().RaiseMoveEvent(MoveEvent{entity, position});
+void Replay::ApplyStartTransforms(
+    std::vector<std::pair<Entity *, std::pair<Position, double>>> &start_transforms) {
+    for (const auto &entity_transform : start_transforms) {
+        Entity *entity = entity_transform.first;
+        Position position = entity_transform.second.first;
+        double angle = entity_transform.second.second;
+        EventManager::GetInstance().RaiseMoveEvent(MoveEvent{entity, position, angle});
     }
-    start_positions.clear();
+    start_transforms.clear();
 }
 
 // Postpone the timestamps of the recorded events to a point immediately after replay start time
@@ -87,7 +93,7 @@ void Replay::StartRecord() {
     this->is_recording.store(true);
 
     this->ClearRecordedEvents();
-    this->SetStartPositions(this->start_record_positions);
+    this->SetStartTransforms(this->start_record_transforms);
 }
 
 void Replay::StopRecord() {
@@ -108,15 +114,15 @@ void Replay::StartReplay() {
     this->start_replay_time = EventManager::GetInstance().GetLastEventTimestamp();
     this->is_replaying.store(true);
 
-    this->SetStartPositions(this->start_replay_positions);
-    this->ApplyStartPositions(this->start_record_positions);
+    this->SetStartTransforms(this->start_replay_transforms);
+    this->ApplyStartTransforms(this->start_record_transforms);
     this->AdjustRecordedEventTimes();
     this->RaiseRecordedEvents();
     this->ClearRecordedEvents();
 }
 
 void Replay::StopReplay() {
-    this->ApplyStartPositions(this->start_replay_positions);
+    this->ApplyStartTransforms(this->start_replay_transforms);
 
     this->is_replaying.store(false);
 }

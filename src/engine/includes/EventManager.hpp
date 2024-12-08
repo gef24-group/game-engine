@@ -44,6 +44,7 @@ class EventManager {
     void RaiseDeathEvent(DeathEvent event);
     void RaiseSpawnEvent(SpawnEvent event);
     void RaiseMoveEvent(MoveEvent event, bool ignore_change = false);
+    void RaiseSendUpdateEvent(SendUpdateEvent event);
     void RaiseJoinEvent(JoinEvent event);
     void RaiseDiscoverEvent(DiscoverEvent event);
     void RaiseLeaveEvent(LeaveEvent event);

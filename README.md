@@ -8,7 +8,7 @@ This repo houses the game engine developed for CSC 581 (Game Engine Foundations)
 ### Prerequisites
 This project uses CMake along with Ninja as the build system  
 You may install a [pre built package](https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages) of Ninja on your platform  
-Additionally, please ensure that the required dependencies are installed on your platform
+Additionally, please ensure that the following dependencies are installed on your platform
 
 #### Ubuntu 24.04
 ```bash

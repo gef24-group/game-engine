@@ -59,6 +59,8 @@ void HandleAlienChordInput(Entity &alien, InputEvent *event) {
     if (!pressed) {
         return;
     }
+    double angle = alien.GetComponent<Transform>()->GetAngle();
+
     switch (event->chord_id) {
     case 1:
         alien.GetComponent<Physics>()->SetVelocity(
@@ -71,14 +73,18 @@ void HandleAlienChordInput(Entity &alien, InputEvent *event) {
     case 3:
         alien.GetComponent<Physics>()->SetVelocity(
             {-200, alien.GetComponent<Physics>()->GetVelocity().y});
+        angle -= 20;
         break;
     case 4:
         alien.GetComponent<Physics>()->SetVelocity(
             {200, alien.GetComponent<Physics>()->GetVelocity().y});
+        angle += 20;
         break;
     default:
         break;
     }
+
+    alien.GetComponent<Transform>()->SetAngle(angle);
 }
 
 void HandleAlienInput(Entity &alien, Event &event) {
@@ -137,6 +143,8 @@ void HandleAlienEvent(Entity &alien, Event &event) {
 }
 
 void UpdateAlien(Entity &alien) {
+    double angle = alien.GetComponent<Transform>()->GetAngle();
+
     if (key_state.up) {
         alien.GetComponent<Physics>()->SetVelocity(
             {alien.GetComponent<Physics>()->GetVelocity().x, -60});
@@ -148,16 +156,22 @@ void UpdateAlien(Entity &alien) {
     if (key_state.left) {
         alien.GetComponent<Physics>()->SetVelocity(
             {-60, alien.GetComponent<Physics>()->GetVelocity().y});
+        angle -= 1;
     }
     if (key_state.right) {
         alien.GetComponent<Physics>()->SetVelocity(
             {60, alien.GetComponent<Physics>()->GetVelocity().y});
+        angle += 1;
     }
     if (!key_state.left && !key_state.right) {
         alien.GetComponent<Physics>()->SetVelocity(
             {float(alien.GetComponent<Physics>()->GetVelocity().x * 0.99),
              alien.GetComponent<Physics>()->GetVelocity().y});
+        angle *= 0.99;
     }
+
+    angle = std::clamp(angle, -20.0, 20.0);
+    alien.GetComponent<Transform>()->SetAngle(angle);
 }
 
 void UpdatePlatform(Entity &platform) {
@@ -469,7 +483,7 @@ int main(int argc, char *args[]) {
     Color background_color = Color{52, 153, 219, 255};
     Engine::GetInstance().SetBackgroundColor(background_color);
     Engine::GetInstance().SetTitle(title);
-    Engine::GetInstance().SetShowPlayerBorder(true);
+    Engine::GetInstance().SetShowPlayerBorder(false);
 
     if (!Engine::GetInstance().Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");

@@ -141,7 +141,8 @@ void Engine::CSServerClientThread(int player_id) {
                 if (!Replay::GetInstance().GetIsReplaying()) {
                     bool ignore_change = !entity_update.active;
                     EventManager::GetInstance().RaiseMoveEvent(
-                        MoveEvent{entity, entity_update.position}, ignore_change);
+                        MoveEvent{entity, entity_update.position, entity_update.angle},
+                        ignore_change);
                 }
             }
 
@@ -168,6 +169,8 @@ void Engine::CSServerBroadcastUpdates(Entity *entity) {
         std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                       entity->GetName().c_str());
         entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+        entity_update.angle = entity->GetComponent<Transform>()->GetAngle();
+
         if (!entity->GetComponent<Network>()->GetActive()) {
             entity_update.active = false;
             Log(LogLevel::Info, "Client %s exiting", Split(entity_update.name, '_')[1].c_str());
@@ -361,6 +364,7 @@ void Engine::P2PHostBroadcastPlayers() {
                 std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                               entity->GetName().c_str());
                 entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+                entity_update.angle = entity->GetComponent<Transform>()->GetAngle();
                 std::snprintf(entity_update.player_address, sizeof(entity_update.player_address),
                               "%s", entity->GetComponent<Network>()->GetPlayerAddress().c_str());
 
@@ -391,6 +395,7 @@ void Engine::CSServerBroadcastPlayers() {
                 std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                               entity->GetName().c_str());
                 entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+                entity_update.angle = entity->GetComponent<Transform>()->GetAngle();
                 std::snprintf(entity_update.player_address, sizeof(entity_update.player_address),
                               "%s", entity->GetComponent<Network>()->GetPlayerAddress().c_str());
 
@@ -631,14 +636,20 @@ Entity *Engine::CreateNewPlayer(int player_id, std::string player_address) {
         player->AddComponent<Collision>();
 
         player->GetComponent<Render>()->SetColor(controllable->GetComponent<Render>()->GetColor());
+        player->GetComponent<Render>()->SetDepth(controllable->GetComponent<Render>()->GetDepth() -
+                                                 1);
         player->GetComponent<Transform>()->SetSize(
             controllable->GetComponent<Transform>()->GetSize());
+        player->GetComponent<Transform>()->SetAnchor(
+            controllable->GetComponent<Transform>()->GetAnchor());
         player->GetComponent<Render>()->SetTextureTemplate(
             controllable->GetComponent<Render>()->GetTextureTemplate());
         player->GetComponent<Handler>()->SetUpdateCallback(
             controllable->GetComponent<Handler>()->GetUpdateCallback());
         player->GetComponent<Network>()->SetOwner(
             controllable->GetComponent<Network>()->GetOwner());
+        player->GetComponent<Collision>()->SetAvoidTransform(
+            controllable->GetComponent<Collision>()->GetAvoidTransform());
 
         player->GetComponent<Physics>()->SetEngineTimeline(this->engine_timeline);
         player->GetComponent<Render>()->SetCamera(this->camera);
@@ -696,7 +707,7 @@ void Engine::CSClientReceiveBroadcastThread() {
                     if (entity_update.active) {
                         if (!Replay::GetInstance().GetIsReplaying()) {
                             EventManager::GetInstance().RaiseMoveEvent(
-                                MoveEvent{entity, entity_update.position});
+                                MoveEvent{entity, entity_update.position, entity_update.angle});
                         }
                     } else {
                         this->RemoveEntity(entity);
@@ -720,6 +731,7 @@ void Engine::CSClientSendUpdate() {
         std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                       player->GetName().c_str());
         entity_update.position = player->GetComponent<Transform>()->GetPosition();
+        entity_update.angle = player->GetComponent<Transform>()->GetAngle();
 
         zmq::message_t update;
         this->EncodeMessage(entity_update, update);
@@ -745,6 +757,7 @@ void Engine::SendInactiveUpdate() {
         std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                       player->GetName().c_str());
         entity_update.position = player->GetComponent<Transform>()->GetPosition();
+        entity_update.angle = player->GetComponent<Transform>()->GetAngle();
         entity_update.active = false;
 
         zmq::message_t update;
@@ -862,6 +875,7 @@ void Engine::P2PBroadcastUpdates(Entity *entity) {
         std::snprintf(entity_update.name, sizeof(entity_update.name), "%s",
                       entity->GetName().c_str());
         entity_update.position = entity->GetComponent<Transform>()->GetPosition();
+        entity_update.angle = entity->GetComponent<Transform>()->GetAngle();
 
         zmq::message_t broadcast_update;
         this->EncodeMessage(entity_update, broadcast_update);
@@ -910,7 +924,7 @@ void Engine::P2PReceiveBroadcastFromPeerThread(int player_id, std::string player
                 if (entity_update.active) {
                     if (!Replay::GetInstance().GetIsReplaying()) {
                         EventManager::GetInstance().RaiseMoveEvent(
-                            MoveEvent{entity, entity_update.position});
+                            MoveEvent{entity, entity_update.position, entity_update.angle});
                     }
                 } else {
                     this->RemoveEntity(entity);
@@ -970,7 +984,7 @@ void Engine::P2PReceiveBroadcastFromHostThread() {
                     if (entity_update.active) {
                         if (!Replay::GetInstance().GetIsReplaying()) {
                             EventManager::GetInstance().RaiseMoveEvent(
-                                MoveEvent{entity, entity_update.position});
+                                MoveEvent{entity, entity_update.position, entity_update.angle});
                         }
                     } else {
                         this->RemoveEntity(entity);
@@ -1182,8 +1196,8 @@ void Engine::AddEntity(Entity *entity) {
     if (entity->GetCategory() == EntityCategory::Controllable) {
         Entity *spawn_point = this->GetSpawnPoint(this->network_info.id - 1);
         if (spawn_point) {
-            entity->GetComponent<Transform>()->SetPosition(
-                spawn_point->GetComponent<Transform>()->GetPosition());
+            EventManager::GetInstance().RaiseMoveEvent(
+                MoveEvent{entity, spawn_point->GetComponent<Transform>()->GetPosition()});
         }
     }
 
@@ -1203,6 +1217,7 @@ void Engine::AddSideBoundary(Position position, Size size) {
     side_boundary->GetComponent<Transform>()->SetPosition(position);
     side_boundary->GetComponent<Transform>()->SetSize(size);
     side_boundary->GetComponent<Render>()->SetBorder(Border{true, this->side_boundary_color});
+    side_boundary->GetComponent<Render>()->SetDepth(INT_MAX);
     side_boundary->GetComponent<Render>()->SetVisible(this->show_zone_borders);
 
     this->AddEntity(side_boundary);
@@ -1246,6 +1261,7 @@ void Engine::AddSpawnPoint(Position position, Size size) {
     spawn_point->GetComponent<Transform>()->SetPosition(position);
     spawn_point->GetComponent<Transform>()->SetSize(size);
     spawn_point->GetComponent<Render>()->SetBorder(Border{true, this->spawn_point_color});
+    spawn_point->GetComponent<Render>()->SetDepth(INT_MAX);
     spawn_point->GetComponent<Render>()->SetVisible(this->show_zone_borders);
 
     this->AddEntity(spawn_point);
@@ -1262,6 +1278,7 @@ void Engine::AddDeathZone(Position position, Size size) {
     death_zone->GetComponent<Transform>()->SetPosition(position);
     death_zone->GetComponent<Transform>()->SetSize(size);
     death_zone->GetComponent<Render>()->SetBorder(Border{true, this->death_zone_color});
+    death_zone->GetComponent<Render>()->SetDepth(INT_MAX);
     death_zone->GetComponent<Render>()->SetVisible(this->show_zone_borders);
 
     this->AddEntity(death_zone);
@@ -1416,11 +1433,11 @@ void Engine::RespawnPlayer() {
     }
 
     this->ResetSideBoundaries();
-    this->camera->GetComponent<Transform>()->SetPosition(Position{0, 0});
+    EventManager::GetInstance().RaiseMoveEvent(MoveEvent{this->camera.get(), Position{0, 0}});
 
     Position respawn_point =
         this->GetSpawnPoint(this->network_info.id - 1)->GetComponent<Transform>()->GetPosition();
-    player->GetComponent<Transform>()->SetPosition(respawn_point);
+    EventManager::GetInstance().RaiseMoveEvent(MoveEvent{player, respawn_point});
 }
 
 void Engine::ResetSideBoundaries() {
@@ -1434,7 +1451,7 @@ void Engine::ResetSideBoundaries() {
             GetScreenPosition(side_boundary->GetComponent<Transform>()->GetPosition(),
                               this->camera->GetComponent<Transform>()->GetPosition());
         side_boundary->GetComponent<Physics>()->SetVelocity(Velocity{0, 0});
-        side_boundary->GetComponent<Transform>()->SetPosition(original_position);
+        EventManager::GetInstance().RaiseMoveEvent(MoveEvent{side_boundary, original_position});
     }
 }
 
@@ -1467,11 +1484,24 @@ void Engine::RenderScene() {
     this->HandleScaling();
 
     this->RenderBackground();
-    for (Entity *entity : this->GetEntities()) {
+
+    auto entities = this->GetEntities();
+    auto render_entities = std::vector<Entity *>();
+    for (Entity *entity : entities) {
         if (entity->GetComponent<Render>() != nullptr) {
-            entity->GetComponent<Render>()->Update();
+            render_entities.push_back(entity);
         }
     }
+    std::sort(render_entities.begin(), render_entities.end(),
+              [](Entity *entity_1, Entity *entity_2) {
+                  return entity_1->GetComponent<Render>()->GetDepth() <
+                         entity_2->GetComponent<Render>()->GetDepth();
+              });
+
+    for (Entity *entity : render_entities) {
+        entity->GetComponent<Render>()->Update();
+    }
+
     this->RenderBorder();
 
 #ifdef PROFILE
@@ -1553,12 +1583,13 @@ void Engine::CaptureTracyFrameImage() {
     SDL_FreeSurface(scaled_surface);
 }
 
-void Engine::SetEntityPositions() {
+void Engine::SetEntityTransforms() {
     std::vector<Entity *> all_entities = this->GetEntities();
     all_entities.push_back(this->camera.get());
 
     for (const auto &entity : all_entities) {
-        this->entity_positions[entity] = entity->GetComponent<Transform>()->GetPosition();
+        this->entity_transforms[entity] = {entity->GetComponent<Transform>()->GetPosition(),
+                                           entity->GetComponent<Transform>()->GetAngle()};
     }
 }
 
@@ -1572,22 +1603,25 @@ void Engine::RecordEvents() {
 
     for (const auto &entity : all_entities) {
         Position prev_pos = Position{};
-        auto iterator = this->entity_positions.find(entity);
-        if (iterator != this->entity_positions.end()) {
-            prev_pos = iterator->second;
+        double prev_angle = 0;
+        auto iterator = this->entity_transforms.find(entity);
+        if (iterator != this->entity_transforms.end()) {
+            prev_pos = iterator->second.first;
+            prev_angle = iterator->second.second;
         }
         Position curr_pos = entity->GetComponent<Transform>()->GetPosition();
-        if (curr_pos.x == prev_pos.x && curr_pos.y == prev_pos.y) {
+        double curr_angle = entity->GetComponent<Transform>()->GetAngle();
+        if (curr_pos.x == prev_pos.x && curr_pos.y == prev_pos.y && curr_angle == prev_angle) {
             continue;
         }
 
-        Event move_event = Event(EventType::Move, MoveEvent{entity, curr_pos});
+        Event move_event = Event(EventType::Move, MoveEvent{entity, curr_pos, curr_angle});
         move_event.SetDelay(-1);
         move_event.SetPriority(Priority::High);
         Replay::GetInstance().RecordEvent(move_event);
     }
 
-    this->SetEntityPositions();
+    this->SetEntityTransforms();
 }
 
 void Engine::HandleScaling() {

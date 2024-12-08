@@ -12,6 +12,7 @@ void from_json(const nlohmann::json &json, Position &position) {
 void to_json(nlohmann::json &json, const EntityUpdate &entity_update) {
     json = nlohmann::json{{"name", entity_update.name},
                           {"position", entity_update.position},
+                          {"angle", entity_update.angle},
                           {"player_address", entity_update.player_address},
                           {"active", entity_update.active}};
 }
@@ -25,5 +26,6 @@ void from_json(const nlohmann::json &json, EntityUpdate &entity_update) {
                  sizeof(entity_update.player_address));
 
     json.at("position").get_to(entity_update.position);
+    json.at("angle").get_to(entity_update.angle);
     json.at("active").get_to(entity_update.active);
 }

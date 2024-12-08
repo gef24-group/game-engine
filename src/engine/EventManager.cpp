@@ -216,8 +216,13 @@ void EventManager::RaiseSpawnEvent(SpawnEvent event) {
 void EventManager::RaiseMoveEvent(MoveEvent event, bool ignore_change) {
     Position new_pos = event.position;
     Position cur_pos = event.entity->GetComponent<Transform>()->GetPosition();
-    if (!ignore_change && new_pos.x == cur_pos.x && new_pos.y == cur_pos.y) {
-        return;
+    double new_angle = event.angle;
+    double cur_angle = event.entity->GetComponent<Transform>()->GetAngle();
+
+    if (!ignore_change) {
+        if ((new_pos.x == cur_pos.x) && (new_pos.y == cur_pos.y) && (new_angle == cur_angle)) {
+            return;
+        }
     }
 
     Event move_event = Event(EventType::Move, event);
@@ -225,6 +230,14 @@ void EventManager::RaiseMoveEvent(MoveEvent event, bool ignore_change) {
     move_event.SetPriority(Priority::High);
 
     this->Raise(move_event);
+}
+
+void EventManager::RaiseSendUpdateEvent(SendUpdateEvent event) {
+    Event send_update_event = Event(EventType::SendUpdate, event);
+    send_update_event.SetDelay(-1);
+    send_update_event.SetPriority(Priority::High);
+
+    this->Raise(send_update_event);
 }
 
 void EventManager::RaiseJoinEvent(JoinEvent event) {

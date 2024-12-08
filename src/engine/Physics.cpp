@@ -49,7 +49,8 @@ void Physics::Move() {
 
     if (!Replay::GetInstance().GetIsReplaying()) {
         EventManager::GetInstance().RaiseMoveEvent(
-            MoveEvent{this->entity, Position{new_pos_x, new_pos_y}});
+            MoveEvent{this->entity, Position{new_pos_x, new_pos_y},
+                      this->entity->GetComponent<Transform>()->GetAngle()});
 
         this->velocity.x += (this->acceleration.x * time);
         this->velocity.y += (this->acceleration.y * time);

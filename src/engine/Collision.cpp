@@ -17,12 +17,16 @@ PROFILED;
 Collision::Collision(Entity *entity) {
     this->entity = entity;
     this->restitution = 0;
+    this->avoid_transform = false;
 
     EventManager::GetInstance().Register({EventType::Collision, EventType::Death}, this);
 }
 
 float Collision::GetRestitution() { return this->restitution; }
+bool Collision::GetAvoidTransform() { return this->avoid_transform; }
+
 void Collision::SetRestitution(float restitution) { this->restitution = restitution; }
+void Collision::SetAvoidTransform(bool avoid_transform) { this->avoid_transform = avoid_transform; }
 
 void Collision::HandlePairwiseCollision(Entity *collider) {
     ZoneScoped;
@@ -88,7 +92,12 @@ void Collision::HandlePairwiseCollision(Entity *collider) {
     }
 
     if (this->entity->GetComponent<Physics>()) {
+        if (this->GetAvoidTransform()) {
+            return;
+        }
+
         this->entity->GetComponent<Transform>()->SetPosition(Position{float(pos_x), float(pos_y)});
+
         float vel_x = this->entity->GetComponent<Physics>()->GetVelocity().x;
         float vel_y = this->entity->GetComponent<Physics>()->GetVelocity().y;
 
