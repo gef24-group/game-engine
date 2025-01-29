@@ -132,5 +132,8 @@ Here is a map of inputs common to every game
 | <kbd>q</kbd> | Toggle recording              |
 | <kbd>r</kbd> | Replay the recording          |
 
+## Gallery
+![Screenshots of games](images/gallery.png)
+
 ## References
 Please find all references in [References.md](References.md)
