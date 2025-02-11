@@ -34,6 +34,10 @@
 #include "Profile.hpp"
 PROFILED;
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 Engine::Engine() {
     std::signal(SIGINT, HandleSIGINT);
     app->sdl_window = nullptr;
@@ -1055,6 +1059,10 @@ void Engine::StartP2P() {
 
 bool Engine::InitializeDisplay() {
     ZoneScoped;
+
+#ifdef _WIN32
+    SetProcessDPIAware();
+#endif
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         Log(LogLevel::Error, "SDL_Init Error: %s", SDL_GetError());
