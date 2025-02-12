@@ -65,7 +65,8 @@ void HandleBallEvent(Entity &ball, Event &event) {
     float ball_x = ball.GetComponent<Transform>()->GetPosition().x;
     float ball_y = ball.GetComponent<Transform>()->GetPosition().y;
 
-    if (ball_y + ball.GetComponent<Transform>()->GetSize().height > window_size.height) {
+    if (ball_y + float(ball.GetComponent<Transform>()->GetSize().height) >
+        float(window_size.height)) {
         Log(LogLevel::Info, "Ball went out of the boundary");
         app->quit.store(true);
     }
@@ -314,6 +315,10 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
+    Color background_color = Color{212, 248, 253, 255};
+    Engine::GetInstance().SetBackgroundColor(background_color);
+    Engine::GetInstance().SetTitle(game_title);
+
     if (!Engine::GetInstance().Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
@@ -325,10 +330,6 @@ int main(int argc, char *args[]) {
     Engine::GetInstance().SetShowPlayerBorder(false);
 
     network_info = Engine::GetInstance().GetNetworkInfo();
-
-    Color background_color = Color{212, 248, 253, 255};
-    Engine::GetInstance().SetBackgroundColor(background_color);
-    Engine::GetInstance().SetTitle(game_title);
 
     window_size = GetWindowSize();
 

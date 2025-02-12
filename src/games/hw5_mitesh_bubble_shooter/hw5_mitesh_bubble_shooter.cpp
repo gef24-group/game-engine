@@ -41,7 +41,7 @@ void MoveBubblesDown() {
             transform->SetPosition({current_pos.x, current_pos.y + BUBBLE_SIZE});
 
             // Check if the bubble touches or crosses the bottom of the screen
-            if (current_pos.y + BUBBLE_SIZE >= window_size.height) {
+            if (current_pos.y + BUBBLE_SIZE >= float(window_size.height)) {
                 Log(LogLevel::Info, "Ball went out of the boundary");
                 app->quit.store(true);
             }
@@ -267,8 +267,8 @@ std::vector<Entity *> CreateEntities() {
 
     for (int row = 0; row < ROWS; ++row) {
         for (int col = 0; col < COLUMNS; ++col) {
-            float x_coord = col * BUBBLE_SIZE;
-            float y_coord = row * BUBBLE_SIZE;
+            float x_coord = float(col) * BUBBLE_SIZE;
+            float y_coord = float(row) * BUBBLE_SIZE;
             Color color = (row % 2 == 0) ? Color{255, 0, 0, 255}  // Red
                                          : Color{0, 0, 255, 255}; // Blue
             std::string texture = (row % 2 == 0) ? "red_bubble.png" : "blue_bubble.png";
@@ -317,6 +317,10 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
+    Color background_color = Color{135, 206, 235, 255};
+    Engine::GetInstance().SetBackgroundColor(background_color);
+    Engine::GetInstance().SetTitle(game_title);
+
     if (!Engine::GetInstance().Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
@@ -328,10 +332,6 @@ int main(int argc, char *args[]) {
     Engine::GetInstance().SetShowPlayerBorder(false);
 
     network_info = Engine::GetInstance().GetNetworkInfo();
-
-    Color background_color = Color{135, 206, 235, 255};
-    Engine::GetInstance().SetBackgroundColor(background_color);
-    Engine::GetInstance().SetTitle(game_title);
 
     window_size = GetWindowSize();
 

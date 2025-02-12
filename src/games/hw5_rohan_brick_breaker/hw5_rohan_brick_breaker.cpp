@@ -314,6 +314,10 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
+    Color background_color = Color{165, 200, 255, 255};
+    Engine::GetInstance().SetBackgroundColor(background_color);
+    Engine::GetInstance().SetTitle(game_title);
+
     if (!Engine::GetInstance().Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
         return 1;
@@ -330,10 +334,6 @@ int main(int argc, char *args[]) {
             max_player_count, network_info.id);
         exit(0);
     }
-
-    Color background_color = Color{165, 200, 255, 255};
-    Engine::GetInstance().SetBackgroundColor(background_color);
-    Engine::GetInstance().SetTitle(game_title);
 
     window_size = GetWindowSize();
 

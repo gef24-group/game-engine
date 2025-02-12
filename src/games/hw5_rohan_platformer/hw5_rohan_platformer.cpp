@@ -433,13 +433,17 @@ void DestroyEntities(std::vector<Entity *> entities) {
 }
 
 int main(int argc, char *args[]) {
-    std::string game_title = "Rohan's CSC581 HW3 Game: Platformer";
+    std::string game_title = "Rohan's CSC581 HW5 Game: Platformer";
     int max_player_count = 100, texture_count = 4;
 
     // Initializing the Game Engine
     if (!SetEngineCLIOptions(argc, args)) {
         return 1;
     }
+
+    Color background_color = Color{165, 200, 255, 255};
+    Engine::GetInstance().SetBackgroundColor(background_color);
+    Engine::GetInstance().SetTitle(game_title);
 
     if (!Engine::GetInstance().Init()) {
         Log(LogLevel::Error, "Game engine initialization failure");
@@ -457,10 +461,6 @@ int main(int argc, char *args[]) {
             max_player_count, network_info.id);
         exit(0);
     }
-
-    Color background_color = Color{165, 200, 255, 255};
-    Engine::GetInstance().SetBackgroundColor(background_color);
-    Engine::GetInstance().SetTitle(game_title);
 
     window_size = GetWindowSize();
 
