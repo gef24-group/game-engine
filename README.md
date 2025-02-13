@@ -2,7 +2,28 @@
 [![build](https://github.com/gef24-group/game-engine/actions/workflows/build.yml/badge.svg)](https://github.com/gef24-group/game-engine/actions/workflows/build.yml)
 
 # game-engine
-This repo houses the game engine developed for CSC 581 (Game Engine Foundations), Group 15, Fall 2024 @ NC State
+This repo houses a cross-platform 2D game engine with built-in multiplayer support. Both client-server and peer-to-peer network architectures are supported. The engine also features an entity component system for constructing game objects, a physics engine, an input system with multi-key chord support, in-game timelines, side-scrolling mechanics, event management, game replay functionality, and profiling with the [Tracy](https://github.com/wolfpld/tracy) profiler.
+
+## Installation
+Pre-built game binaries for Windows, macOS and Ubuntu are available in [every release](https://github.com/gef24-group/game-engine/releases). After downloading the binaries of the latest release for your platform, navigate to the folder containing the game of your choice and run the commands specified below. You may choose between the client-server or peer-to-peer modes. Each command must be run in its own shell. Only a single server or host may be spawned, but you may spawn as many clients or peers as needed.
+
+**Client-server mode**
+```bash
+./<GAME_BINARY> --mode cs --role server
+./<GAME_BINARY> --mode cs --role client
+```
+
+**Peer-to-peer mode**
+```bash
+./<GAME_BINARY> --mode p2p --role host
+./<GAME_BINARY> --mode p2p --role peer
+```
+
+To connect clients or peers with remote servers or hosts, you may specify the following flags
+- `--server_ip` (on clients)
+- `--host_ip` and `--peer_ip` (on peers)
+
+For more details, refer to the section on [engine flags](#engine-flags)
 
 ## Build
 ### Prerequisites
