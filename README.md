@@ -7,13 +7,13 @@ This repo houses a cross-platform 2D game engine with built-in multiplayer suppo
 ## Installation
 Pre-built game binaries for Windows, macOS and Ubuntu are available in [every release](https://github.com/gef24-group/game-engine/releases). After downloading the binaries of the latest release for your platform, navigate to the folder containing the game of your choice and run the commands specified below. You may choose between the client-server or peer-to-peer modes. Each command must be run in its own shell. Only a single server or host may be spawned, but you may spawn as many clients or peers as needed.
 
-**Client-server mode**
+__Client-server mode__
 ```bash
 ./<GAME_BINARY> --mode cs --role server
 ./<GAME_BINARY> --mode cs --role client
 ```
 
-**Peer-to-peer mode**
+__Peer-to-peer mode__
 ```bash
 ./<GAME_BINARY> --mode p2p --role host
 ./<GAME_BINARY> --mode p2p --role peer
@@ -24,6 +24,19 @@ To connect clients or peers with remote servers or hosts, you may specify the fo
 - `--host_ip` and `--peer_ip` (on peers)
 
 For more details, refer to the section on [engine flags](#engine-flags)
+
+## Port Usage
+__Client-server mode__
+- `5555`: Handles join requests
+- `5556`: Broadcasts server updates
+- `6000 + x`: For clients to send updates (`x` is the client's network ID)
+
+__Peer-to-peer mode__
+- `5555`: Handles join requests
+- `6000 + x`: For peers to broadcast updates (`x` is the peer's network ID; the host always has `x = 1`)
+
+__Profiled builds__
+- `9000`: Streams profiling data to the [Tracy](https://github.com/wolfpld/tracy) profiler
 
 ## Build
 ### Prerequisites
@@ -103,11 +116,11 @@ The flags supported by the engine are
 ### Client-server mode (Ubuntu or macOS)
 To run `hw5_joshua_homebound` in the client-server mode, run these commands in different shells
 
-**Server**
+__Server__
 ```bash
 make play GAME=hw5_joshua_homebound ARGS="--mode cs --role server"
 ```
-**Client**
+__Client__
 ```bash
 make play GAME=hw5_joshua_homebound ARGS="--mode cs --role client"
 ```
@@ -115,11 +128,11 @@ make play GAME=hw5_joshua_homebound ARGS="--mode cs --role client"
 ### Peer-to-peer mode (Ubuntu or macOS)
 To run `hw5_rohan_space_invaders` in the peer-to-peer mode, run these commands in different shells
 
-**Host**
+__Host__
 ```bash
 make play GAME=hw5_rohan_space_invaders ARGS="--mode p2p --role host"
 ```
-**Peer**
+__Peer__
 ```bash
 make play GAME=hw5_rohan_space_invaders ARGS="--mode p2p --role peer"
 ```
@@ -128,7 +141,7 @@ make play GAME=hw5_rohan_space_invaders ARGS="--mode p2p --role peer"
 To run `hw5_rohan_brick_breaker` in the client mode, run the following command  
 This assumes that the server was already started on the same machine
 
-**Client**
+__Client__
 ```bash
 .\scripts\play.ps1 -GAME hw5_rohan_brick_breaker -GAME_ARGS "--mode cs --role client"
 ```
@@ -139,6 +152,9 @@ To clear all build artifacts, run
 make clean           # Ubuntu or macOS
 .\scripts\clean.ps1  # Windows 11
 ```
+
+## Development
+More details on setting up the development environment can be found in [Development.md](Development.md)
 
 ## Common inputs
 Here is a map of inputs common to every game
