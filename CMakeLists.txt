@@ -109,6 +109,13 @@ foreach(GAME_DIR ${GAMES})
         )
     endforeach()
 
+    # Copy the game README to the same folder as the executable
+    add_custom_command(TARGET ${GAME_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "../${GAME_DIR}/README.md"
+            "$<TARGET_FILE_DIR:${GAME_NAME}>"
+    )
+
     # Copy shared libraries to the same folder as the executable
     if (WIN32)
         add_custom_command(
