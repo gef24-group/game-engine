@@ -159,18 +159,26 @@ More details on setting up the development environment can be found in [Developm
 ## Common inputs
 Here is a map of inputs common to every game
 
-| Input        | Action                        |
-|--------------|-------------------------------|
-| <kbd>p</kbd> | Toggle timeline pause         |
-| <kbd>,</kbd> | Slow down the timeline        |
-| <kbd>.</kbd> | Speed up the timeline         |
-| <kbd>x</kbd> | Toggle display scaling        |
-| <kbd>z</kbd> | Toggle hidden zone visibility |
-| <kbd>q</kbd> | Toggle recording              |
-| <kbd>r</kbd> | Replay the recording          |
+| Input | Action                        |
+|-------|-------------------------------|
+| `p`   | Toggle timeline pause         |
+| `,`   | Slow down the timeline        |
+| `.`   | Speed up the timeline         |
+| `x`   | Toggle display scaling        |
+| `z`   | Toggle hidden zone visibility |
+| `q`   | Toggle recording              |
+| `r`   | Replay the recording          |
+
+When made visible, hidden zones are indicated by the following colors
+- `SideBoundary`: Blue
+- `SpawnPoint`: Green
+- `DeathZone`: Red
+
+The screen border turns red when recording and blue when replaying
 
 ## Gallery
 ![Screenshots of games](images/gallery.png)
+Learn more about each game and its controls in the corresponding `README` files
 
 ## References
 Please find all references in [References.md](References.md)
